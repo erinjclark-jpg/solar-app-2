@@ -137,7 +137,7 @@
 
         // --- API CONFIGURATION ---
         const API_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=";
-        const apiKey = "AIzaSyCHSeU4EcwcqdfqpZ8rL_FmNiWrv9lyINs"; 
+        const apiKey = "AIzaSyCAFdqXSVEFCGvGHXhj33-io2xm0-9xU8s"; 
 
         // --- 2. Firebase Init ---
         const appId = typeof window.__app_id !== 'undefined' ? window.__app_id : 'default-app-id';
@@ -605,43 +605,27 @@
                 // 3. INJECT FINAL CONTENT
                 const citationHtml = citations.length > 0 ? `<div class="mt-8 pt-4 border-t border-gray-100"><p class="text-xs font-bold text-slate-600 mb-1">Sources:</p><ul class="text-[10px] text-indigo-500">${citations.map(s => `<li><a href="${s.uri}" target="_blank">${s.title}</a></li>`).join('')}</ul></div>` : '';
 
-                // SCRIPT CONTENT - Clean, robust event handling
+                // SCRIPT CONTENT - Direct functions are robust against DOM ready issues in popups
+                const safeTitle = reportTitle.replace(/\s+/g, '_');
                 const scriptContent = `
-                    document.addEventListener('DOMContentLoaded', () => {
-                        const btnPrint = document.getElementById('btn-print');
-                        const btnDownload = document.getElementById('btn-download');
-                        const btnClose = document.getElementById('btn-close');
-
-                        if(btnPrint) {
-                            btnPrint.onclick = () => window.print();
+                    function downloadReport() {
+                        try {
+                            const html = document.documentElement.outerHTML;
+                            const blob = new Blob([html], { type: 'text/html' });
+                            const url = URL.createObjectURL(blob);
+                            const a = document.createElement('a');
+                            a.href = url;
+                            a.download = '${safeTitle}.html';
+                            document.body.appendChild(a);
+                            a.click();
+                            setTimeout(() => { 
+                                document.body.removeChild(a); 
+                                window.URL.revokeObjectURL(url); 
+                            }, 100);
+                        } catch(err) {
+                            alert("Download failed: " + err.message);
                         }
-
-                        if(btnDownload) {
-                            btnDownload.onclick = () => {
-                                try {
-                                    const title = "${reportTitle.replace(/\s+/g, '_')}";
-                                    const html = document.documentElement.outerHTML;
-                                    const blob = new Blob([html], { type: 'text/html' });
-                                    const url = URL.createObjectURL(blob);
-                                    const a = document.createElement('a');
-                                    a.href = url;
-                                    a.download = title + '.html';
-                                    document.body.appendChild(a);
-                                    a.click();
-                                    setTimeout(() => { 
-                                        document.body.removeChild(a); 
-                                        window.URL.revokeObjectURL(url); 
-                                    }, 100);
-                                } catch(err) {
-                                    alert("Download failed: " + err.message);
-                                }
-                            };
-                        }
-
-                        if(btnClose) {
-                            btnClose.onclick = () => window.close();
-                        }
-                    });
+                    }
                 `;
 
                 reportWin.document.open();
@@ -662,6 +646,7 @@
                                 .report-container { box-shadow: none; max-width: 100%; padding: 0; }
                             }
                         </style>
+                        <script>${scriptContent}<\/script>
                     </head>
                     <body>
                         <div class="report-container">
@@ -675,16 +660,15 @@
 
                         <!-- FIXED TOOLBAR -->
                         <div class="fixed bottom-0 left-0 right-0 bg-white border-t p-4 flex justify-end gap-2 no-print shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.1)] z-50">
-                            <button id="btn-print" class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded text-sm font-bold mr-2 flex items-center gap-2"><i class="fas fa-print"></i> Print</button>
-                            <button id="btn-download" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded text-sm font-bold mr-2 flex items-center gap-2"><i class="fas fa-download"></i> Download HTML</button>
-                            <button id="btn-close" class="border border-slate-300 hover:bg-slate-50 text-slate-700 px-4 py-2 rounded text-sm font-bold">Close</button>
+                            <button onclick="window.print()" class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded text-sm font-bold mr-2 flex items-center gap-2"><i class="fas fa-print"></i> Print</button>
+                            <button onclick="downloadReport()" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded text-sm font-bold mr-2 flex items-center gap-2"><i class="fas fa-download"></i> Download HTML</button>
+                            <button onclick="window.close()" class="border border-slate-300 hover:bg-slate-50 text-slate-700 px-4 py-2 rounded text-sm font-bold">Close</button>
                         </div>
-
-                        <script>${scriptContent}<\/script>
                     </body>
                     </html>
                 `);
                 reportWin.document.close();
+                setTimeout(() => reportWin.focus(), 500); // Ensure focus for print
 
             } catch (error) {
                 reportWin.document.body.innerHTML = `<div style="padding:40px; color:red; text-align:center;"><h3>Generation Failed</h3><p>${error.message}</p></div>`;
