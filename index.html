@@ -511,7 +511,7 @@
             if (line.startsWith('## ')) return `<h2 class="text-2xl font-bold mt-6 mb-3 text-slate-800 border-b border-indigo-100 pb-2">${line.substring(3)}</h2>`;
             if (line.startsWith('# ')) return `<div class="bg-indigo-50 p-4 rounded-lg border-l-4 border-indigo-600 mb-6"><h1 class="text-3xl font-bold text-indigo-900">${line.substring(2)}</h1></div>`;
             if (line.match(/^\s*[\-\*]\s+/)) return `<li class="ml-5 list-disc text-slate-600 mb-1 pl-1">${line.replace(/^\s*[\-\*]\s+/, '').replace(/\*\*(.*?)\*\*/g, '<strong class="text-slate-800">$1</strong>')}</li>`;
-            let processed = line.replace(/\*\*(.*?)\*\*/g, '<strong class="text-slate-800">$1</strong>').replace(/`([^`]+)`/g, '<code class="bg-slate-100 px-1 rounded text-pink-500 font-mono text-sm">$1</code>');
+            let processed = line.replace(/\*\*(.*?)\*\*/g, '<strong class="text-slate-800">$1</strong>').replace(new RegExp("`([^`]+)`", "g"), '<code class="bg-slate-100 px-1 rounded text-pink-500 font-mono text-sm">$1</code>');
             return `<p class="mb-3 text-slate-700 leading-relaxed">${processed}</p>`;
         }
 
@@ -602,35 +602,54 @@
                     }
                 }
 
-                // 3. INJECT FINAL CONTENT
+                // 3. INJECT FINAL CONTENT - ROBUST DOCUMENT CONSTRUCTION
                 const citationHtml = citations.length > 0 ? `<div class="mt-8 pt-4 border-t border-gray-100"><p class="text-xs font-bold text-slate-600 mb-1">Sources:</p><ul class="text-[10px] text-indigo-500">${citations.map(s => `<li><a href="${s.uri}" target="_blank">${s.title}</a></li>`).join('')}</ul></div>` : '';
 
-                // SCRIPT CONTENT - Direct functions are robust against DOM ready issues in popups
-                const safeTitle = reportTitle.replace(/\s+/g, '_');
+                // FIX: Strictly sanitize title
+                const safeTitle = reportTitle.replace(/[^a-zA-Z0-9-_ ]/g, '').replace(/\s+/g, '_');
+                
+                // FIX: Escape backticks in content to prevent breaking the template literal
+                const safeContent = finalContent.replace(/`/g, '&#96;'); 
+                
                 const scriptContent = `
-                    function downloadReport() {
-                        try {
-                            const html = document.documentElement.outerHTML;
-                            const blob = new Blob([html], { type: 'text/html' });
-                            const url = URL.createObjectURL(blob);
-                            const a = document.createElement('a');
-                            a.href = url;
-                            a.download = '${safeTitle}.html';
-                            document.body.appendChild(a);
-                            a.click();
-                            setTimeout(() => { 
-                                document.body.removeChild(a); 
-                                window.URL.revokeObjectURL(url); 
-                            }, 100);
-                        } catch(err) {
-                            alert("Download failed: " + err.message);
+                    document.addEventListener('DOMContentLoaded', () => {
+                        const btnPrint = document.getElementById('btn-print');
+                        if (btnPrint) {
+                            btnPrint.addEventListener('click', () => window.print());
                         }
-                    }
+
+                        const btnClose = document.getElementById('btn-close');
+                        if (btnClose) {
+                            btnClose.addEventListener('click', () => window.close());
+                        }
+
+                        const btnDownload = document.getElementById('btn-download');
+                        if (btnDownload) {
+                            btnDownload.addEventListener('click', () => {
+                                try {
+                                    const rawHtml = document.documentElement.outerHTML;
+                                    const blob = new Blob([rawHtml], { type: 'text/html' });
+                                    const url = URL.createObjectURL(blob);
+                                    const a = document.createElement('a');
+                                    a.href = url;
+                                    a.download = "${safeTitle}.html";
+                                    document.body.appendChild(a);
+                                    a.click();
+                                    setTimeout(() => { 
+                                        document.body.removeChild(a); 
+                                        window.URL.revokeObjectURL(url); 
+                                    }, 100);
+                                } catch(err) {
+                                    alert("Download failed: " + err.message);
+                                }
+                            });
+                        }
+                    });
                 `;
 
+                // Use document.open/write/close pattern for safety
                 reportWin.document.open();
-                reportWin.document.write(`
-                    <!DOCTYPE html>
+                reportWin.document.write(`<!DOCTYPE html>
                     <html lang="en">
                     <head>
                         <meta charset="UTF-8">
@@ -646,7 +665,6 @@
                                 .report-container { box-shadow: none; max-width: 100%; padding: 0; }
                             }
                         </style>
-                        <script>${scriptContent}<\/script>
                     </head>
                     <body>
                         <div class="report-container">
@@ -654,21 +672,22 @@
                                 <div><h3 class="text-xl font-bold text-indigo-900">${reportTitle}</h3><p class="text-xs text-slate-500 mt-1">${new Date().toLocaleDateString()}</p></div>
                                 <div class="text-2xl text-yellow-500"><i class="fas fa-sun"></i></div>
                             </div>
-                            ${finalContent}
+                            ${safeContent}
                             ${citationHtml}
                         </div>
 
                         <!-- FIXED TOOLBAR -->
                         <div class="fixed bottom-0 left-0 right-0 bg-white border-t p-4 flex justify-end gap-2 no-print shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.1)] z-50">
-                            <button onclick="window.print()" class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded text-sm font-bold mr-2 flex items-center gap-2"><i class="fas fa-print"></i> Print</button>
-                            <button onclick="downloadReport()" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded text-sm font-bold mr-2 flex items-center gap-2"><i class="fas fa-download"></i> Download HTML</button>
-                            <button onclick="window.close()" class="border border-slate-300 hover:bg-slate-50 text-slate-700 px-4 py-2 rounded text-sm font-bold">Close</button>
+                            <button id="btn-print" class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded text-sm font-bold mr-2 flex items-center gap-2"><i class="fas fa-print"></i> Print</button>
+                            <button id="btn-download" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded text-sm font-bold mr-2 flex items-center gap-2"><i class="fas fa-download"></i> Download HTML</button>
+                            <button id="btn-close" class="border border-slate-300 hover:bg-slate-50 text-slate-700 px-4 py-2 rounded text-sm font-bold">Close</button>
                         </div>
+
+                        <script>${scriptContent}<\/script>
                     </body>
-                    </html>
-                `);
+                    </html>`);
                 reportWin.document.close();
-                setTimeout(() => reportWin.focus(), 500); // Ensure focus for print
+                setTimeout(() => reportWin.focus(), 500);
 
             } catch (error) {
                 reportWin.document.body.innerHTML = `<div style="padding:40px; color:red; text-align:center;"><h3>Generation Failed</h3><p>${error.message}</p></div>`;
@@ -1022,7 +1041,7 @@
                 <div class="bg-[#005088] text-white p-3 sticky top-0 z-50 flex justify-between items-center shadow-md no-print">
                     <div class="flex items-center gap-2">
                         <span class="text-2xl"><i class="fas fa-sun text-yellow-400"></i></span>
-                        <div><h1 class="font-bold leading-tight text-base sm:text-lg">SolarCheck</h1><p class="text-xs opacity-80 font-medium">Pro v6.2</p></div>
+                        <div><h1 class="font-bold leading-tight text-base sm:text-lg">SolarCheck</h1><p class="text-xs opacity-80 font-medium">Pro v6.5</p></div>
                     </div>
                     <div class="flex gap-2">
                          <button onclick="openModal('print-modal')" class="bg-yellow-400 hover:bg-yellow-300 text-black px-3 py-2 rounded-lg font-bold text-xs sm:text-sm shadow transition-colors flex items-center gap-1"><i class="fas fa-file-pdf"></i> Reports</button>
