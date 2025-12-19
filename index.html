@@ -611,40 +611,47 @@
                 // FIX: Escape backticks in content to prevent breaking the template literal
                 const safeContent = finalContent.replace(/`/g, '&#96;'); 
                 
+                // SCRIPT CONTENT - DIRECT FUNCTION DEFINITION
+                // We define functions directly in the global scope of the new window
                 const scriptContent = `
-                    document.addEventListener('DOMContentLoaded', () => {
-                        const btnPrint = document.getElementById('btn-print');
-                        if (btnPrint) {
-                            btnPrint.addEventListener('click', () => window.print());
+                    <script>
+                        function runPrint() {
+                            window.print();
                         }
-
-                        const btnClose = document.getElementById('btn-close');
-                        if (btnClose) {
-                            btnClose.addEventListener('click', () => window.close());
+                        
+                        function runClose() {
+                            window.close();
                         }
-
-                        const btnDownload = document.getElementById('btn-download');
-                        if (btnDownload) {
-                            btnDownload.addEventListener('click', () => {
-                                try {
-                                    const rawHtml = document.documentElement.outerHTML;
-                                    const blob = new Blob([rawHtml], { type: 'text/html' });
-                                    const url = URL.createObjectURL(blob);
-                                    const a = document.createElement('a');
-                                    a.href = url;
-                                    a.download = "${safeTitle}.html";
-                                    document.body.appendChild(a);
-                                    a.click();
-                                    setTimeout(() => { 
-                                        document.body.removeChild(a); 
-                                        window.URL.revokeObjectURL(url); 
-                                    }, 100);
-                                } catch(err) {
-                                    alert("Download failed: " + err.message);
-                                }
-                            });
+                        
+                        function runDownload() {
+                            try {
+                                // 1. Get the full HTML of the current document
+                                var htmlContent = "<!DOCTYPE html>" + document.documentElement.outerHTML;
+                                
+                                // 2. Create a blob
+                                var blob = new Blob([htmlContent], { type: "text/html" });
+                                
+                                // 3. Create a temporary anchor element
+                                var url = window.URL.createObjectURL(blob);
+                                var a = document.createElement("a");
+                                a.href = url;
+                                a.download = "${safeTitle}.html";
+                                a.style.display = "none";
+                                
+                                // 4. Append, click, remove
+                                document.body.appendChild(a);
+                                a.click();
+                                
+                                // 5. Cleanup
+                                setTimeout(function() { 
+                                    document.body.removeChild(a); 
+                                    window.URL.revokeObjectURL(url); 
+                                }, 100);
+                            } catch(err) {
+                                alert("Download failed: " + err.message);
+                            }
                         }
-                    });
+                    <\/script>
                 `;
 
                 // Use document.open/write/close pattern for safety
@@ -665,6 +672,7 @@
                                 .report-container { box-shadow: none; max-width: 100%; padding: 0; }
                             }
                         </style>
+                        ${scriptContent}
                     </head>
                     <body>
                         <div class="report-container">
@@ -676,14 +684,12 @@
                             ${citationHtml}
                         </div>
 
-                        <!-- FIXED TOOLBAR -->
+                        <!-- FIXED TOOLBAR - DIRECT ONCLICK HANDLERS -->
                         <div class="fixed bottom-0 left-0 right-0 bg-white border-t p-4 flex justify-end gap-2 no-print shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.1)] z-50">
-                            <button id="btn-print" class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded text-sm font-bold mr-2 flex items-center gap-2"><i class="fas fa-print"></i> Print</button>
-                            <button id="btn-download" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded text-sm font-bold mr-2 flex items-center gap-2"><i class="fas fa-download"></i> Download HTML</button>
-                            <button id="btn-close" class="border border-slate-300 hover:bg-slate-50 text-slate-700 px-4 py-2 rounded text-sm font-bold">Close</button>
+                            <button onclick="runPrint()" class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded text-sm font-bold mr-2 flex items-center gap-2"><i class="fas fa-print"></i> Print</button>
+                            <button onclick="runDownload()" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded text-sm font-bold mr-2 flex items-center gap-2"><i class="fas fa-download"></i> Download HTML</button>
+                            <button onclick="runClose()" class="border border-slate-300 hover:bg-slate-50 text-slate-700 px-4 py-2 rounded text-sm font-bold">Close</button>
                         </div>
-
-                        <script>${scriptContent}<\/script>
                     </body>
                     </html>`);
                 reportWin.document.close();
@@ -1041,7 +1047,7 @@
                 <div class="bg-[#005088] text-white p-3 sticky top-0 z-50 flex justify-between items-center shadow-md no-print">
                     <div class="flex items-center gap-2">
                         <span class="text-2xl"><i class="fas fa-sun text-yellow-400"></i></span>
-                        <div><h1 class="font-bold leading-tight text-base sm:text-lg">SolarCheck</h1><p class="text-xs opacity-80 font-medium">Pro v6.5</p></div>
+                        <div><h1 class="font-bold leading-tight text-base sm:text-lg">SolarCheck</h1><p class="text-xs opacity-80 font-medium">Pro v6.6</p></div>
                     </div>
                     <div class="flex gap-2">
                          <button onclick="openModal('print-modal')" class="bg-yellow-400 hover:bg-yellow-300 text-black px-3 py-2 rounded-lg font-bold text-xs sm:text-sm shadow transition-colors flex items-center gap-1"><i class="fas fa-file-pdf"></i> Reports</button>
