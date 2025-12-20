@@ -605,13 +605,25 @@
                         ${citationHtml}
                     </div>
 
-                    <!-- FIXED TOOLBAR -->
+                    <!-- FIXED TOOLBAR - NO INLINE HANDLERS -->
                     <div class="fixed bottom-0 left-0 right-0 bg-white border-t p-4 flex justify-end gap-2 no-print shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.1)] z-50">
-                        <button onclick="window.print()" class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded text-sm font-bold mr-2 flex items-center gap-2 shadow-sm transition-colors"><i class="fas fa-print"></i> Print / PDF</button>
-                        <button onclick="downloadReport('${safeTitle}')" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded text-sm font-bold mr-2 flex items-center gap-2 shadow-sm transition-colors"><i class="fas fa-download"></i> Download HTML</button>
-                        <button onclick="closeReport()" class="bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 px-4 py-2 rounded text-sm font-bold shadow-sm transition-colors">Close</button>
+                        <button id="cmd-print" class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded text-sm font-bold mr-2 flex items-center gap-2 shadow-sm transition-colors"><i class="fas fa-print"></i> Print / PDF</button>
+                        <button id="cmd-download" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded text-sm font-bold mr-2 flex items-center gap-2 shadow-sm transition-colors"><i class="fas fa-download"></i> Download HTML</button>
+                        <button id="cmd-close" class="bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 px-4 py-2 rounded text-sm font-bold shadow-sm transition-colors">Close</button>
                     </div>
                 `;
+
+                // ATTACH EVENT LISTENERS SAFELY AFTER RENDER
+                setTimeout(() => {
+                    const btnPrint = document.getElementById('cmd-print');
+                    if(btnPrint) btnPrint.addEventListener('click', () => window.print());
+
+                    const btnDownload = document.getElementById('cmd-download');
+                    if(btnDownload) btnDownload.addEventListener('click', () => window.downloadReport(safeTitle));
+
+                    const btnClose = document.getElementById('cmd-close');
+                    if(btnClose) btnClose.addEventListener('click', window.closeReport);
+                }, 100);
 
             } catch (error) {
                 reportView.innerHTML = `
@@ -1025,7 +1037,7 @@
                 <div class="bg-[#005088] text-white p-3 sticky top-0 z-50 flex justify-between items-center shadow-md no-print">
                     <div class="flex items-center gap-2">
                         <span class="text-2xl"><i class="fas fa-sun text-yellow-400"></i></span>
-                        <div><h1 class="font-bold leading-tight text-base sm:text-lg">SolarCheck</h1><p class="text-xs opacity-80 font-medium">Pro v7.0</p></div>
+                        <div><h1 class="font-bold leading-tight text-base sm:text-lg">SolarCheck</h1><p class="text-xs opacity-80 font-medium">Pro v7.1</p></div>
                     </div>
                     <div class="flex gap-2">
                          <button onclick="openModal('print-modal')" class="bg-yellow-400 hover:bg-yellow-300 text-black px-3 py-2 rounded-lg font-bold text-xs sm:text-sm shadow transition-colors flex items-center gap-1"><i class="fas fa-file-pdf"></i> Reports</button>
