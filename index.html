@@ -34,13 +34,13 @@
             to { opacity: 1; transform: translateY(0); }
         }
 
+        /* PRINT STYLES - CLEANER */
         @media print {
+            body { background: white; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
             .no-print { display: none !important; }
-            body { background: white; }
-            #report-view { display: block !important; }
-            #root { display: none !important; }
-            /* Ensure background graphics (colors) are printed */
-            * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+            /* Basic resets for the printable window */
+            h1, h2, h3 { page-break-after: avoid; }
+            img { max-width: 100%; }
         }
 
         /* Toast Notification */
@@ -78,7 +78,7 @@
     <!-- MAIN APP CONTAINER -->
     <div id="root"></div>
 
-    <!-- NEW REPORT OVERLAY CONTAINER (Hidden by default) -->
+    <!-- REPORT PREVIEW OVERLAY (Hidden by default) -->
     <div id="report-view" class="hidden min-h-screen bg-slate-50 pb-20 absolute top-0 left-0 w-full z-50">
         <!-- Content injected here -->
     </div>
@@ -124,7 +124,7 @@
             tx: false,
             mt: "Blended",
             e: 3.5,
-            w: 50,
+            w: 50, // Weighting (50% default)
             r: null,
             aR: null,
             reportTitle: "",
@@ -132,8 +132,9 @@
         };
 
         // --- API CONFIGURATION ---
+        // UPDATE: Using the latest stable model
         const API_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=";
-        const apiKey = "AIzaSyCAFdqXSVEFCGvGHXhj33-io2xm0-9xU8s"; 
+        const apiKey = "AIzaSyCAFdqXSVEFCGvGHXhj33-io2xm0-9xU8s"; // <--- PASTE YOUR API KEY HERE BEFORE UPLOADING TO GODADDY
 
         // --- 2. Firebase Init ---
         const appId = typeof window.__app_id !== 'undefined' ? window.__app_id : 'default-app-id';
@@ -180,7 +181,6 @@
 
         async function fetchWithExponentialBackoff(url, options = {}, retries = 5) {
             try {
-                // Safeguard against invalid RequestInit which causes "The provided value is not of type 'RequestInit'"
                 if (!options || typeof options !== 'object') {
                     throw new Error("Invalid API options provided.");
                 }
@@ -202,16 +202,12 @@
                 }
                 return await response.json();
             } catch (error) {
-                // Do not retry if the error is a type mismatch or invalid argument (programming error)
                 if (error.name === 'TypeError' || error.message.includes('RequestInit') || error.message.includes('Invalid API')) {
                     throw error;
                 }
-                
-                // Do not retry on 400 (Bad Request) or 401/403 (Auth) errors
                 if (error.message.includes('400') || error.message.includes('401') || error.message.includes('403') || error.message.includes('INVALID_ARGUMENT')) {
                     throw error;
                 }
-
                 if (retries === 0) { throw new Error(error.message || "Failed to connect."); }
                 
                 const delay = Math.pow(2, 5 - retries) * 1000 + Math.random() * 1000;
@@ -222,7 +218,6 @@
 
         // --- 4. Core Logic ---
         function calculate() {
-            // FIX: Added 'o' (ownership type) to extraction
             const { pC, pW, iDt, pDt, or, sh, pi, ac, b, it, ut, tE, tG, tEs, pa, tR, rR, rC, ne, c, l, om, dr, rp, tx, mt, e, w, te, o } = window.state;
             
             // System size
@@ -300,39 +295,28 @@
                  fTg += year1Guar * d;
             }
 
-            // --- IMPROVED UTILITY SAVINGS CALCULATION (Owned vs TPO) ---
             const aE = e / 100; // Utility Escalator
             const bR = (sR * rU) + ((1 - sR) * eU); // Current Blended Rate $/kWh
 
-            // 1. PAST SAVINGS (Estimate)
-            // We use the "Midpoint Rate" heuristic to estimate past value
-            // Rate at install = bR / (1+aE)^age. Average rate approx at age/2.
+            // 1. PAST SAVINGS
             const pastAvgRate = bR / Math.pow(1 + aE, age / 2);
-            const pSav = aK * pastAvgRate; // Lifetime kWh * Avg Rate
+            const pSav = aK * pastAvgRate; 
 
-            // 2. FUTURE SAVINGS (Projection)
+            // 2. FUTURE SAVINGS
             let fSa = 0;
-            // FIX: Ensure 'o' and 'te' are defined for calcTerm logic
-            const calcTerm = (o === 'owned') ? 25 : (te || 20); // Default to 20 if 'te' is missing for some reason
-            const rM = Math.max(0, calcTerm - age); // Remaining years
+            const calcTerm = (o === 'owned') ? 25 : (te || 20); 
+            const rM = Math.max(0, calcTerm - age); 
             const yearsToCalc = Math.ceil(rM);
 
             for (let i = 0; i < yearsToCalc; i++) {
-                // Determine degradation factor for this specific future year (Linear 0.5%)
-                // (age + i) is the age of the system in that future year
                 const degFactor = Math.max(0, 1 - ((age + i) * 0.005));
-                
-                // Projected Production: Theoretical New * Degradation * Current Performance Ratio
                 const yearlyProd = th * degFactor * pr;
-
-                // Projected Rate: Current Rate * Escalator^i
                 const yearlyRate = bR * Math.pow(1 + aE, i);
-
-                // Handle fractional last year
+                
                 let fraction = 1;
                 if (i === yearsToCalc - 1) {
                     fraction = rM - Math.floor(rM);
-                    if (fraction === 0 && rM > 0) fraction = 1; // Handle exact integer case
+                    if (fraction === 0 && rM > 0) fraction = 1;
                 }
 
                 fSa += yearlyProd * yearlyRate * fraction;
@@ -355,19 +339,19 @@
                 pY1: pa, rY1: tE > 0 ? (pa * 12) / tE : 0,
                 pYC, rYC, pYL, rYL, fTe, fTg,
                 estLifeKwh: tEt / 1000, estLifeMwh: tEt / 1000, guarLifeMwh: tGt / 1000,
-                physLifeMwh: eL / 1000 // Added Physical Lifetime Expectancy in MWh for Owned Card
+                physLifeMwh: eL / 1000
             };
 
             // Valuation
             const sC = s * 1000 * rC;
             const bR2 = b * 1000;
             const rL = Math.max(0, l - age);
-            const dep = l > 0 ? (rL / l) * c * ne : 0; // Keeping ne for backward compatibility if needed, but per request it should be removed.
-            // Correction: Remove * ne from calculation to ensure Cost Approach is pure physical.
-            const depCost = l > 0 ? (rL / l) * c : 0; // Pure physical depreciation
             
+            // Cost Approach: Physical Depreciated Cost
+            const depCost = l > 0 ? (rL / l) * c : 0; 
             const cV = sC * depCost + (bR2 * Math.max(0, 1 - (age * 0.1)));
 
+            // Income Approach: DCF
             let dcf = 0, cpr = cP;
             const oCt = s * om;
             let yD = [];
@@ -375,7 +359,7 @@
                 const net = (cpr * bR) + (b > 0 ? cpr * bR * 0.2 : 0) - (oCt * Math.pow(1.02, y - 1));
                 dcf += net / Math.pow(1 + (dr / 100), y);
                 yD.push({ y, c: dcf });
-                cpr *= 0.993;
+                cpr *= 0.993; // 0.7% degradation in model
             }
 
             const iV = Math.max(0, dcf - (rp === "" ? 0 : parseFloat(rp)));
@@ -406,7 +390,7 @@
             render();
         }
 
-        // --- AI HELPERS & PROMPT BUILDER (RESTORED) ---
+        // --- AI HELPERS & PROMPT BUILDER ---
         function buildPrompt(reportType, inputs) {
             const { systemSize, annualSavings, age, fairMarketValue, tpoMonthlyPayment, tpoEscalator, tpoGuaranteeMWh, tpoActualMWh, address, installDate, performanceRatio, totalLifetimeSavings, battery, inverterType, condition, utilityRate, repairs } = inputs;
             const formatRule = "**CRITICAL FORMATTING RULE:** Do NOT use LaTeX or MathJax formatting. Use standard text for all currency ($) and units (kWh, MWh). USE MARKDOWN TABLES for comparisons.";
@@ -511,20 +495,17 @@
             return `<p class="mb-3 text-slate-700 leading-relaxed">${processed}</p>`;
         }
 
-        // --- UPDATED REPORT HANDLER (Single Window Logic) ---
+        // --- UPDATED REPORT HANDLER (Single Button) ---
         async function handleGenerateReport(type) {
             if (!window.state.r || !window.state.aR) return;
             const titleMap = { 'owned': 'Solar Asset Transfer Report', 'lease': 'Solar Lease Assumption Report', 'ppa': 'PPA Transfer Analysis Report', 'val': 'Appraisal and FMV Negotiation Report' };
             const reportTitle = titleMap[type] || 'Solar Report';
             
-            // Close the selector modal
             closeModal();
 
-            // Target the overlay
             const reportView = document.getElementById('report-view');
             const root = document.getElementById('root');
             
-            // Show Loading State
             root.classList.add('hidden');
             reportView.classList.remove('hidden');
             reportView.innerHTML = `
@@ -570,7 +551,6 @@
                 if (window.state.reportMode === 'standard') {
                     finalContent = generateStandardReport(type, inputs);
                 } else {
-                    // AI Report Logic
                     const { systemPrompt, userQuery } = buildPrompt(type, inputs);
                     const payload = { contents: [{ parts: [{ text: userQuery }] }], systemInstruction: { parts: [{ text: systemPrompt }] } };
                     
@@ -591,10 +571,9 @@
 
                 const citationHtml = citations.length > 0 ? `<div class="mt-8 pt-4 border-t border-gray-100"><p class="text-xs font-bold text-slate-600 mb-1">Sources:</p><ul class="text-[10px] text-indigo-500">${citations.map(s => `<li><a href="${s.uri}" target="_blank">${s.title}</a></li>`).join('')}</ul></div>` : '';
 
-                // FIX: Strictly sanitize title
                 const safeTitle = reportTitle.replace(/[^a-zA-Z0-9-_ ]/g, '').replace(/\s+/g, '_');
 
-                // RENDER FULL REPORT VIEW
+                // Render Content Inside Report View for "Preview"
                 reportView.innerHTML = `
                     <div class="max-w-4xl mx-auto p-8 pt-12 bg-white min-h-screen shadow-lg" id="report-content">
                         <div class="border-b border-slate-200 pb-4 mb-6 flex justify-between items-start">
@@ -605,21 +584,19 @@
                         ${citationHtml}
                     </div>
 
-                    <!-- FIXED TOOLBAR - NO INLINE HANDLERS -->
+                    <!-- FIXED TOOLBAR - SINGLE BUTTON -->
                     <div class="fixed bottom-0 left-0 right-0 bg-white border-t p-4 flex justify-end gap-2 no-print shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.1)] z-50">
-                        <button id="cmd-print" class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded text-sm font-bold mr-2 flex items-center gap-2 shadow-sm transition-colors"><i class="fas fa-print"></i> Print / PDF</button>
-                        <button id="cmd-download" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded text-sm font-bold mr-2 flex items-center gap-2 shadow-sm transition-colors"><i class="fas fa-download"></i> Download HTML</button>
+                        <button id="cmd-print" class="bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-3 rounded text-sm font-bold mr-2 flex items-center gap-2 shadow-sm transition-colors uppercase tracking-wide">
+                            <i class="fas fa-external-link-alt"></i> Open Printable Report
+                        </button>
                         <button id="cmd-close" class="bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 px-4 py-2 rounded text-sm font-bold shadow-sm transition-colors">Close</button>
                     </div>
                 `;
 
-                // ATTACH EVENT LISTENERS SAFELY AFTER RENDER
+                // ATTACH EVENT LISTENERS
                 setTimeout(() => {
                     const btnPrint = document.getElementById('cmd-print');
-                    if(btnPrint) btnPrint.addEventListener('click', () => window.print());
-
-                    const btnDownload = document.getElementById('cmd-download');
-                    if(btnDownload) btnDownload.addEventListener('click', () => window.downloadReport(safeTitle));
+                    if(btnPrint) btnPrint.addEventListener('click', () => window.openPrintableWindow(safeTitle));
 
                     const btnClose = document.getElementById('cmd-close');
                     if(btnClose) btnClose.addEventListener('click', window.closeReport);
@@ -637,19 +614,17 @@
             }
         };
 
-        // --- NEW REPORT HELPERS ---
         window.closeReport = function() {
             document.getElementById('report-view').classList.add('hidden');
             document.getElementById('root').classList.remove('hidden');
-            window.scrollTo(0, 0); // Reset scroll
+            window.scrollTo(0, 0); 
         };
 
-        window.downloadReport = function(filename) {
+        // --- NEW WINDOW STRATEGY (ESCAPES IFRAME) ---
+        window.openPrintableWindow = function(filename) {
             try {
-                // Get the content div only
                 const content = document.getElementById('report-content').innerHTML;
                 
-                // Wrap in full HTML structure
                 const fullHtml = `<!DOCTYPE html>
                 <html lang="en">
                 <head>
@@ -658,44 +633,43 @@
                     <script src="https://cdn.tailwindcss.com"><\/script>
                     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
                     <style>
-                        body { background-color: #f8fafc; font-family: sans-serif; padding: 40px; }
-                        .report-container { max-width: 900px; margin: 0 auto; background: white; padding: 40px; border-radius: 12px; box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1); }
+                        body { background-color: white; font-family: sans-serif; padding: 20px; }
+                        .report-container { max-width: 900px; margin: 0 auto; background: white; }
                         @media print { 
                             .no-print { display: none !important; } 
-                            body { padding: 0; background: white; }
-                            .report-container { box-shadow: none; max-width: 100%; padding: 0; }
+                            body { padding: 0; margin: 0; }
+                            .report-container { max-width: 100%; width: 100%; }
+                            h1, h2, h3 { page-break-after: avoid; }
                         }
                     </style>
                 </head>
                 <body>
+                    <!-- Helper Button inside new window -->
+                    <div class="no-print fixed top-4 right-4 z-50 flex gap-2">
+                        <button onclick="window.print()" class="bg-indigo-600 text-white px-4 py-2 rounded shadow font-bold text-sm hover:bg-indigo-700">Print / Save PDF</button>
+                    </div>
+
                     <div class="report-container">
                         ${content}
                     </div>
                 </body>
                 </html>`;
 
-                const blob = new Blob([fullHtml], { type: 'text/html' });
-                const url = URL.createObjectURL(blob);
-                const a = document.createElement('a');
-                a.href = url;
-                a.download = filename + ".html";
-                document.body.appendChild(a);
-                a.click();
-                setTimeout(() => { 
-                    document.body.removeChild(a); 
-                    window.URL.revokeObjectURL(url); 
-                }, 100);
+                const win = window.open('', '_blank');
+                win.document.write(fullHtml);
+                win.document.close();
+                // Optional: Auto-print after load
+                // win.onload = function() { win.print(); }; 
             } catch(err) {
-                alert("Download failed: " + err.message);
+                alert("Pop-up blocked! Please allow pop-ups for this site to print.");
             }
         };
 
-        // --- STANDARD REPORT GENERATOR (Local, Rich HTML) ---
+        // --- STANDARD REPORT GENERATOR ---
         function generateStandardReport(type, inputs) {
             const { systemSize, annualSavings, age, fairMarketValue, tpoMonthlyPayment, tpoEscalator, tpoGuaranteeMWh, tpoActualMWh, address, installDate, performanceRatio, totalLifetimeSavings, battery, inverterType, condition, utilityRate, repairs, r, aR } = inputs;
             const date = new Date().toLocaleDateString();
             
-            // Logic needed for visuals
             let invStatus, invColor, invTextColor, invMsg, invLife;
             if (inverterType === 'string') { invLife = 15; if (age < 8) { invStatus = 'Good Condition'; invColor = 'bg-green-500'; invTextColor = 'text-green-600'; invMsg = 'Within standard warranty period.'; } else if (age < 10) { invStatus = 'Warranty Expiring'; invColor = 'bg-orange-500'; invTextColor = 'text-orange-600'; invMsg = 'Reaching the end of warranted life.'; } else { invStatus = 'Action Required'; invColor = 'bg-red-500'; invTextColor = 'text-red-600'; invMsg = 'Inverter will likely need to be replaced soon.'; } } else { invLife = 30; if (age < 20) { invStatus = 'Good Condition'; invColor = 'bg-green-500'; invTextColor = 'text-green-600'; invMsg = 'Within standard warranty period.'; } else if (age < 25) { invStatus = 'Warranty Expiring'; invColor = 'bg-orange-500'; invTextColor = 'text-orange-600'; invMsg = 'Reaching the end of warranted life.'; } else { invStatus = 'Action Required'; invColor = 'bg-red-500'; invTextColor = 'text-red-600'; invMsg = 'Inverter will likely need to be replaced soon.'; } }
             const invLabel = inverterType === 'micro' ? 'Microinverters' : 'String Inverter';
@@ -703,7 +677,6 @@
             let panelStatus, panelColor, panelTextColor, panelMsg;
             if (age < 15) { panelStatus = 'Good Condition'; panelColor = 'bg-blue-500'; panelTextColor = 'text-blue-600'; panelMsg = 'Operating within standard efficiency range.'; } else if (age < 20) { panelStatus = 'Degradation Visible'; panelColor = 'bg-orange-500'; panelTextColor = 'text-orange-600'; panelMsg = 'Efficiency dropping. Nearing optimal life end.'; } else { panelStatus = 'Replacement Due'; panelColor = 'bg-red-500'; panelTextColor = 'text-red-600'; panelMsg = 'Passed 20-year optimal lifespan. Plan for upgrade.'; }
             
-            // VALUATION SPECIFIC HEADER
             let header = `<div class="font-sans text-slate-800">
                 <div class="mb-6 border-b-2 border-slate-800 pb-4">
                     <div class="flex flex-col md:flex-row justify-between items-start md:items-end gap-4">
@@ -720,16 +693,13 @@
 
             let body = `<div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">`;
 
-            // --- CARDS SECTION (Shared) ---
             if (type !== 'val') {
-                 // For Owned/Lease/PPA, use the standard simple header
                  header = `<div class="font-sans text-slate-800">
                     <div class="mb-6 border-b pb-4">
                         <h2 class="text-xl md:text-2xl font-bold text-slate-900">${address || "Solar Property"}</h2>
                         <p class="text-slate-500 text-sm">Report Date: ${date}</p>
                     </div>
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">`;
-                 // Card 1: System Profile (Always included for non-val)
                  body = C("System Profile", "System capacity and age snapshot.", `
                     <div class="grid grid-cols-2 gap-4 pt-2">
                         <div><p class="text-xs uppercase text-slate-500 font-bold">Rated Size</p><p class="text-2xl md:text-3xl font-black text-blue-800">${systemSize.toFixed(2)} kW</p><p class="text-xs text-slate-400">Total DC Power</p></div>
@@ -740,7 +710,7 @@
                         </div>
                     </div>`, 'text-blue-700');
             } else {
-                body = ''; // Valuation uses custom layout below
+                body = ''; 
             }
 
             if (type === 'owned') {
@@ -798,7 +768,7 @@
                 `, 'text-slate-700');
             }
 
-            if (type !== 'val') body += `</div>`; // Close grid for non-val
+            if (type !== 'val') body += `</div>`; 
 
             // --- NARRATIVE SECTION ---
             let narrative = '';
@@ -823,7 +793,6 @@
                 <p><strong>2. Performance Obligation:</strong> The provider is incentivized to keep the system running, as they only get paid when it produces power.</p>
                 </div>`;
             } else if (type === 'val') {
-                // PROFESSIONAL VALUATION CONTENT - EXPANDED BASED ON USPAP & INCOME CAP
                 narrative = `
                 <div class="mb-8">
                     <h3 class="text-lg font-bold text-slate-900 border-b border-slate-200 pb-2 mb-4">Executive Summary</h3>
@@ -839,7 +808,7 @@
                             <div class="text-sm text-slate-700 border-l pl-6 border-slate-300">
                                 <p><strong>System Size:</strong> ${systemSize.toFixed(2)} kW DC</p>
                                 <p><strong>Remaining Useful Life:</strong> ${inputs.usefulLife} Years</p>
-                                <p><strong>Valuation Method:</strong> ${window.state.mt === 'Blended' ? 'Weighted Blended Approach' : window.state.mt + ' Approach'}</p>
+                                <p><strong>Valuation Method:</strong> ${window.state.mt === 'Blended' ? `Blended (${window.state.w}% Income / ${100-window.state.w}% Cost)` : window.state.mt + ' Approach'}</p>
                             </div>
                         </div>
                     </div>
@@ -953,7 +922,7 @@
             return header + body + narrative + `</div>`;
         }
 
-        // --- 5. Render Helpers (UPDATED FOR LARGER FONTS) ---
+        // --- 5. Render Helpers ---
         function I(l, v, key, t = "number", d, st = "0.01", disabled = false, handler = "handleInputChange") {
             return `<div class=""><label for="${key}" class="block text-slate-500 text-xs sm:text-sm mb-1 font-bold uppercase tracking-wider">${l}</label><input type="${t}" step="${st}" id="${key}" class="w-full p-2 border border-slate-200 rounded text-slate-800 text-base font-semibold focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow ${disabled ? 'bg-slate-100 text-slate-400' : 'bg-white'}" value="${v}" ${disabled ? 'disabled' : ''} onchange="${handler}(event,'${key}')"/><p class="text-xs text-slate-400 mt-1 leading-tight">${d || ''}</p></div>`;
         }
@@ -979,33 +948,11 @@
             if (t.includes("Income Approach")) iconHtml = '<i class="fas fa-money-bill-trend-up mr-2 text-green-400"></i>';
             return `<div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm hover:shadow-md transition-shadow duration-300 h-full break-inside-avoid ${cl}"><div class="border-b border-slate-100 pb-3 mb-4"><h3 class="text-xl font-bold flex items-center ${c}">${iconHtml}${t}</h3>${d ? `<p class="text-sm text-slate-400 mt-1 font-medium">${d}</p>` : ''}</div>${children}</div>`;
         }
-        function LC(data) {
-            if (!data || data.length === 0) return '';
-            const w = 600, h = 200, p = 20;
-            const mV = Math.max(...data.map(x => x.c));
-            const pts = data.map((d, i) => {
-                const x = p + (i / (data.length - 1)) * (w - 2 * p);
-                const y = h - p - (d.c / mV) * (h - 2 * p);
-                return `${x},${y}`;
-            }).join(' ');
-            const gradId = "grad" + Math.floor(Math.random() * 1000);
-            return `<div class="w-full h-32 mt-4"><svg viewBox="0 0 ${w} ${h}" width="100%" height="100%" class="overflow-visible"><defs><linearGradient id="${gradId}" x1="0%" y1="0%" x2="0%" y2="100%"><stop offset="0%" style="stop-color:#22c55e;stop-opacity:0.2" /><stop offset="100%" style="stop-color:#22c55e;stop-opacity:0" /></linearGradient></defs><path d="M ${p},${h - p} ${pts.split(' ').map((pt, i) => `L ${pt}`).join(' ')} L ${w - p},${h - p} Z" fill="url(#${gradId})" /><polyline points="${pts}" fill="none" stroke="#16a34a" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/><line x1="${p}" y1="${h-p}" x2="${w-p}" y2="${h-p}" stroke="#e2e8f0" stroke-width="1" /><text x="${w - p}" y="${h}" font-size="10" fill="#94a3b8" text-anchor="end" font-family="sans-serif">End of Life</text><text x="${p}" y="${h}" font-size="10" fill="#94a3b8" text-anchor="start" font-family="sans-serif">Now</text></svg></div>`;
-        }
 
         function render() {
-            // Updated to include reportTitle, isLoading, dynReport, and citations
             const { activeTab, activeModal, o, sz, r, aR, a, iDt, pDt, ac, pC, pW, b, it, ut, or, pi, sh, tE, tG, tEs, pa, tR, rR, rC, ne, c, l, om, dr, rp, tx, mt, e, w, te, reportTitle, reportMode } = window.state;
             const root = document.getElementById('root');
             
-            // Logic for Visuals
-            let invStatus, invColor, invTextColor, invMsg, invLife;
-            if (it === 'string') { invLife = 15; if (r && r.age < 8) { invStatus = 'Good Condition'; invColor = 'bg-green-500'; invTextColor = 'text-green-600'; invMsg = 'Within standard warranty period.'; } else if (r && r.age < 10) { invStatus = 'Warranty Expiring'; invColor = 'bg-orange-500'; invTextColor = 'text-orange-600'; invMsg = 'Reaching the end of warranted life.'; } else { invStatus = 'Action Required'; invColor = 'bg-red-500'; invTextColor = 'text-red-600'; invMsg = 'Inverter will likely need to be replaced soon.'; } } else { invLife = 30; if (r && r.age < 20) { invStatus = 'Good Condition'; invColor = 'bg-green-500'; invTextColor = 'text-green-600'; invMsg = 'Within standard warranty period.'; } else if (r && r.age < 25) { invStatus = 'Warranty Expiring'; invColor = 'bg-orange-500'; invTextColor = 'text-orange-600'; invMsg = 'Reaching the end of warranted life.'; } else { invStatus = 'Action Required'; invColor = 'bg-red-500'; invTextColor = 'text-red-600'; invMsg = 'Inverter will likely need to be replaced soon.'; } }
-            const invLabel = it === 'micro' ? 'Microinverters' : 'String Inverter';
-            let panelStatus, panelColor, panelTextColor, panelMsg;
-            if (r) { if (r.age < 15) { panelStatus = 'Good Condition'; panelColor = 'bg-blue-500'; panelTextColor = 'text-blue-600'; panelMsg = 'Operating within standard efficiency range.'; } else if (r.age < 20) { panelStatus = 'Degradation Visible'; panelColor = 'bg-orange-500'; panelTextColor = 'text-orange-600'; panelMsg = 'Efficiency dropping. Nearing optimal life end.'; } else { panelStatus = 'Replacement Due'; panelColor = 'bg-red-500'; panelTextColor = 'text-red-600'; panelMsg = 'Passed 20-year optimal lifespan. Plan for upgrade.'; } }
-            let tpoGuarLabel = o === 'lease' ? 'Guaranteed Min' : 'Contract Est. kWh';
-
-            // --- NEW: Lease/PPA Assessment Logic ---
             let leaseAssessment = "";
             if (r) {
                  const isGuaranteed = r.guaL > 0;
@@ -1030,14 +977,13 @@
                  }
             }
 
-            // --- HTML TEMPLATE START ---
             let html = `
             <div class="min-h-screen bg-slate-50 font-sans pb-10">
                 <!-- HEADER -->
                 <div class="bg-[#005088] text-white p-3 sticky top-0 z-50 flex justify-between items-center shadow-md no-print">
                     <div class="flex items-center gap-2">
                         <span class="text-2xl"><i class="fas fa-sun text-yellow-400"></i></span>
-                        <div><h1 class="font-bold leading-tight text-base sm:text-lg">SolarCheck</h1><p class="text-xs opacity-80 font-medium">Pro v7.1</p></div>
+                        <div><h1 class="font-bold leading-tight text-base sm:text-lg">SolarCheck</h1><p class="text-xs opacity-80 font-medium">Pro v7.2</p></div>
                     </div>
                     <div class="flex gap-2">
                          <button onclick="openModal('print-modal')" class="bg-yellow-400 hover:bg-yellow-300 text-black px-3 py-2 rounded-lg font-bold text-xs sm:text-sm shadow transition-colors flex items-center gap-1"><i class="fas fa-file-pdf"></i> Reports</button>
@@ -1045,7 +991,7 @@
                     </div>
                 </div>
 
-                <!-- TAB NAVIGATION (Updated Padding) -->
+                <!-- TAB NAVIGATION -->
                 <div class="bg-white border-b border-slate-200 sticky top-14 z-40 shadow-sm px-4 flex gap-1 pt-2 no-print overflow-x-auto">
                     <button onclick="updateState('activeTab', 'inputs')" class="flex-1 py-3 border-b-2 font-bold text-sm sm:text-base transition-colors ${activeTab === 'inputs' ? 'border-[#005088] text-[#005088]' : 'border-transparent text-slate-400 hover:text-slate-600'}">
                         <i class="fas fa-sliders mr-1"></i> Inputs
@@ -1060,7 +1006,7 @@
 
                 <div class="max-w-4xl mx-auto p-4">
                     
-                    <!-- TAB 1: INPUTS (Responsive Grids) -->
+                    <!-- TAB 1: INPUTS -->
                     ${activeTab === 'inputs' ? `
                     <div class="tab-content bg-white p-4 rounded-xl shadow-sm border border-slate-200">
                         <h3 class="font-bold border-b border-slate-100 pb-2 mb-4 text-slate-700 flex items-center gap-2 text-base uppercase tracking-wide">System Configuration</h3>
@@ -1111,7 +1057,7 @@
                     </div>
                     ` : ''}
 
-                    <!-- TAB 2: SUMMARY (Responsive Grids) -->
+                    <!-- TAB 2: SUMMARY -->
                     ${activeTab === 'summary' && r ? `
                     <div class="tab-content space-y-4">
                         ${C("System Profile", "A snapshot of the system's physical capacity (kW), current age, and the estimated energy it will produce over the next year.", `
@@ -1162,12 +1108,10 @@
                                         </div>
                                     </div>
                                 </div>
-
-                                <!-- Guarantee Section (Conditional) -->
                                 ${r.guaL > 0 ? `
                                 <div class="border-t border-slate-100 pt-4">
                                     <h4 class="text-xs font-bold text-slate-400 uppercase mb-2">Contract Guarantee Status</h4>
-                                    ${R(tpoGuarLabel, num(r.guaL), "MWh", "Minimum contractual floor")}
+                                    ${R(o === 'lease' ? 'Guaranteed Min' : 'Contract Est. kWh', num(r.guaL), "MWh", "Minimum contractual floor")}
                                     
                                     <div class="flex items-center gap-3 mt-3 p-3 rounded-lg border-2 ${r.gDiff >= 0 ? 'bg-green-50 border-green-200' : 'bg-red-50 border-red-200'}">
                                         <div class="text-2xl">${r.gDiff >= 0 ? '✅' : '⚠️'}</div>
@@ -1184,9 +1128,7 @@
                                     </div>
                                 </div>` : ''}
 
-                                <!-- NEW SUMMARY -->
                                 ${leaseAssessment}
-
                             </div>
                         `, 'text-blue-700', '📊')}
 
@@ -1245,19 +1187,16 @@
                         ${o === "owned" ? C("Warranty & Health", "Estimates the remaining life of critical hardware like inverters and batteries. 'Risk' indicates the component is nearing the end of its typical lifespan.", `
                             <div class="space-y-4">
                                 <div>
-                                    <div class="flex justify-between text-sm mb-1 font-bold"><span class="text-slate-600">${invLabel}</span><span class="${invTextColor}">${invStatus}</span></div>
-                                    <div class="w-full bg-slate-100 h-2 rounded-full"><div class="h-2 rounded-full ${invColor}" style="width:${Math.min(r.age / invLife * 100, 100)}%"></div></div>
-                                    <p class="text-xs text-slate-400 mt-1">${invMsg} <span class="font-semibold text-slate-500">Est. Life: ${it === 'micro' ? '25 Years' : '10-12 Years'}</span></p>
+                                    <div class="flex justify-between text-sm mb-1 font-bold"><span class="text-slate-600">${it === 'micro' ? 'Microinverters' : 'String Inverter'}</span><span class="${r.age < (it === 'string' ? 8 : 20) ? 'text-green-600' : 'text-orange-600'}">${r.age < (it === 'string' ? 8 : 20) ? 'Good' : 'Expiring'}</span></div>
+                                    <div class="w-full bg-slate-100 h-2 rounded-full"><div class="h-2 rounded-full ${r.age < (it === 'string' ? 8 : 20) ? 'bg-green-500' : 'bg-orange-500'}" style="width:${Math.min(r.age / (it === 'string' ? 15 : 30) * 100, 100)}%"></div></div>
                                 </div>
                                 <div>
-                                    <div class="flex justify-between text-sm mb-1 font-bold"><span class="text-slate-600">Solar Panel</span><span class="${panelTextColor}">${panelStatus}</span></div>
-                                    <div class="w-full bg-slate-100 h-2 rounded-full relative"><div class="absolute h-full w-0.5 bg-slate-300 left-[80%]"></div><div class="${panelColor} h-2 rounded-full" style="width:${((100 - (r.age * 0.5)) * r.pr)}%"></div></div>
-                                    <p class="text-xs text-slate-400 mt-1">${panelMsg} <span class="font-semibold text-slate-500">Est. Life: 25-30 Years</span></p>
+                                    <div class="flex justify-between text-sm mb-1 font-bold"><span class="text-slate-600">Solar Panel</span><span class="${r.pr >= 0.9 ? 'text-blue-600' : 'text-orange-600'}">${r.pr >= 0.9 ? 'Good' : 'Fair'}</span></div>
+                                    <div class="w-full bg-slate-100 h-2 rounded-full relative"><div class="absolute h-full w-0.5 bg-slate-300 left-[80%]"></div><div class="bg-blue-500 h-2 rounded-full" style="width:${((100 - (r.age * 0.5)) * r.pr)}%"></div></div>
                                 </div>
                                 ${b > 0 ? `<div>
                                     <div class="flex justify-between text-sm mb-1 font-bold"><span class="text-slate-600">Battery (10 Years)</span><span class="${r.age < 10 ? 'text-green-600' : 'text-red-500'}">${r.age < 10 ? 'Good' : 'Replace'}</span></div>
                                     <div class="w-full bg-slate-100 h-2 rounded-full"><div class="h-2 rounded-full ${r.age < 10 ? 'bg-green-500' : 'bg-red-500'}" style="width:${Math.min(r.age / 10 * 100, 100)}%"></div></div>
-                                    <p class="text-xs text-slate-400 mt-1">Energy storage health</p>
                                 </div>` : ''}
                             </div>
                         `, `text-slate-700`, '🛡️') : C("TPO Lifetime Costs", "The sum of all remaining monthly payments for the duration of the contract, accounting for the annual price increase (escalator).", `
@@ -1272,14 +1211,14 @@
                     </div>
                     ` : ''}
 
-                    <!-- TAB 3: VALUATION (Responsive Grids) -->
+                    <!-- TAB 3: VALUATION -->
                     ${activeTab === 'valuation' && aR ? `
                     <div class="tab-content space-y-4">
                         <div class="bg-slate-800 text-white p-5 rounded-xl shadow relative overflow-hidden">
                              <div class="relative z-10 text-center">
                                  <p class="text-xs font-bold text-blue-300 uppercase tracking-widest mb-1">Fair Market Value</p>
                                  <p class="text-4xl font-extrabold mb-1">${cur(aR.val + aR.tr)}</p>
-                                 <p class="text-xs text-slate-400">${mt} Method ${mt === "Blended" ? `(${w}% Income)` : ''}</p>
+                                 <p class="text-xs text-slate-400">${mt === 'Blended' ? `Blended (${w}% Income)` : mt + ' Approach'}</p>
                              </div>
                         </div>
 
@@ -1293,11 +1232,21 @@
                                  ${Idark("Useful Life (Years)", l, "l", "number", "Total operational life. Industry Std: 25-30y. (Note: TPOs often claim 35y to inflate value).")}
                                  ${Sdark("Export / NEM Policy", ne, "ne", [{v:1.0, l:"Full Retail Credit (NEM 1.0/2.0)"}, {v:0.8, l:"High Export Rate ($0.15+)"}, {v:0.5, l:"Reduced Rate (NEM 3.0)"}, {v:0.2, l:"Wholesale Rate (<$0.05)"}, {v:0.0, l:"No Export Credit"}], "How the utility credits surplus energy.")}
                                  ${Idark("Condition (0-1)", c, "c", "number", window.state.aC ? "Auto-calculated based on production." : "Manual condition factor (0.0 - 1.0).", "0.1", window.state.aC)}
+                                 
                                  <div class="col-span-1 sm:col-span-2 pt-2">
                                      <label class="block text-blue-200 text-xs mb-1 font-bold uppercase">Valuation Method</label>
-                                     <div class="flex gap-1">
+                                     <div class="flex gap-1 mb-2">
                                          ${['Cost', 'Blended', 'Income'].map(M => `<button onclick="updateState('mt','${M}')" class="flex-1 py-1 text-xs font-bold rounded ${mt === M ? 'bg-blue-500 text-white' : 'bg-slate-600 text-slate-300'}">${M}</button>`).join('')}
                                      </div>
+                                     ${mt === 'Blended' ? `
+                                        <div class="bg-slate-800 p-2 rounded border border-slate-600 mt-2">
+                                            <div class="flex justify-between mb-1">
+                                                <span class="text-xs text-slate-400 font-bold">Cost (${100-w}%)</span>
+                                                <span class="text-xs text-blue-300 font-bold uppercase">Income Weighting (${w}%)</span>
+                                            </div>
+                                            <input type="range" min="0" max="100" value="${w}" class="w-full h-2 bg-slate-600 rounded-lg appearance-none cursor-pointer accent-blue-500" oninput="handleInputChange(event, 'w')">
+                                        </div>
+                                     ` : ''}
                                  </div>
                              </div>
                         </div>
@@ -1336,7 +1285,6 @@
             `;
             root.innerHTML = html;
 
-            // --- CRITICAL FIX: Restore Open Modal ---
             if (activeModal) {
                 const modal = document.getElementById(activeModal);
                 if (modal && !modal.open) {
@@ -1345,12 +1293,12 @@
             }
         };
 
-        // --- ASSIGN TO WINDOW AFTER DECLARATION ---
         window.calculate = calculate;
         window.render = render;
         window.handleGenerateReport = handleGenerateReport;
         window.openModal = openModal;
         window.closeModal = closeModal;
+        window.openPrintableWindow = openPrintableWindow;
 
         window.updateState = function(key, value) { window.state[key] = value; calculate(); render(); };
         window.handleInputChange = function(event, key) {
@@ -1360,7 +1308,6 @@
             window.state[key] = value; calculate(); render();
         };
         
-        // --- AUTO-CALCULATION HANDLERS ---
         window.handleProductionChange = function(event, key) {
             const tE = parseFloat(event.target.value); window.state[key] = tE;
             if (!isNaN(tE) && window.state.tR) { window.state.pa = (window.state.tR * tE) / 12; }
@@ -1377,7 +1324,6 @@
             calculate(); render();
         };
 
-        // Initialize on Load
         document.addEventListener('DOMContentLoaded', () => {
             calculate();
             render();
