@@ -2,7 +2,7 @@
     PROJECT CONTEXT & INSTRUCTIONS FOR AI:
     1. HOSTING: This code is hosted on GitHub and runs through a GoDaddy website (via iframe).
     2. SINGLE FILE: Keep all CSS/JS/HTML in this single index.html file.
-    3. VERSION CONTROL: *ALWAYS* increment the version number in the Header (currently v7.6) 
+    3. VERSION CONTROL: *ALWAYS* increment the version number in the Header (currently v7.7) 
        whenever code changes are applied.
 -->
 <!DOCTYPE html>
@@ -179,7 +179,7 @@
         function num(v) { return new Intl.NumberFormat('en-US', { maximumFractionDigits: 1 }).format(v || 0); }
         function per(v) { return (v * 100).toFixed(1) + "%"; }
 
-        async function fetchWithExponentialBackoff(url, options = {}, retries = 5) {
+        async function fetchWithExponentialBackoff(url, options = {}, retries = 5, forceModel = null) {
             try {
                 if (!options || typeof options !== 'object') { throw new Error("Invalid API options provided."); }
                 
@@ -190,14 +190,23 @@
                     throw new Error("Missing API Key. Please enter your Gemini API Key in the settings.");
                 }
 
-                // Construct URL with the selected model
-                const modelVersion = window.state.aiModel; 
+                // Logic: Use forced model (retry) OR state model. Default to 'gemini-1.5-flash' if undefined.
+                let modelVersion = forceModel || window.state.aiModel; 
+                if (!modelVersion) modelVersion = "gemini-1.5-flash";
+
                 const baseUrl = `https://generativelanguage.googleapis.com/v1beta/models/${modelVersion}:generateContent?key=`;
                 const fullUrl = baseUrl + keyToUse;
 
                 const response = await fetch(fullUrl, options);
                 
                 if (!response.ok) { 
+                    // AUTO-HEAL 404: If model not found, and we haven't already forced it, switch to 1.5-flash and retry.
+                    if (response.status === 404 && !forceModel && modelVersion !== 'gemini-1.5-flash') {
+                        console.warn(`Model ${modelVersion} not found (404). Retrying with gemini-1.5-flash...`);
+                        window.state.aiModel = 'gemini-1.5-flash'; // Update state so UI reflects change
+                        return fetchWithExponentialBackoff(url, options, retries, 'gemini-1.5-flash');
+                    }
+
                     if (response.status === 403) throw new Error("HTTP 403: Permission Denied. Your API Key may not have access to this model version. Try switching to 'Standard Model' in settings.");
                     if (response.status === 404) throw new Error(`HTTP 404: Model '${modelVersion}' not found. Please switch to a different model in settings.`);
                     if (response.status === 400) throw new Error("HTTP 400: Invalid Request. Check your API Key.");
@@ -208,7 +217,7 @@
                 if (retries === 0) throw error;
                 const delay = Math.pow(2, 5 - retries) * 1000 + Math.random() * 1000;
                 await new Promise(resolve => setTimeout(resolve, delay));
-                return fetchWithExponentialBackoff(url, options, retries - 1);
+                return fetchWithExponentialBackoff(url, options, retries - 1, forceModel);
             }
         }
 
@@ -785,7 +794,7 @@
                 <div class="bg-[#005088] text-white p-3 sticky top-0 z-50 flex justify-between items-center shadow-md no-print">
                     <div class="flex items-center gap-2">
                         <span class="text-2xl"><i class="fas fa-sun text-yellow-400"></i></span>
-                        <div><h1 class="font-bold leading-tight text-base sm:text-lg">SolarCheck</h1><p class="text-xs opacity-80 font-medium">Pro v7.6</p><!-- UPDATE VERSION HERE --></div>
+                        <div><h1 class="font-bold leading-tight text-base sm:text-lg">SolarCheck</h1><p class="text-xs opacity-80 font-medium">Pro v7.7</p><!-- UPDATE VERSION HERE --></div>
                     </div>
                     <div class="flex gap-2">
                          <button onclick="openModal('print-modal')" class="bg-yellow-400 hover:bg-yellow-300 text-black px-3 py-2 rounded-lg font-bold text-xs sm:text-sm shadow transition-colors flex items-center gap-1"><i class="fas fa-file-pdf"></i> Reports</button>
