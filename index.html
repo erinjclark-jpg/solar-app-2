@@ -2,7 +2,7 @@
     PROJECT CONTEXT & INSTRUCTIONS FOR AI:
     1. HOSTING: This code is hosted on GitHub and runs through a GoDaddy website (via iframe).
     2. SINGLE FILE: Keep all CSS/JS/HTML in this single index.html file.
-    3. VERSION CONTROL: *ALWAYS* increment the version number in the Header (currently v7.11) 
+    3. VERSION CONTROL: *ALWAYS* increment the version number in the Header (currently v7.12) 
        whenever code changes are applied.
 -->
 <!DOCTYPE html>
@@ -205,22 +205,24 @@
                     try { errorBody = await response.json(); } catch(e) {}
                     const errorMessage = errorBody?.error?.message || response.statusText;
 
-                    // AUTO-HEAL 404 LOGIC (Fixed v7.11 to allow chaining)
+                    // AUTO-HEAL 404 LOGIC (Aggressive Fallback v7.12)
                     if (response.status === 404) {
-                        // Chain: gemini-1.5-flash -> gemini-1.5-flash-002 -> gemini-1.5-flash-001
-                        
+                        console.warn(`Model ${modelVersion} failed (404). Attempting fallback chain...`);
+
+                        // CHAIN: 1.5-Flash -> 2.0-Flash-Exp -> 1.5-Pro -> 1.0-Pro
                         if (modelVersion === 'gemini-1.5-flash') {
-                            console.warn("Standard model 404. Retrying with 'gemini-1.5-flash-002'...");
-                            return fetchWithExponentialBackoff(url, options, retries, 'gemini-1.5-flash-002');
+                            return fetchWithExponentialBackoff(url, options, retries, 'gemini-2.0-flash-exp');
                         }
-                        if (modelVersion === 'gemini-1.5-flash-002') {
-                            console.warn("002 model 404. Retrying with 'gemini-1.5-flash-001'...");
-                            return fetchWithExponentialBackoff(url, options, retries, 'gemini-1.5-flash-001');
+                        if (modelVersion === 'gemini-2.0-flash-exp') {
+                            return fetchWithExponentialBackoff(url, options, retries, 'gemini-1.5-pro');
+                        }
+                        if (modelVersion === 'gemini-1.5-pro') {
+                            // Last resort: Gemini 1.0 Pro (older but widely available)
+                            return fetchWithExponentialBackoff(url, options, retries, 'gemini-pro'); 
                         }
 
-                        // If user had a custom/old model selected (e.g. 1.5-pro or an experimental one), revert to standard to restart the chain
-                        if (modelVersion !== 'gemini-1.5-flash' && modelVersion !== 'gemini-1.5-flash-001' && modelVersion !== 'gemini-1.5-flash-002') {
-                            console.warn(`Custom model ${modelVersion} failed. Reverting to Standard...`);
+                        // If user had a custom/old model selected, revert to standard to start the chain
+                        if (!['gemini-1.5-flash', 'gemini-2.0-flash-exp', 'gemini-1.5-pro', 'gemini-pro'].includes(modelVersion)) {
                             window.state.aiModel = 'gemini-1.5-flash';
                             return fetchWithExponentialBackoff(url, options, retries, 'gemini-1.5-flash');
                         }
@@ -819,7 +821,7 @@
                 <div class="bg-[#005088] text-white p-3 sticky top-0 z-50 flex justify-between items-center shadow-md no-print">
                     <div class="flex items-center gap-2">
                         <span class="text-2xl"><i class="fas fa-sun text-yellow-400"></i></span>
-                        <div><h1 class="font-bold leading-tight text-base sm:text-lg">SolarCheck</h1><p class="text-xs opacity-80 font-medium">Pro v7.11</p><!-- UPDATE VERSION HERE --></div>
+                        <div><h1 class="font-bold leading-tight text-base sm:text-lg">SolarCheck</h1><p class="text-xs opacity-80 font-medium">Pro v7.12</p><!-- UPDATE VERSION HERE --></div>
                     </div>
                     <div class="flex gap-2">
                          <button onclick="openModal('print-modal')" class="bg-yellow-400 hover:bg-yellow-300 text-black px-3 py-2 rounded-lg font-bold text-xs sm:text-sm shadow transition-colors flex items-center gap-1"><i class="fas fa-file-pdf"></i> Reports</button>
@@ -1129,7 +1131,9 @@
                             </div>
                              <select onchange="updateState('aiModel', this.value)" class="w-full text-xs p-2 mb-2 border rounded bg-slate-50 text-slate-700 font-bold focus:ring-1 focus:ring-indigo-500">
                                 <option value="gemini-1.5-flash" ${aiModel === 'gemini-1.5-flash' ? 'selected' : ''}>Standard (1.5 Flash) - Best for Production</option>
+                                <option value="gemini-2.0-flash-exp" ${aiModel === 'gemini-2.0-flash-exp' ? 'selected' : ''}>Experimental (2.0 Flash) - Try if Std Fails</option>
                                 <option value="gemini-1.5-pro" ${aiModel === 'gemini-1.5-pro' ? 'selected' : ''}>Advanced (1.5 Pro) - High Reasoning</option>
+                                <option value="gemini-pro" ${aiModel === 'gemini-pro' ? 'selected' : ''}>Legacy (1.0 Pro) - Last Resort</option>
                             </select>
                             <input type="password" placeholder="Enter Gemini API Key (Optional)" value="${userApiKey}" 
                                 onchange="window.updateState('userApiKey', this.value); localStorage.setItem('gemini_api_key', this.value);"
