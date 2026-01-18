@@ -2,7 +2,7 @@
     PROJECT CONTEXT & INSTRUCTIONS FOR AI:
     1. HOSTING: This code is hosted on GitHub and runs through a GoDaddy website (via iframe).
     2. SINGLE FILE: Keep all CSS/JS/HTML in this single index.html file.
-    3. VERSION CONTROL: *ALWAYS* increment the version number in the Header (currently v7.7) 
+    3. VERSION CONTROL: *ALWAYS* increment the version number in the Header (currently v7.9) 
        whenever code changes are applied.
 -->
 <!DOCTYPE html>
@@ -142,7 +142,7 @@
         };
 
         // --- API CONFIGURATION ---
-        const envApiKey = "AIzaSyCREEuBNsQyY39Qv6MQLsYStFsnrXzB3Ec"; // Provided by environment if available
+        const envApiKey = "AIzaSyBD4a28Zva1wmICJNkm1sq88iLsIpNjoyo"; // Removed default key. User must provide their own.
 
         // --- 2. Firebase Init ---
         const appId = typeof window.__app_id !== 'undefined' ? window.__app_id : 'default-app-id';
@@ -200,6 +200,11 @@
                 const response = await fetch(fullUrl, options);
                 
                 if (!response.ok) { 
+                    // Attempt to parse the actual error message from Google
+                    let errorBody;
+                    try { errorBody = await response.json(); } catch(e) {}
+                    const errorMessage = errorBody?.error?.message || response.statusText;
+
                     // AUTO-HEAL 404: If model not found, and we haven't already forced it, switch to 1.5-flash and retry.
                     if (response.status === 404 && !forceModel && modelVersion !== 'gemini-1.5-flash') {
                         console.warn(`Model ${modelVersion} not found (404). Retrying with gemini-1.5-flash...`);
@@ -209,8 +214,8 @@
 
                     if (response.status === 403) throw new Error("HTTP 403: Permission Denied. Your API Key may not have access to this model version. Try switching to 'Standard Model' in settings.");
                     if (response.status === 404) throw new Error(`HTTP 404: Model '${modelVersion}' not found. Please switch to a different model in settings.`);
-                    if (response.status === 400) throw new Error("HTTP 400: Invalid Request. Check your API Key.");
-                    throw new Error(`HTTP ${response.status}: ${response.statusText}`); 
+                    // Pass through the specific API error for better debugging (e.g., "API key not valid")
+                    throw new Error(`HTTP ${response.status}: ${errorMessage}`); 
                 }
                 return await response.json();
             } catch (error) {
@@ -591,14 +596,15 @@
                 let errorMsg = error.message;
                 let errorAction = `<button onclick="closeReport()" class="bg-red-600 text-white px-4 py-2 rounded font-bold">Back</button>`;
                 
+                // Detailed error mapping for better user experience
                 if (errorMsg.includes("403")) {
                     errorMsg = "<strong>Access Denied (403)</strong><br><br>The 'Preview' AI model is not accessible with your API Key. <br>Please open the settings (Reports button) and switch the AI Model to <strong>'Standard (1.5 Flash)'</strong>.";
                     errorAction = `<button onclick="closeReport(); openModal('print-modal')" class="bg-indigo-600 text-white px-4 py-2 rounded font-bold">Open Settings</button>`;
                 } else if (errorMsg.includes("404")) {
                     errorMsg = "<strong>Model Not Found (404)</strong><br><br>The selected AI Model version is not available. <br>Please open settings and switch to <strong>'Standard (1.5 Flash)'</strong>.";
                     errorAction = `<button onclick="closeReport(); openModal('print-modal')" class="bg-indigo-600 text-white px-4 py-2 rounded font-bold">Open Settings</button>`;
-                } else if (errorMsg.includes("Missing API Key")) {
-                    errorMsg = "<strong>Missing API Key</strong><br><br>You must enter a valid Gemini API Key to use the AI Report feature.";
+                } else if (errorMsg.includes("Missing API Key") || errorMsg.includes("API key not valid")) {
+                    errorMsg = "<strong>Missing or Invalid API Key</strong><br><br>You must enter a valid Gemini API Key to use the AI Report feature.";
                     errorAction = `<button onclick="closeReport(); openModal('print-modal')" class="bg-indigo-600 text-white px-4 py-2 rounded font-bold">Enter Key</button>`;
                 }
 
@@ -607,7 +613,7 @@
                         <div class="bg-red-50 text-red-800 p-8 rounded-xl max-w-lg text-center shadow-lg border border-red-100">
                             <div class="text-3xl mb-4 text-red-500"><i class="fas fa-triangle-exclamation"></i></div>
                             <h3 class="text-xl font-bold mb-4">Generation Failed</h3>
-                            <p class="mb-6 text-sm">${errorMsg}</p>
+                            <p class="mb-6 text-sm text-red-700 font-mono bg-red-100 p-2 rounded">${errorMsg}</p>
                             ${errorAction}
                         </div>
                     </div>`;
@@ -788,13 +794,17 @@
                  }
             }
 
+            // Calculate Remaining Term for TPO display
+            const isTPO = (o === 'lease' || o === 'ppa');
+            const remTerm = (r && isTPO) ? Math.max(0, te - r.age).toFixed(1) : null;
+
             let html = `
             <div class="min-h-screen bg-slate-50 font-sans pb-10">
                 <!-- HEADER -->
                 <div class="bg-[#005088] text-white p-3 sticky top-0 z-50 flex justify-between items-center shadow-md no-print">
                     <div class="flex items-center gap-2">
                         <span class="text-2xl"><i class="fas fa-sun text-yellow-400"></i></span>
-                        <div><h1 class="font-bold leading-tight text-base sm:text-lg">SolarCheck</h1><p class="text-xs opacity-80 font-medium">Pro v7.7</p><!-- UPDATE VERSION HERE --></div>
+                        <div><h1 class="font-bold leading-tight text-base sm:text-lg">SolarCheck</h1><p class="text-xs opacity-80 font-medium">Pro v7.9</p><!-- UPDATE VERSION HERE --></div>
                     </div>
                     <div class="flex gap-2">
                          <button onclick="openModal('print-modal')" class="bg-yellow-400 hover:bg-yellow-300 text-black px-3 py-2 rounded-lg font-bold text-xs sm:text-sm shadow transition-colors flex items-center gap-1"><i class="fas fa-file-pdf"></i> Reports</button>
@@ -872,10 +882,11 @@
                     ${activeTab === 'summary' && r ? `
                     <div class="tab-content space-y-4">
                         ${C("System Profile", "A snapshot of the system's physical capacity (kW), current age, and the estimated energy it will produce over the next year.", `
-                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
+                            <div class="grid grid-cols-1 ${remTerm ? 'sm:grid-cols-3' : 'sm:grid-cols-2'} gap-4 pt-2">
                                 <div><p class="text-xs uppercase text-slate-500 font-bold">Rated Size</p><p class="text-3xl font-black text-blue-800">${sz.toFixed(2)} kW</p><p class="text-xs text-slate-400">Total DC Power</p></div>
                                 <div class="border-l pl-4"><p class="text-xs uppercase text-slate-500 font-bold">Age</p><p class="text-3xl font-black text-blue-800">${r.age.toFixed(1)} <span class="text-sm font-normal text-slate-500">Years</span></p><p class="text-xs text-slate-400">Years since install</p></div>
-                                <div class="col-span-1 sm:col-span-2 border-t pt-2 grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                ${remTerm ? `<div class="border-l pl-4"><p class="text-xs uppercase text-slate-500 font-bold">Remaining</p><p class="text-3xl font-black text-indigo-600">${remTerm} <span class="text-sm font-normal text-slate-500">Years</span></p><p class="text-xs text-slate-400">Left on Agreement</p></div>` : ''}
+                                <div class="col-span-1 ${remTerm ? 'sm:col-span-3' : 'sm:col-span-2'} border-t pt-2 grid grid-cols-1 sm:grid-cols-2 gap-4">
                                     <div><p class="text-xs text-slate-500">Est. Next 12 Months</p><p class="text-2xl font-bold text-slate-700">${num(r.estN12 / 1000)} MWh</p><p class="text-xs text-slate-400">Forecasted output</p></div>
                                     <div class="sm:border-l sm:pl-4"><p class="text-xs text-slate-500">Est. Daily Average</p><p class="text-2xl font-bold text-slate-700">${r.estDay.toFixed(1)} kWh</p><p class="text-xs text-slate-400">Average daily yield</p></div>
                                 </div>
