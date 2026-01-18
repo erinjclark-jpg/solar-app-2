@@ -2,7 +2,7 @@
     PROJECT CONTEXT & INSTRUCTIONS FOR AI:
     1. HOSTING: This code is hosted on GitHub and runs through a GoDaddy website (via iframe).
     2. SINGLE FILE: Keep all CSS/JS/HTML in this single index.html file.
-    3. VERSION CONTROL: *ALWAYS* increment the version number in the Header (currently v7.10) 
+    3. VERSION CONTROL: *ALWAYS* increment the version number in the Header (currently v7.11) 
        whenever code changes are applied.
 -->
 <!DOCTYPE html>
@@ -205,20 +205,22 @@
                     try { errorBody = await response.json(); } catch(e) {}
                     const errorMessage = errorBody?.error?.message || response.statusText;
 
-                    // AUTO-HEAL 404 LOGIC (Updated v7.10)
-                    if (response.status === 404 && !forceModel) {
-                        // If 1.5-flash fails, try 1.5-flash-latest, then 1.5-flash-001
+                    // AUTO-HEAL 404 LOGIC (Fixed v7.11 to allow chaining)
+                    if (response.status === 404) {
+                        // Chain: gemini-1.5-flash -> gemini-1.5-flash-002 -> gemini-1.5-flash-001
+                        
                         if (modelVersion === 'gemini-1.5-flash') {
-                            console.warn("Standard model 404. Retrying with 'gemini-1.5-flash-latest'...");
-                            return fetchWithExponentialBackoff(url, options, retries, 'gemini-1.5-flash-latest');
+                            console.warn("Standard model 404. Retrying with 'gemini-1.5-flash-002'...");
+                            return fetchWithExponentialBackoff(url, options, retries, 'gemini-1.5-flash-002');
                         }
-                        if (modelVersion === 'gemini-1.5-flash-latest') {
-                            console.warn("Latest model 404. Retrying with 'gemini-1.5-flash-001'...");
+                        if (modelVersion === 'gemini-1.5-flash-002') {
+                            console.warn("002 model 404. Retrying with 'gemini-1.5-flash-001'...");
                             return fetchWithExponentialBackoff(url, options, retries, 'gemini-1.5-flash-001');
                         }
-                        // If user had a custom/old model selected, revert to standard
-                        if (modelVersion !== 'gemini-1.5-flash') {
-                            console.warn(`Model ${modelVersion} not found (404). Reverting to Standard...`);
+
+                        // If user had a custom/old model selected (e.g. 1.5-pro or an experimental one), revert to standard to restart the chain
+                        if (modelVersion !== 'gemini-1.5-flash' && modelVersion !== 'gemini-1.5-flash-001' && modelVersion !== 'gemini-1.5-flash-002') {
+                            console.warn(`Custom model ${modelVersion} failed. Reverting to Standard...`);
                             window.state.aiModel = 'gemini-1.5-flash';
                             return fetchWithExponentialBackoff(url, options, retries, 'gemini-1.5-flash');
                         }
@@ -817,7 +819,7 @@
                 <div class="bg-[#005088] text-white p-3 sticky top-0 z-50 flex justify-between items-center shadow-md no-print">
                     <div class="flex items-center gap-2">
                         <span class="text-2xl"><i class="fas fa-sun text-yellow-400"></i></span>
-                        <div><h1 class="font-bold leading-tight text-base sm:text-lg">SolarCheck</h1><p class="text-xs opacity-80 font-medium">Pro v7.10</p><!-- UPDATE VERSION HERE --></div>
+                        <div><h1 class="font-bold leading-tight text-base sm:text-lg">SolarCheck</h1><p class="text-xs opacity-80 font-medium">Pro v7.11</p><!-- UPDATE VERSION HERE --></div>
                     </div>
                     <div class="flex gap-2">
                          <button onclick="openModal('print-modal')" class="bg-yellow-400 hover:bg-yellow-300 text-black px-3 py-2 rounded-lg font-bold text-xs sm:text-sm shadow transition-colors flex items-center gap-1"><i class="fas fa-file-pdf"></i> Reports</button>
