@@ -1,3 +1,10 @@
+<!-- 
+    PROJECT CONTEXT & INSTRUCTIONS FOR AI:
+    1. HOSTING: This code is hosted on GitHub and runs through a GoDaddy website (via iframe).
+    2. SINGLE FILE: Keep all CSS/JS/HTML in this single index.html file.
+    3. VERSION CONTROL: *ALWAYS* increment the version number in the Header (currently v7.4) 
+       whenever code changes are applied.
+-->
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -122,20 +129,20 @@
             dr: 7.88,
             rp: 0,
             tx: false,
-            // Removed redundant 'mt' (method type) variable
             e: 3.5,
             w: 50,
-            srec: false, // New: Toggle for SRECs
-            srecP: 25,   // New: SREC Price ($/MWh) default
+            srec: false, 
+            srecP: 25,   
             r: null,
             aR: null,
             reportTitle: "",
-            reportMode: "standard" 
+            reportMode: "standard",
+            aiModel: "gemini-1.5-flash", // Default to standard for reliability
+            userApiKey: localStorage.getItem('gemini_api_key') || ""
         };
 
         // --- API CONFIGURATION ---
-        const API_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=";
-        const apiKey = "AIzaSyCwfIWR95eeImuQ1R27ZhTgCgQniNgj1Wc"; // <--- PASTE YOUR API KEY HERE
+        const envApiKey = "AIzaSyAjpjhCf_CPP7beKvp2QJxngC1OX2lLf4o"; // Provided by environment if available
 
         // --- 2. Firebase Init ---
         const appId = typeof window.__app_id !== 'undefined' ? window.__app_id : 'default-app-id';
@@ -175,10 +182,26 @@
         async function fetchWithExponentialBackoff(url, options = {}, retries = 5) {
             try {
                 if (!options || typeof options !== 'object') { throw new Error("Invalid API options provided."); }
-                const cleanKey = apiKey ? apiKey.trim() : "";
-                const fullUrl = url + cleanKey;
+                
+                // Priority: User Input Key > Environment Key
+                const keyToUse = window.state.userApiKey ? window.state.userApiKey.trim() : (envApiKey ? envApiKey.trim() : "");
+                
+                if (!keyToUse) {
+                    throw new Error("Missing API Key. Please enter your Gemini API Key in the settings.");
+                }
+
+                // Construct URL with the selected model
+                const modelVersion = window.state.aiModel; 
+                const baseUrl = `https://generativelanguage.googleapis.com/v1beta/models/${modelVersion}:generateContent?key=`;
+                const fullUrl = baseUrl + keyToUse;
+
                 const response = await fetch(fullUrl, options);
-                if (!response.ok) { throw new Error(`HTTP ${response.status}`); }
+                
+                if (!response.ok) { 
+                    if (response.status === 403) throw new Error("HTTP 403: Permission Denied. Your API Key may not have access to this model version. Try switching to 'Standard Model' in settings.");
+                    if (response.status === 400) throw new Error("HTTP 400: Invalid Request. Check your API Key.");
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`); 
+                }
                 return await response.json();
             } catch (error) {
                 if (retries === 0) throw error;
@@ -517,7 +540,8 @@
                         headers: { 'Content-Type': 'application/json' }, 
                         body: JSON.stringify(payload) 
                     };
-                    const result = await fetchWithExponentialBackoff(API_URL, options);
+                    // No URL passed here, fetchWithExponentialBackoff handles it dynamically
+                    const result = await fetchWithExponentialBackoff("", options);
                     const candidate = result.candidates?.[0];
                     if (!candidate || !candidate.content?.parts?.[0]?.text) { throw new Error("API returned an invalid response."); }
                     finalContent = `<div class="prose prose-sm max-w-none text-slate-700">${parseMarkdown(candidate.content.parts[0].text)}</div>`;
@@ -554,8 +578,26 @@
                 }, 100);
 
             } catch (error) {
+                let errorMsg = error.message;
+                let errorAction = `<button onclick="closeReport()" class="bg-red-600 text-white px-4 py-2 rounded font-bold">Back</button>`;
+                
+                if (errorMsg.includes("403")) {
+                    errorMsg = "<strong>Access Denied (403)</strong><br><br>The 'Preview' AI model is not accessible with your API Key. <br>Please open the settings (Reports button) and switch the AI Model to <strong>'Standard (1.5 Flash)'</strong>.";
+                    errorAction = `<button onclick="closeReport(); openModal('print-modal')" class="bg-indigo-600 text-white px-4 py-2 rounded font-bold">Open Settings</button>`;
+                } else if (errorMsg.includes("Missing API Key")) {
+                    errorMsg = "<strong>Missing API Key</strong><br><br>You must enter a valid Gemini API Key to use the AI Report feature.";
+                    errorAction = `<button onclick="closeReport(); openModal('print-modal')" class="bg-indigo-600 text-white px-4 py-2 rounded font-bold">Enter Key</button>`;
+                }
+
                 reportView.innerHTML = `
-                    <div class="flex flex-col items-center justify-center min-h-screen"><div class="bg-red-50 text-red-800 p-8 rounded-xl max-w-lg text-center"><h3 class="text-xl font-bold mb-2">Generation Failed</h3><p class="mb-4">${error.message}</p><button onclick="closeReport()" class="bg-red-600 text-white px-4 py-2 rounded font-bold">Back</button></div></div>`;
+                    <div class="flex flex-col items-center justify-center min-h-screen">
+                        <div class="bg-red-50 text-red-800 p-8 rounded-xl max-w-lg text-center shadow-lg border border-red-100">
+                            <div class="text-3xl mb-4 text-red-500"><i class="fas fa-triangle-exclamation"></i></div>
+                            <h3 class="text-xl font-bold mb-4">Generation Failed</h3>
+                            <p class="mb-6 text-sm">${errorMsg}</p>
+                            ${errorAction}
+                        </div>
+                    </div>`;
             }
         };
 
@@ -706,7 +748,7 @@
         }
 
         function render() {
-            const { activeTab, activeModal, o, sz, r, aR, a, iDt, pDt, ac, pC, pW, b, it, ut, or, pi, sh, tE, tG, tEs, pa, tR, rR, rC, ne, c, l, om, dr, rp, tx, e, w, te, reportTitle, reportMode, srec, srecP } = window.state;
+            const { activeTab, activeModal, o, sz, r, aR, a, iDt, pDt, ac, pC, pW, b, it, ut, or, pi, sh, tE, tG, tEs, pa, tR, rR, rC, ne, c, l, om, dr, rp, tx, e, w, te, reportTitle, reportMode, srec, srecP, userApiKey, aiModel } = window.state;
             const root = document.getElementById('root');
             
             let leaseAssessment = "";
@@ -739,7 +781,7 @@
                 <div class="bg-[#005088] text-white p-3 sticky top-0 z-50 flex justify-between items-center shadow-md no-print">
                     <div class="flex items-center gap-2">
                         <span class="text-2xl"><i class="fas fa-sun text-yellow-400"></i></span>
-                        <div><h1 class="font-bold leading-tight text-base sm:text-lg">SolarCheck</h1><p class="text-xs opacity-80 font-medium">Pro v7.3</p></div>
+                        <div><h1 class="font-bold leading-tight text-base sm:text-lg">SolarCheck</h1><p class="text-xs opacity-80 font-medium">Pro v7.4</p><!-- UPDATE VERSION HERE --></div>
                     </div>
                     <div class="flex gap-2">
                          <button onclick="openModal('print-modal')" class="bg-yellow-400 hover:bg-yellow-300 text-black px-3 py-2 rounded-lg font-bold text-xs sm:text-sm shadow transition-colors flex items-center gap-1"><i class="fas fa-file-pdf"></i> Reports</button>
@@ -1040,6 +1082,22 @@
                         <div class="flex bg-slate-100 p-1 rounded-lg mb-4">
                             <button onclick="updateState('reportMode', 'standard')" class="flex-1 py-1 text-xs font-bold rounded-md transition-all duration-200 ${reportMode === 'standard' ? 'bg-white shadow text-indigo-600' : 'text-slate-500 hover:text-slate-700'}">Standard</button>
                             <button onclick="updateState('reportMode', 'ai')" class="flex-1 py-1 text-xs font-bold rounded-md transition-all duration-200 ${reportMode === 'ai' ? 'bg-white shadow text-purple-600' : 'text-slate-500 hover:text-slate-700'}">AI Consultant</button>
+                        </div>
+
+                        <!-- NEW SETTINGS SECTION (API Key & Model) -->
+                        <div class="mb-4 border-b border-slate-100 pb-4">
+                            <div class="flex items-center justify-between mb-2">
+                                <label class="text-xs font-bold text-slate-500 uppercase">AI Settings</label>
+                            </div>
+                             <select onchange="updateState('aiModel', this.value)" class="w-full text-xs p-2 mb-2 border rounded bg-slate-50 text-slate-700 font-bold focus:ring-1 focus:ring-indigo-500">
+                                <option value="gemini-1.5-flash" ${aiModel === 'gemini-1.5-flash' ? 'selected' : ''}>Standard (1.5 Flash) - Best for Production</option>
+                                <option value="gemini-2.5-flash-preview-09-2025" ${aiModel === 'gemini-2.5-flash-preview-09-2025' ? 'selected' : ''}>Preview (2.5 Flash) - Dev Only</option>
+                            </select>
+                            <input type="password" placeholder="Enter Gemini API Key (Optional)" value="${userApiKey}" 
+                                onchange="window.updateState('userApiKey', this.value); localStorage.setItem('gemini_api_key', this.value);"
+                                class="w-full text-xs p-2 border rounded bg-slate-50 text-slate-700 placeholder-slate-400 focus:ring-1 focus:ring-indigo-500"
+                            />
+                            <p class="text-[10px] text-slate-400 mt-1">Key is stored locally in your browser.</p>
                         </div>
 
                         <div class="space-y-2">
