@@ -85,7 +85,7 @@
         function num(v) { return new Intl.NumberFormat('en-US', { maximumFractionDigits: 1 }).format(v || 0); }
         function per(v) { return (v * 100).toFixed(1) + "%"; }
 
-        // --- CORE AI FETCH LOGIC (v7.14 Updated) ---
+        // --- CORE AI FETCH LOGIC (v7.15 Simplified Fallback) ---
         async function fetchWithExponentialBackoff(payloadData, options = {}, retries = 3, forceModel = null) {
             try {
                 // 1. Determine Key
@@ -96,15 +96,14 @@
                 let modelVersion = forceModel || window.state.aiModel;
                 if (!modelVersion) modelVersion = "gemini-1.5-flash";
 
-                // 3. Construct URL
-                // We purposefully use 'v1beta' as it has the widest support for new models
+                // 3. Construct URL (v1beta)
                 const baseUrl = `https://generativelanguage.googleapis.com/v1beta/models/${modelVersion}:generateContent?key=`;
                 const fullUrl = baseUrl + keyToUse;
 
-                // 4. Payload Adjustment for Legacy Models
-                // gemini-pro (1.0) does not support 'systemInstruction'. We must merge it if we fallback to it.
-                let finalPayload = JSON.parse(JSON.stringify(payloadData)); // Deep copy
-                if (modelVersion.includes("gemini-pro") && !modelVersion.includes("1.5")) {
+                // 4. Payload Adjustment for Legacy Models (Auto-Merge)
+                // "gemini-pro" (1.0) and "gemini-1.0-pro" do not support systemInstruction.
+                let finalPayload = JSON.parse(JSON.stringify(payloadData)); 
+                if ((modelVersion.includes("gemini-pro") && !modelVersion.includes("1.5")) || modelVersion === 'gemini-1.0-pro') {
                     if (finalPayload.systemInstruction) {
                         const sysText = finalPayload.systemInstruction.parts[0].text;
                         const userText = finalPayload.contents[0].parts[0].text;
@@ -114,12 +113,9 @@
                 }
 
                 // 5. Execute Fetch
-                const fetchOptions = {
-                    ...options,
-                    body: JSON.stringify(finalPayload)
-                };
-
+                const fetchOptions = { ...options, body: JSON.stringify(finalPayload) };
                 console.log(`Attempting generation with model: ${modelVersion}`);
+                
                 const response = await fetch(fullUrl, fetchOptions);
                 
                 if (!response.ok) {
@@ -131,21 +127,25 @@
                     if ([404, 429, 503].includes(response.status)) {
                         console.warn(`Model ${modelVersion} failed (${response.status}). Reason: ${errorMessage}`);
                         
-                        // v7.14 FALLBACK CHAIN (Brute Force)
+                        // v7.15 ROBUST FALLBACK CHAIN (Removed risky '002' versions)
                         const chain = [
-                            'gemini-1.5-flash',      // 1. Alias (Standard)
-                            'gemini-1.5-flash-002',  // 2. Specific V2
-                            'gemini-1.5-flash-001',  // 3. Specific V1
-                            'gemini-1.5-flash-8b',   // 4. High Volume
-                            'gemini-1.5-pro',        // 5. Pro Alias
-                            'gemini-1.5-pro-002'     // 6. Pro Specific
+                            'gemini-1.5-flash',      // 1. Standard
+                            'gemini-1.5-flash-8b',   // 2. High Volume (Separate Quota Bucket)
+                            'gemini-1.5-pro',        // 3. High Intelligence
+                            'gemini-pro'             // 4. Legacy (Last Resort)
                         ];
 
                         const currentIndex = chain.indexOf(modelVersion);
+                        
                         // If current model is in our chain and has a successor, try the successor
                         if (currentIndex !== -1 && currentIndex < chain.length - 1) {
                             const nextModel = chain[currentIndex + 1];
                             console.log(`Falling back to: ${nextModel}`);
+                            
+                            // Visual feedback in UI if possible (optional)
+                            const modalStatus = document.querySelector('#report-view p.text-slate-500');
+                            if(modalStatus) modalStatus.innerText = `Retrying with ${nextModel}...`;
+
                             return fetchWithExponentialBackoff(payloadData, options, retries, nextModel);
                         }
                     }
@@ -156,8 +156,8 @@
                 return await response.json();
 
             } catch (error) {
-                // Network errors (fetch failed entirely) get retries
-                if (retries > 0 && !error.message.includes("40")) { // Don't retry 400/401/403/404 logic errors, only network
+                // Retry network errors only, not API logic errors
+                if (retries > 0 && !error.message.includes("Google API Error")) { 
                     const delay = Math.pow(2, 4 - retries) * 1000;
                     await new Promise(resolve => setTimeout(resolve, delay));
                     return fetchWithExponentialBackoff(payloadData, options, retries - 1, forceModel);
@@ -464,7 +464,7 @@
             let html = `
             <div class="min-h-screen bg-slate-50 font-sans pb-10">
                 <div class="bg-[#005088] text-white p-3 sticky top-0 z-50 flex justify-between items-center shadow-md no-print">
-                    <div class="flex items-center gap-2"><span class="text-2xl"><i class="fas fa-sun text-yellow-400"></i></span><div><h1 class="font-bold leading-tight text-base sm:text-lg">SolarCheck</h1><p class="text-xs opacity-80 font-medium">Pro v7.14</p></div></div>
+                    <div class="flex items-center gap-2"><span class="text-2xl"><i class="fas fa-sun text-yellow-400"></i></span><div><h1 class="font-bold leading-tight text-base sm:text-lg">SolarCheck</h1><p class="text-xs opacity-80 font-medium">Pro v7.15</p></div></div>
                     <div class="flex gap-2">
                          <button onclick="openModal('print-modal')" class="bg-yellow-400 hover:bg-yellow-300 text-black px-3 py-2 rounded-lg font-bold text-xs sm:text-sm shadow transition-colors flex items-center gap-1"><i class="fas fa-file-pdf"></i> Reports</button>
                          <button onclick="window.open(window.location.href, '_blank')" class="bg-indigo-500 hover:bg-indigo-400 text-white px-3 py-2 rounded-lg font-bold text-xs sm:text-sm shadow transition-colors flex items-center gap-1" title="Open Full Screen"><i class="fas fa-expand"></i></button>
