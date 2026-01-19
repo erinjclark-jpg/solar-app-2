@@ -56,9 +56,9 @@
             ut: "nem2", te: 20, tE: 10525, tG: 9472, tEs: 2.9, pa: 223.66, tR: 0.255, rR: 0.20, rC: 3.50, ne: 0.8, 
             c: 0.9, aC: true, l: 30, om: 20, dr: 7.88, rp: 0, tx: false, e: 3.5, w: 50, srec: false, srecP: 25,   
             r: null, aR: null, reportTitle: "", reportMode: "standard",
-            aiModel: "gemini-1.5-flash", 
+            aiModel: "gemini-1.5-flash-002", // Default to pinned version
             userApiKey: localStorage.getItem('gemini_api_key') || "",
-            errorLog: [] // NEW: Track chain errors
+            errorLog: [] 
         };
 
         const envApiKey = ""; 
@@ -86,7 +86,7 @@
         function num(v) { return new Intl.NumberFormat('en-US', { maximumFractionDigits: 1 }).format(v || 0); }
         function per(v) { return (v * 100).toFixed(1) + "%"; }
 
-        // --- CORE AI FETCH LOGIC (v7.16 Modern Chain) ---
+        // --- CORE AI FETCH LOGIC (v7.17 Pinned Versions) ---
         async function fetchWithExponentialBackoff(payloadData, options = {}, retries = 3, forceModel = null) {
             try {
                 // 1. Determine Key
@@ -95,18 +95,30 @@
 
                 // 2. Determine Model (Fallback Logic)
                 let modelVersion = forceModel || window.state.aiModel;
-                if (!modelVersion) modelVersion = "gemini-1.5-flash";
+                if (!modelVersion) modelVersion = "gemini-1.5-flash-002"; // Force Pinned
 
                 // 3. Construct URL
                 const baseUrl = `https://generativelanguage.googleapis.com/v1beta/models/${modelVersion}:generateContent?key=`;
                 const fullUrl = baseUrl + keyToUse;
 
-                // 4. Update UI Status
-                const modalStatus = document.querySelector('#report-view p.text-slate-500');
-                if(modalStatus) modalStatus.innerText = `Connecting to ${modelVersion}...`;
+                // 4. Payload Adjustment for Legacy Models (Auto-Merge)
+                // Gemini 1.0 Pro does NOT support 'systemInstruction'. We must merge it.
+                let finalPayload = JSON.parse(JSON.stringify(payloadData)); 
+                if (modelVersion.includes("gemini-1.0-pro") || modelVersion.includes("gemini-pro")) {
+                    if (finalPayload.systemInstruction) {
+                        const sysText = finalPayload.systemInstruction.parts[0].text;
+                        const userText = finalPayload.contents[0].parts[0].text;
+                        finalPayload.contents[0].parts[0].text = `**SYSTEM INSTRUCTIONS:**\n${sysText}\n\n**USER QUERY:**\n${userText}`;
+                        delete finalPayload.systemInstruction;
+                    }
+                }
 
-                // 5. Execute Fetch
-                const fetchOptions = { ...options, body: JSON.stringify(payloadData) };
+                // 5. Update UI Status
+                const modalStatus = document.querySelector('#report-view p.text-slate-500');
+                if(modalStatus) modalStatus.innerText = `Trying model: ${modelVersion}...`;
+
+                // 6. Execute Fetch
+                const fetchOptions = { ...options, body: JSON.stringify(finalPayload) };
                 console.log(`Attempting generation with model: ${modelVersion}`);
                 
                 const response = await fetch(fullUrl, fetchOptions);
@@ -123,11 +135,12 @@
                     if ([404, 429, 503].includes(response.status)) {
                         console.warn(`Model ${modelVersion} failed (${response.status}). Reason: ${errorMessage}`);
                         
-                        // v7.16 MODERN FALLBACK CHAIN
+                        // v7.17 PINNED FALLBACK CHAIN
                         const chain = [
-                            'gemini-1.5-flash',      // 1. Standard (Fastest)
-                            'gemini-2.0-flash-exp',  // 2. Experimental (Separate Quota Bucket - Good for 429s)
-                            'gemini-1.5-pro'         // 3. Pro (Heavy Hitter - Last Resort)
+                            'gemini-1.5-flash-002',  // 1. Latest Stable (Pinned)
+                            'gemini-1.5-flash-001',  // 2. Previous Stable (Pinned)
+                            'gemini-1.5-flash-8b',   // 3. High Volume
+                            'gemini-1.0-pro'         // 4. Legacy (Safe fallback)
                         ];
 
                         const currentIndex = chain.indexOf(modelVersion);
@@ -459,7 +472,7 @@
             let html = `
             <div class="min-h-screen bg-slate-50 font-sans pb-10">
                 <div class="bg-[#005088] text-white p-3 sticky top-0 z-50 flex justify-between items-center shadow-md no-print">
-                    <div class="flex items-center gap-2"><span class="text-2xl"><i class="fas fa-sun text-yellow-400"></i></span><div><h1 class="font-bold leading-tight text-base sm:text-lg">SolarCheck</h1><p class="text-xs opacity-80 font-medium">Pro v7.16</p></div></div>
+                    <div class="flex items-center gap-2"><span class="text-2xl"><i class="fas fa-sun text-yellow-400"></i></span><div><h1 class="font-bold leading-tight text-base sm:text-lg">SolarCheck</h1><p class="text-xs opacity-80 font-medium">Pro v7.17</p></div></div>
                     <div class="flex gap-2">
                          <button onclick="openModal('print-modal')" class="bg-yellow-400 hover:bg-yellow-300 text-black px-3 py-2 rounded-lg font-bold text-xs sm:text-sm shadow transition-colors flex items-center gap-1"><i class="fas fa-file-pdf"></i> Reports</button>
                          <button onclick="window.open(window.location.href, '_blank')" class="bg-indigo-500 hover:bg-indigo-400 text-white px-3 py-2 rounded-lg font-bold text-xs sm:text-sm shadow transition-colors flex items-center gap-1" title="Open Full Screen"><i class="fas fa-expand"></i></button>
@@ -532,7 +545,7 @@
                         <button onclick="closeModal()" class="absolute top-3 right-3 text-slate-400 hover:text-slate-600"><i class="fas fa-times"></i></button>
                         <h3 class="font-bold mb-4 text-slate-800">Select Report</h3>
                         <div class="flex bg-slate-100 p-1 rounded-lg mb-4"><button onclick="updateState('reportMode', 'standard')" class="flex-1 py-1 text-xs font-bold rounded-md transition-all duration-200 ${reportMode === 'standard' ? 'bg-white shadow text-indigo-600' : 'text-slate-500 hover:text-slate-700'}">Standard</button><button onclick="updateState('reportMode', 'ai')" class="flex-1 py-1 text-xs font-bold rounded-md transition-all duration-200 ${reportMode === 'ai' ? 'bg-white shadow text-purple-600' : 'text-slate-500 hover:text-slate-700'}">AI Consultant</button></div>
-                        <div class="mb-4 border-b border-slate-100 pb-4"><div class="flex items-center justify-between mb-2"><label class="text-xs font-bold text-slate-500 uppercase">AI Settings</label></div><select onchange="updateState('aiModel', this.value)" class="w-full text-xs p-2 mb-2 border rounded bg-slate-50 text-slate-700 font-bold focus:ring-1 focus:ring-indigo-500"><option value="gemini-1.5-flash" ${aiModel === 'gemini-1.5-flash' ? 'selected' : ''}>Standard (1.5 Flash)</option><option value="gemini-1.5-pro" ${aiModel === 'gemini-1.5-pro' ? 'selected' : ''}>Advanced (1.5 Pro)</option></select><input type="password" placeholder="Enter Gemini API Key" value="${userApiKey}" onchange="window.updateState('userApiKey', this.value); localStorage.setItem('gemini_api_key', this.value);" class="w-full text-xs p-2 border rounded bg-slate-50 text-slate-700 placeholder-slate-400 focus:ring-1 focus:ring-indigo-500"/><p class="text-[10px] text-slate-400 mt-1">Key is stored locally in your browser.</p></div>
+                        <div class="mb-4 border-b border-slate-100 pb-4"><div class="flex items-center justify-between mb-2"><label class="text-xs font-bold text-slate-500 uppercase">AI Settings</label></div><select onchange="updateState('aiModel', this.value)" class="w-full text-xs p-2 mb-2 border rounded bg-slate-50 text-slate-700 font-bold focus:ring-1 focus:ring-indigo-500"><option value="gemini-1.5-flash-002" ${aiModel === 'gemini-1.5-flash-002' ? 'selected' : ''}>Standard (1.5 Flash)</option><option value="gemini-1.5-pro" ${aiModel === 'gemini-1.5-pro' ? 'selected' : ''}>Advanced (1.5 Pro)</option></select><input type="password" placeholder="Enter Gemini API Key" value="${userApiKey}" onchange="window.updateState('userApiKey', this.value); localStorage.setItem('gemini_api_key', this.value);" class="w-full text-xs p-2 border rounded bg-slate-50 text-slate-700 placeholder-slate-400 focus:ring-1 focus:ring-indigo-500"/><p class="text-[10px] text-slate-400 mt-1">Key is stored locally in your browser.</p></div>
                         <div class="space-y-2"><button onclick="handleGenerateReport('owned')" class="w-full text-left p-3 border rounded hover:bg-slate-50 text-sm font-bold text-slate-700"><i class="fas fa-house-chimney text-blue-500 mr-2"></i> Owned System</button>${o === 'lease' ? `<button onclick="handleGenerateReport('lease')" class="w-full text-left p-3 border rounded hover:bg-slate-50 text-sm font-bold text-slate-700"><i class="fas fa-file-signature text-purple-500 mr-2"></i> Lease Assumption</button>` : ''}${o === 'ppa' ? `<button onclick="handleGenerateReport('ppa')" class="w-full text-left p-3 border rounded hover:bg-slate-50 text-sm font-bold text-slate-700"><i class="fas fa-bolt text-yellow-500 mr-2"></i> PPA Transfer</button>` : ''}<button onclick="handleGenerateReport('val')" class="w-full text-left p-3 border rounded hover:bg-slate-50 text-sm font-bold text-slate-700"><i class="fas fa-scale-balanced text-emerald-500 mr-2"></i> Valuation / FMV</button></div>
                     </div>
                 </dialog>
