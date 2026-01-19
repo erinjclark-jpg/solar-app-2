@@ -57,7 +57,8 @@
             c: 0.9, aC: true, l: 30, om: 20, dr: 7.88, rp: 0, tx: false, e: 3.5, w: 50, srec: false, srecP: 25,   
             r: null, aR: null, reportTitle: "", reportMode: "standard",
             aiModel: "gemini-1.5-flash", 
-            userApiKey: localStorage.getItem('gemini_api_key') || ""
+            userApiKey: localStorage.getItem('gemini_api_key') || "",
+            errorLog: [] // NEW: Track chain errors
         };
 
         const envApiKey = ""; 
@@ -85,7 +86,7 @@
         function num(v) { return new Intl.NumberFormat('en-US', { maximumFractionDigits: 1 }).format(v || 0); }
         function per(v) { return (v * 100).toFixed(1) + "%"; }
 
-        // --- CORE AI FETCH LOGIC (v7.15 Simplified Fallback) ---
+        // --- CORE AI FETCH LOGIC (v7.16 Modern Chain) ---
         async function fetchWithExponentialBackoff(payloadData, options = {}, retries = 3, forceModel = null) {
             try {
                 // 1. Determine Key
@@ -96,24 +97,16 @@
                 let modelVersion = forceModel || window.state.aiModel;
                 if (!modelVersion) modelVersion = "gemini-1.5-flash";
 
-                // 3. Construct URL (v1beta)
+                // 3. Construct URL
                 const baseUrl = `https://generativelanguage.googleapis.com/v1beta/models/${modelVersion}:generateContent?key=`;
                 const fullUrl = baseUrl + keyToUse;
 
-                // 4. Payload Adjustment for Legacy Models (Auto-Merge)
-                // "gemini-pro" (1.0) and "gemini-1.0-pro" do not support systemInstruction.
-                let finalPayload = JSON.parse(JSON.stringify(payloadData)); 
-                if ((modelVersion.includes("gemini-pro") && !modelVersion.includes("1.5")) || modelVersion === 'gemini-1.0-pro') {
-                    if (finalPayload.systemInstruction) {
-                        const sysText = finalPayload.systemInstruction.parts[0].text;
-                        const userText = finalPayload.contents[0].parts[0].text;
-                        finalPayload.contents[0].parts[0].text = `SYSTEM INSTRUCTIONS: ${sysText}\n\nUSER QUERY: ${userText}`;
-                        delete finalPayload.systemInstruction;
-                    }
-                }
+                // 4. Update UI Status
+                const modalStatus = document.querySelector('#report-view p.text-slate-500');
+                if(modalStatus) modalStatus.innerText = `Connecting to ${modelVersion}...`;
 
                 // 5. Execute Fetch
-                const fetchOptions = { ...options, body: JSON.stringify(finalPayload) };
+                const fetchOptions = { ...options, body: JSON.stringify(payloadData) };
                 console.log(`Attempting generation with model: ${modelVersion}`);
                 
                 const response = await fetch(fullUrl, fetchOptions);
@@ -123,16 +116,18 @@
                     try { errorBody = await response.json(); } catch(e) {}
                     const errorMessage = errorBody?.error?.message || response.statusText;
                     
+                    // Log specific error for this model
+                    window.state.errorLog.push(`<strong>${modelVersion}</strong>: ${errorMessage}`);
+
                     // AUTO-HEAL: 404 (Not Found), 429 (Quota), 503 (Overloaded)
                     if ([404, 429, 503].includes(response.status)) {
                         console.warn(`Model ${modelVersion} failed (${response.status}). Reason: ${errorMessage}`);
                         
-                        // v7.15 ROBUST FALLBACK CHAIN (Removed risky '002' versions)
+                        // v7.16 MODERN FALLBACK CHAIN
                         const chain = [
-                            'gemini-1.5-flash',      // 1. Standard
-                            'gemini-1.5-flash-8b',   // 2. High Volume (Separate Quota Bucket)
-                            'gemini-1.5-pro',        // 3. High Intelligence
-                            'gemini-pro'             // 4. Legacy (Last Resort)
+                            'gemini-1.5-flash',      // 1. Standard (Fastest)
+                            'gemini-2.0-flash-exp',  // 2. Experimental (Separate Quota Bucket - Good for 429s)
+                            'gemini-1.5-pro'         // 3. Pro (Heavy Hitter - Last Resort)
                         ];
 
                         const currentIndex = chain.indexOf(modelVersion);
@@ -141,23 +136,21 @@
                         if (currentIndex !== -1 && currentIndex < chain.length - 1) {
                             const nextModel = chain[currentIndex + 1];
                             console.log(`Falling back to: ${nextModel}`);
-                            
-                            // Visual feedback in UI if possible (optional)
-                            const modalStatus = document.querySelector('#report-view p.text-slate-500');
-                            if(modalStatus) modalStatus.innerText = `Retrying with ${nextModel}...`;
-
                             return fetchWithExponentialBackoff(payloadData, options, retries, nextModel);
                         }
                     }
 
-                    throw new Error(`Google API Error (${response.status}): ${errorMessage}`);
+                    // If we ran out of models or hit a non-recoverable error, throw the Full Report
+                    throw new Error("ALL_MODELS_FAILED");
                 }
 
+                // Success! Clear error log
+                window.state.errorLog = [];
                 return await response.json();
 
             } catch (error) {
-                // Retry network errors only, not API logic errors
-                if (retries > 0 && !error.message.includes("Google API Error")) { 
+                // Network retry logic (for connection issues, not API rejections)
+                if (retries > 0 && error.message !== "ALL_MODELS_FAILED" && !error.message.includes("Missing API Key")) { 
                     const delay = Math.pow(2, 4 - retries) * 1000;
                     await new Promise(resolve => setTimeout(resolve, delay));
                     return fetchWithExponentialBackoff(payloadData, options, retries - 1, forceModel);
@@ -306,6 +299,7 @@
         }
 
         async function handleGenerateReport(type) {
+            window.state.errorLog = []; // Reset log
             if (!window.state.r || !window.state.aR) return;
             const titleMap = { 'owned': 'Solar Asset Transfer Report', 'lease': 'Solar Lease Assumption Report', 'ppa': 'PPA Transfer Analysis Report', 'val': 'Appraisal and FMV Negotiation Report' };
             const reportTitle = titleMap[type] || 'Solar Report';
@@ -314,7 +308,7 @@
             const reportView = document.getElementById('report-view');
             const root = document.getElementById('root');
             root.classList.add('hidden'); reportView.classList.remove('hidden');
-            reportView.innerHTML = `<div class="flex flex-col items-center justify-center min-h-screen text-indigo-600"><i class="fas fa-circle-notch fa-spin text-5xl mb-4"></i><h2 class="text-2xl font-bold">Generating Report...</h2><p class="text-slate-500 mt-2">Connecting to Google Gemini (Attempting multiple models)...</p></div>`;
+            reportView.innerHTML = `<div class="flex flex-col items-center justify-center min-h-screen text-indigo-600"><i class="fas fa-circle-notch fa-spin text-5xl mb-4"></i><h2 class="text-2xl font-bold">Generating Report...</h2><p class="text-slate-500 mt-2">Connecting to Google Gemini...</p></div>`;
             window.scrollTo(0, 0);
 
             const inputs = {
@@ -334,9 +328,8 @@
                 } else {
                     const { systemPrompt, userQuery } = buildPrompt(type, inputs);
                     const payload = { contents: [{ parts: [{ text: userQuery }] }], systemInstruction: { parts: [{ text: systemPrompt }] } };
-                    const options = { method: 'POST', headers: { 'Content-Type': 'application/json' } }; // Body added in fetchWithExponentialBackoff
+                    const options = { method: 'POST', headers: { 'Content-Type': 'application/json' } }; 
                     
-                    // PASS PAYLOAD as first arg, options as second
                     const result = await fetchWithExponentialBackoff(payload, options);
                     
                     const candidate = result.candidates?.[0];
@@ -370,6 +363,7 @@
 
             } catch (error) {
                 let errorMsg = error.message;
+                let errorDetails = window.state.errorLog.length > 0 ? `<div class="mt-2 text-xs text-red-600 bg-red-100 p-2 rounded"><strong>Attempt Log:</strong><br>${window.state.errorLog.join('<br>')}</div>` : '';
                 let errorAction = `<button onclick="closeReport(); openModal('print-modal')" class="bg-indigo-600 text-white px-4 py-2 rounded font-bold">Open Settings</button>`;
                 
                 if (errorMsg.includes("Missing API Key")) errorAction = `<button onclick="closeReport(); openModal('print-modal')" class="bg-indigo-600 text-white px-4 py-2 rounded font-bold">Enter Key</button>`;
@@ -379,8 +373,9 @@
                         <div class="bg-red-50 text-red-800 p-8 rounded-xl max-w-lg text-center shadow-lg border border-red-100">
                             <div class="text-3xl mb-4 text-red-500"><i class="fas fa-triangle-exclamation"></i></div>
                             <h3 class="text-xl font-bold mb-4">Generation Failed</h3>
-                            <p class="mb-6 text-sm text-red-700 font-mono bg-red-100 p-2 rounded text-left overflow-auto max-h-32">${errorMsg}</p>
-                            ${errorAction} <button onclick="closeReport()" class="ml-2 bg-white border border-red-200 text-red-700 px-4 py-2 rounded font-bold">Cancel</button>
+                            <p class="mb-4 text-sm text-red-700 font-mono bg-red-100 p-2 rounded text-left overflow-auto max-h-32">${errorMsg}</p>
+                            ${errorDetails}
+                            <div class="mt-6">${errorAction} <button onclick="closeReport()" class="ml-2 bg-white border border-red-200 text-red-700 px-4 py-2 rounded font-bold">Cancel</button></div>
                         </div>
                     </div>`;
             }
@@ -464,7 +459,7 @@
             let html = `
             <div class="min-h-screen bg-slate-50 font-sans pb-10">
                 <div class="bg-[#005088] text-white p-3 sticky top-0 z-50 flex justify-between items-center shadow-md no-print">
-                    <div class="flex items-center gap-2"><span class="text-2xl"><i class="fas fa-sun text-yellow-400"></i></span><div><h1 class="font-bold leading-tight text-base sm:text-lg">SolarCheck</h1><p class="text-xs opacity-80 font-medium">Pro v7.15</p></div></div>
+                    <div class="flex items-center gap-2"><span class="text-2xl"><i class="fas fa-sun text-yellow-400"></i></span><div><h1 class="font-bold leading-tight text-base sm:text-lg">SolarCheck</h1><p class="text-xs opacity-80 font-medium">Pro v7.16</p></div></div>
                     <div class="flex gap-2">
                          <button onclick="openModal('print-modal')" class="bg-yellow-400 hover:bg-yellow-300 text-black px-3 py-2 rounded-lg font-bold text-xs sm:text-sm shadow transition-colors flex items-center gap-1"><i class="fas fa-file-pdf"></i> Reports</button>
                          <button onclick="window.open(window.location.href, '_blank')" class="bg-indigo-500 hover:bg-indigo-400 text-white px-3 py-2 rounded-lg font-bold text-xs sm:text-sm shadow transition-colors flex items-center gap-1" title="Open Full Screen"><i class="fas fa-expand"></i></button>
