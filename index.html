@@ -86,7 +86,7 @@
         function num(v) { return new Intl.NumberFormat('en-US', { maximumFractionDigits: 1 }).format(v || 0); }
         function per(v) { return (v * 100).toFixed(1) + "%"; }
 
-        // --- CORE AI FETCH LOGIC (v7.18 Endpoint Switching) ---
+        // --- CORE AI FETCH LOGIC (v7.19 Universal Payload Fix) ---
         async function fetchWithExponentialBackoff(payloadData, options = {}, retries = 3, forceModel = null) {
             try {
                 // 1. Determine Key
@@ -95,10 +95,10 @@
 
                 // 2. Determine Model (Fallback Logic)
                 let modelVersion = forceModel || window.state.aiModel;
-                if (!modelVersion) modelVersion = "gemini-1.5-flash"; // Default
+                if (!modelVersion) modelVersion = "gemini-1.5-flash"; 
 
                 // 3. Construct URL (SMART ENDPOINT SWITCHING)
-                // Stable models use 'v1'. Experimental models MUST use 'v1beta'.
+                // 'v1' is for stable, 'v1beta' is for experimental/legacy that supports systemInstruction
                 let apiVersion = 'v1'; 
                 if (modelVersion.includes('exp') || modelVersion.includes('beta')) {
                     apiVersion = 'v1beta';
@@ -107,13 +107,21 @@
                 const baseUrl = `https://generativelanguage.googleapis.com/${apiVersion}/models/${modelVersion}:generateContent?key=`;
                 const fullUrl = baseUrl + keyToUse;
 
-                // 4. Payload Adjustment for Legacy Models (Auto-Merge)
+                // 4. Payload Adjustment (THE FIX)
+                // The 'v1' endpoint DOES NOT support the 'systemInstruction' field.
+                // We must strip it and manually merge it into the user prompt.
                 let finalPayload = JSON.parse(JSON.stringify(payloadData)); 
-                if (modelVersion.includes("gemini-1.0-pro") || (modelVersion.includes("gemini-pro") && !modelVersion.includes("1.5"))) {
+                
+                const isV1Endpoint = apiVersion === 'v1';
+                const isLegacyModel = modelVersion.includes("gemini-1.0-pro") || (modelVersion.includes("gemini-pro") && !modelVersion.includes("1.5"));
+
+                if (isV1Endpoint || isLegacyModel) {
                     if (finalPayload.systemInstruction) {
                         const sysText = finalPayload.systemInstruction.parts[0].text;
                         const userText = finalPayload.contents[0].parts[0].text;
+                        // Manual Merge
                         finalPayload.contents[0].parts[0].text = `**SYSTEM INSTRUCTIONS:**\n${sysText}\n\n**USER QUERY:**\n${userText}`;
+                        // Remove the forbidden field
                         delete finalPayload.systemInstruction;
                     }
                 }
@@ -133,19 +141,18 @@
                     try { errorBody = await response.json(); } catch(e) {}
                     const errorMessage = errorBody?.error?.message || response.statusText;
                     
-                    // Log specific error for this model
                     window.state.errorLog.push(`<strong>${modelVersion} (${apiVersion})</strong>: ${errorMessage}`);
 
-                    // AUTO-HEAL: 404 (Not Found), 429 (Quota), 503 (Overloaded)
-                    if ([404, 429, 503].includes(response.status)) {
+                    // AUTO-HEAL: 404 (Not Found), 429 (Quota), 503 (Overloaded), 400 (Bad Request - try another model just in case)
+                    if ([400, 404, 429, 503].includes(response.status)) {
                         console.warn(`Model ${modelVersion} failed (${response.status}). Reason: ${errorMessage}`);
                         
-                        // v7.18 HYBRID FALLBACK CHAIN
+                        // v7.19 HYBRID FALLBACK CHAIN
                         const chain = [
-                            'gemini-1.5-flash',      // 1. Stable v1 (Best for Production)
-                            'gemini-2.0-flash-exp',  // 2. Experimental v1beta (Backup Quota)
-                            'gemini-1.5-flash-8b',   // 3. High Volume v1
-                            'gemini-1.5-pro'         // 4. Pro v1
+                            'gemini-1.5-flash',      // 1. Stable v1 (Merged Prompt)
+                            'gemini-2.0-flash-exp',  // 2. Experimental v1beta (Native System Prompt)
+                            'gemini-1.5-flash-8b',   // 3. High Volume v1 (Merged Prompt)
+                            'gemini-1.5-pro'         // 4. Pro v1 (Merged Prompt)
                         ];
 
                         const currentIndex = chain.indexOf(modelVersion);
@@ -158,16 +165,13 @@
                         }
                     }
 
-                    // If we ran out of models or hit a non-recoverable error, throw the Full Report
                     throw new Error("ALL_MODELS_FAILED");
                 }
 
-                // Success! Clear error log
                 window.state.errorLog = [];
                 return await response.json();
 
             } catch (error) {
-                // Network retry logic (for connection issues, not API rejections)
                 if (retries > 0 && error.message !== "ALL_MODELS_FAILED" && !error.message.includes("Missing API Key")) { 
                     const delay = Math.pow(2, 4 - retries) * 1000;
                     await new Promise(resolve => setTimeout(resolve, delay));
@@ -477,7 +481,7 @@
             let html = `
             <div class="min-h-screen bg-slate-50 font-sans pb-10">
                 <div class="bg-[#005088] text-white p-3 sticky top-0 z-50 flex justify-between items-center shadow-md no-print">
-                    <div class="flex items-center gap-2"><span class="text-2xl"><i class="fas fa-sun text-yellow-400"></i></span><div><h1 class="font-bold leading-tight text-base sm:text-lg">SolarCheck</h1><p class="text-xs opacity-80 font-medium">Pro v7.18</p></div></div>
+                    <div class="flex items-center gap-2"><span class="text-2xl"><i class="fas fa-sun text-yellow-400"></i></span><div><h1 class="font-bold leading-tight text-base sm:text-lg">SolarCheck</h1><p class="text-xs opacity-80 font-medium">Pro v7.19</p></div></div>
                     <div class="flex gap-2">
                          <button onclick="openModal('print-modal')" class="bg-yellow-400 hover:bg-yellow-300 text-black px-3 py-2 rounded-lg font-bold text-xs sm:text-sm shadow transition-colors flex items-center gap-1"><i class="fas fa-file-pdf"></i> Reports</button>
                          <button onclick="window.open(window.location.href, '_blank')" class="bg-indigo-500 hover:bg-indigo-400 text-white px-3 py-2 rounded-lg font-bold text-xs sm:text-sm shadow transition-colors flex items-center gap-1" title="Open Full Screen"><i class="fas fa-expand"></i></button>
@@ -520,7 +524,7 @@
                     <div class="tab-content space-y-4">
                         ${C("System Profile", "A snapshot of the system's physical capacity (kW), current age, and the estimated energy it will produce over the next year.", `<div class="grid grid-cols-1 ${remTerm ? 'sm:grid-cols-3' : 'sm:grid-cols-2'} gap-4 pt-2"><div><p class="text-xs uppercase text-slate-500 font-bold">Rated Size</p><p class="text-3xl font-black text-blue-800">${sz.toFixed(2)} kW</p><p class="text-xs text-slate-400">Total DC Power</p></div><div class="border-l pl-4"><p class="text-xs uppercase text-slate-500 font-bold">Age</p><p class="text-3xl font-black text-blue-800">${r.age.toFixed(1)} <span class="text-sm font-normal text-slate-500">Years</span></p><p class="text-xs text-slate-400">Years since install</p></div>${remTerm ? `<div class="border-l pl-4"><p class="text-xs uppercase text-slate-500 font-bold">Remaining</p><p class="text-3xl font-black text-indigo-600">${remTerm} <span class="text-sm font-normal text-slate-500">Years</span></p><p class="text-xs text-slate-400">Left on Agreement</p></div>` : ''}<div class="col-span-1 ${remTerm ? 'sm:col-span-3' : 'sm:col-span-2'} border-t pt-2 grid grid-cols-1 sm:grid-cols-2 gap-4"><div><p class="text-xs text-slate-500">Est. Next 12 Months</p><p class="text-2xl font-bold text-slate-700">${num(r.estN12 / 1000)} MWh</p><p class="text-xs text-slate-400">Forecasted output</p></div><div class="sm:border-l sm:pl-4"><p class="text-xs text-slate-500">Est. Daily Average</p><p class="text-2xl font-bold text-slate-700">${r.estDay.toFixed(1)} kWh</p><p class="text-xs text-slate-400">Average daily yield</p></div></div></div>`, 'text-blue-700')}
                         ${o === "owned" ? C("Performance Summary", "Compares the actual lifetime production against the expected output for a system of this specific age, accounting for normal degradation.", `<div class="mb-4 mt-2"><div class="flex justify-between text-xs font-bold mb-3"><span class="${r.pr >= 0.9 ? "text-green-600" : "text-red-600"}">${r.pr >= 0.9 ? "OPTIMIZED" : "UNDERPERFORMING"}</span></div><div class="relative w-full"><div class="absolute bottom-full left-[90%] -translate-x-1/2 mb-1 text-[9px] font-bold text-slate-400 whitespace-nowrap">Goal: 90%</div><div class="w-full bg-slate-100 h-3 rounded-full overflow-hidden relative"><div class="absolute h-full w-0.5 bg-slate-400 left-[90%] z-10"></div><div class="h-full ${r.pr >= 0.9 ? 'bg-green-500' : 'bg-red-500'}" style="width:${Math.min(r.pr * 100, 100)}%"></div></div></div></div>${R("Actual (Lifetime)", num(r.act), "MWh", "Total MWh generated")}${R("Expected (Lifetime)", num(r.physLifeMwh), "MWh", "Modeled target MWh")}<div class="border-t mt-2 pt-2 flex justify-between items-center"><span class="font-bold">Performance Ratio</span><span class="text-xl font-black ${r.pr >= 0.9 ? 'text-green-600' : 'text-red-600'}">${per(r.pr)}</span></div><p class="text-xs text-slate-400 text-right">Efficiency vs Expected</p>`, r.pr >= 0.9 ? "text-green-600" : "text-red-600") : 
-                        C(o === "lease" ? "Production & Guarantee" : "Production Analysis", "Comprehensive analysis of actual output against contract estimates and guarantees.", `<div class="space-y-4"><div><h4 class="text-xs font-bold text-slate-400 uppercase mb-2">Performance vs Estimate</h4>${R("Contract Estimate", num(r.estLifeMwh), "MWh", "Original sales projection")}${R("Actual Production", num(r.act), "MWh", "Metered lifetime output")}</div>${r.guaL > 0 ? `<div class="border-t border-slate-100 pt-4"><h4 class="text-xs font-bold text-slate-400 uppercase mb-2">Contract Guarantee Status</h4>${R(o === 'lease' ? 'Guaranteed Min' : 'Contract Est. kWh', num(r.guaL), "MWh", "Minimum contractual floor")}<div class="flex items-center gap-3 mt-3 p-3 rounded-lg border-2 ${r.gDiff >= 0 ? 'bg-green-50 border-green-200' : 'bg-red-50 border-red-200'}"><div class="text-2xl">${r.gDiff >= 0 ? '✅' : '⚠️'}</div><div class="flex-1"><div class="text-sm font-black uppercase ${r.gDiff >= 0 ? 'text-green-800' : 'text-red-800'}">${r.gDiff >= 0 ? 'PASSING' : 'FAILING'}</div><div class="text-xs text-slate-600">${r.gDiff >= 0 ? `Exceeds guarantee by <strong>${num(r.gDiff)} MWh</strong>` : `Underperforming by <strong>${num(Math.abs(r.gDiff))} MWh</strong>. Claim likely available.`}</div></div></div></div>` : ''}${leaseAssessment}</div>`, 'text-blue-700', '📊')}
+                        C(o === "lease" ? "Production & Guarantee" : "Production Analysis", "Comprehensive analysis of actual output against contract estimates and guarantees.", `<div class="space-y-4"><div><h4 class="text-xs font-bold text-slate-400 uppercase mb-2">Performance vs Estimate</h4>${R("Contract Estimate", num(r.estLifeMwh), "MWh", "Original sales projection")}${R("Actual Production", num(r.act), "MWh", "Metered lifetime output")}<div class="mt-2 p-3 bg-slate-50 rounded border border-slate-100"><div class="flex justify-between items-center mb-1"><span class="text-xs font-bold text-slate-500 uppercase">Variance</span><span class="font-bold ${(r.act - r.estLifeMwh) >= 0 ? 'text-green-600' : 'text-amber-500'}">${(r.act - r.estLifeMwh) >= 0 ? '+' : ''}${num(r.act - r.estLifeMwh)} MWh</span></div><div class="w-full bg-slate-200 h-2 rounded-full overflow-hidden"><div class="h-full ${(r.act - r.estLifeMwh) >= 0 ? 'bg-green-500' : 'bg-amber-500'}" style="width: ${Math.min(100, (r.act / r.estLifeMwh) * 100)}%"></div></div><div class="text-right text-xs font-bold mt-1 ${(r.act - r.estLifeMwh) >= 0 ? 'text-green-600' : 'text-amber-500'}">${((r.act / r.estLifeMwh) * 100).toFixed(1)}% of Estimate</div></div></div>${r.guaL > 0 ? `<div class="border-t border-slate-100 pt-4"><h4 class="text-xs font-bold text-slate-400 uppercase mb-2">Contract Guarantee Status</h4>${R(o === 'lease' ? 'Guaranteed Min' : 'Contract Est. kWh', num(r.guaL), "MWh", "Minimum contractual floor")}<div class="flex items-center gap-3 mt-3 p-3 rounded-lg border-2 ${r.gDiff >= 0 ? 'bg-green-50 border-green-200' : 'bg-red-50 border-red-200'}"><div class="text-2xl">${r.gDiff >= 0 ? '✅' : '⚠️'}</div><div class="flex-1"><div class="text-sm font-black uppercase ${r.gDiff >= 0 ? 'text-green-800' : 'text-red-800'}">${r.gDiff >= 0 ? 'PASSING' : 'FAILING'}</div><div class="text-xs text-slate-600">${r.gDiff >= 0 ? `Exceeds guarantee by <strong>${num(r.gDiff)} MWh</strong>` : `Underperforming by <strong>${num(Math.abs(r.gDiff))} MWh</strong>. Claim likely available.`}</div></div></div></div>` : ''}${leaseAssessment}</div>`, 'text-blue-700', '📊')}
                         ${o === "owned" ? C("Est. Utility Savings", "The estimated financial value of the energy produced, calculated against current utility rates.", `<div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4 border-b pb-4"><div><p class="text-xs font-bold text-slate-400">Future Savings</p><p class="text-lg font-black">${cur(r.futSav)}</p><p class="text-xs text-slate-400">Value of energy offset</p></div><div><p class="text-xs font-bold text-slate-400">Total Lifetime</p><p class="text-lg font-black">${cur(r.totSav)}</p><p class="text-xs text-slate-400">25-year cumulative savings</p></div></div><div class="space-y-2 border-b pb-4 mb-2"><div class="flex justify-between"><span class="font-bold text-sm text-slate-600">Current Year Annual</span><span class="font-bold text-green-700">${cur(r.actSav)}</span></div><p class="text-xs text-slate-400 text-right -mt-1 mb-2">This year's benefit</p><div class="flex justify-between"><span class="font-bold text-sm text-slate-600">Current Monthly Average</span><span class="font-bold text-slate-700">${cur(r.actSav / 12)}</span></div><p class="text-xs text-slate-400 text-right -mt-1">Avg monthly bill offset</p></div><div class="pt-2">${r.loss > 0 ? `<div class="flex justify-between items-baseline"><span class="text-xs font-bold text-slate-400 uppercase">Potential Annual Savings (If Refurbished)</span><span class="font-bold text-green-600">${cur(r.potSav)}</span></div><div class="mt-2 bg-red-50 text-red-800 p-2 rounded text-xs text-center border border-red-100"><strong>Estimated Annual Loss: -${cur(r.loss)}</strong><br/><span class="opacity-80 font-medium">Financial value lost due to current efficiency issues.</span></div>` : `<div class="mt-2 bg-green-50 text-green-800 p-2 rounded text-xs text-center border border-green-100"><strong><i class="fas fa-check-circle mr-1"></i> System Performing Optimally</strong><br/><span class="opacity-80 font-medium">Actual output exceeds modeled expectations. No refurbishment required.</span></div>`}</div>`, 'text-green-700', '💰') : C("Est. Utility Savings", "Calculates the financial value of the solar energy produced, comparing current monthly averages to total lifetime savings.", `<div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4 border-b pb-4"><div><p class="text-xs font-bold text-slate-400">Future Savings</p><p class="text-lg font-black">${cur(r.futSav)}</p><p class="text-xs text-slate-400">Value of energy offset</p></div><div><p class="text-xs font-bold text-slate-400">Total Lifetime</p><p class="text-lg font-black">${cur(r.totSav)}</p><p class="text-xs text-slate-400">${te}-year contract savings</p></div></div><div class="space-y-2 border-b pb-4 mb-2"><div class="flex justify-between"><span class="font-bold text-sm text-slate-600">Current Year Annual</span><span class="font-bold text-green-700">${cur(r.actSav)}</span></div><p class="text-xs text-slate-400 text-right -mt-1 mb-2">This year's benefit</p><div class="flex justify-between"><span class="font-bold text-sm text-slate-600">Current Monthly Avg</span><span class="font-bold text-slate-700">${cur(r.actSav / 12)}</span></div><p class="text-xs text-slate-400 text-right -mt-1">Avg monthly bill offset</p></div><div class="pt-2">${r.loss > 0 ? `<div class="flex justify-between items-baseline"><span class="text-xs font-bold text-slate-400 uppercase">Potential Annual Value</span><span class="font-bold text-green-600">${cur(r.potSav)}</span></div><div class="mt-2 bg-red-50 text-red-800 p-2 rounded text-xs text-center border border-red-100"><strong>Unrealized Value: -${cur(r.loss)}</strong><br/><span class="opacity-80 font-medium">Value lost due to underperformance. May support a performance claim.</span></div>` : `<div class="mt-2 bg-green-50 text-green-800 p-2 rounded text-xs text-center border border-green-100"><strong><i class="fas fa-check-circle mr-1"></i> System Performing Optimally</strong><br/><span class="opacity-80 font-medium">Actual output exceeds modeled expectations.</span></div>`}</div>`, 'text-green-700', '💰')}
                         ${o === "owned" ? C("Warranty & Health", "Estimates the remaining life of critical hardware like inverters and batteries. 'Risk' indicates the component is nearing the end of its typical lifespan.", `<div class="space-y-4"><div><div class="flex justify-between text-sm mb-1 font-bold"><span class="text-slate-600">${it === 'micro' ? 'Microinverters' : 'String Inverter'}</span><span class="${r.age < (it === 'string' ? 8 : 20) ? 'text-green-600' : 'text-orange-600'}">${r.age < (it === 'string' ? 8 : 20) ? 'Good' : 'Expiring'}</span></div><div class="w-full bg-slate-100 h-2 rounded-full"><div class="h-2 rounded-full ${r.age < (it === 'string' ? 8 : 20) ? 'bg-green-500' : 'bg-orange-500'}" style="width:${Math.min(r.age / (it === 'string' ? 15 : 30) * 100, 100)}%"></div></div></div><div><div class="flex justify-between text-sm mb-1 font-bold"><span class="text-slate-600">Solar Panel</span><span class="${r.pr >= 0.9 ? 'text-blue-600' : 'text-orange-600'}">${r.pr >= 0.9 ? 'Good' : 'Fair'}</span></div><div class="w-full bg-slate-100 h-2 rounded-full relative"><div class="absolute h-full w-0.5 bg-slate-300 left-[80%]"></div><div class="bg-blue-500 h-2 rounded-full" style="width:${((100 - (r.age * 0.5)) * r.pr)}%"></div></div></div>${b > 0 ? `<div><div class="flex justify-between text-sm mb-1 font-bold"><span class="text-slate-600">Battery (10 Years)</span><span class="${r.age < 10 ? 'text-green-600' : 'text-red-500'}">${r.age < 10 ? 'Good' : 'Replace'}</span></div><div class="w-full bg-slate-100 h-2 rounded-full"><div class="h-2 rounded-full ${r.age < 10 ? 'bg-green-500' : 'bg-red-500'}" style="width:${Math.min(r.age / 10 * 100, 100)}%"></div></div></div>` : ''}</div>`, `text-slate-700`, '🛡️') : C("TPO Lifetime Costs", "The sum of all remaining monthly payments for the duration of the contract, accounting for the annual price increase (escalator).", `<div class="flex justify-between items-end border-b pb-2 mb-2"><div><p class="text-xs font-bold text-slate-400">Total Cost</p><p class="text-2xl font-black">${cur(r.tCost)}</p><p class="text-xs text-slate-400">Sum of all payments (${te} Year Term)</p></div><div class="text-right"><p class="text-xs font-bold text-slate-400">Escalator</p><p class="text-xl font-bold text-red-600">${tEs}%</p><p class="text-xs text-slate-400">Annual price hike</p></div></div><div class="bg-slate-50 rounded text-sm"><div class="grid grid-cols-3 p-2 font-bold text-slate-500 border-b"><span>Period</span><span class="text-center">Monthly Payment</span><span class="text-right">Rate ($/kWh)</span></div><div class="grid grid-cols-3 p-2 border-b"><span>Year 1</span><span class="text-center">${cur(r.pY1)}</span><span class="text-right text-slate-400">$${r.rY1.toFixed(3)}</span></div><div class="grid grid-cols-3 p-2 bg-blue-50 text-blue-800 font-bold border-b"><span>Current</span><span class="text-center">${cur(r.pYC)}</span><span class="text-right">$${r.rYC.toFixed(3)}</span></div><div class="grid grid-cols-3 p-2 text-slate-500"><span>End (${new Date(iDt).getFullYear() + te})</span><span class="text-center">${cur(r.pYL)}</span><span class="text-right">$${r.rYL.toFixed(3)}</span></div></div>`, `text-slate-700`, '📄')}
                     </div>` : ''}
