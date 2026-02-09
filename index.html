@@ -1,7 +1,7 @@
 <!-- 
 ================================================================================
 PROJECT CONTEXT: SolarCheck Professional
-Current Version: v7.83
+Current Version: v7.84
 Date: February 2026
 Architecture: Single-File HTML5 Web Application (Vanilla JS + Tailwind CSS)
 ================================================================================
@@ -54,20 +54,15 @@ Architecture: Single-File HTML5 Web Application (Vanilla JS + Tailwind CSS)
       - TPO Strategy: Splits Income Value into "Contract Term" (Years 0-End) and "Residual" (Years End+).
       - Headline FMV for TPO defaults to Contract Term Value only (negotiation anchor).
       - Cost: Replacement cost ($/Watt) minus depreciation.
+      - Update v7.84: Both approaches deduct "Est. Repair Cost" (rp) defined in Inputs.
    D. Buyback Deal Engine (Reverse Valuation):
       - Calculates "Investment Value" for a Sale-Leaseback scenario.
       - Formula: NPV of (Lease Revenue - OpEx - Future Inverter CapEx) @ Target IRR.
       - Automatically schedules Inverter Replacement based on hardware type (String=12y, Micro=25y).
-      - Logic Update v7.77:
-        - Self-Insured Maintenance Model: Replaced generic warranty assumptions with specific
-          failure rate calculations for DPE (Distributed Power Electronics) and Panels.
-        - Assumption: 0.5% failure rate for micros/optimizers, 0.05% for panels.
-        - Direct Replacement Strategy: Prioritizes 1-truck-roll fix ($450-$600) over warranty claim (2 rolls).
-      - Logic Update v7.79:
-        - Added "Deal Viability Assessment" (Go/No-Go Logic).
-        - Flags "Toxic Assets" (Age > 15, Negative Profit, High Repairs).
-      - Tracks Aggregate Financials: Total Revenue, OpEx, CapEx, Net Cash Flow, MOIC.
-      - Tracks Homeowner Financials: Monthly Payment, Total Cost, Monthly/Lifetime Savings.
+      - Logic Update v7.77: Self-Insured Maintenance Model (DPE & Panel failure rates).
+      - Logic Update v7.84: 
+        - Deducts "Est. Repair Cost" (rp) from the Cash Offer.
+        - Offer = NPV - Comms Retrofit - Repairs.
 
 5. REPORTING SYSTEM
    - Solar Asset Report: Educational, for homeowners. Visual health bars.
@@ -81,7 +76,7 @@ Architecture: Single-File HTML5 Web Application (Vanilla JS + Tailwind CSS)
 7. AI SESSION PROTOCOL (MANDATORY)
    1. DO NOT REWRITE FROM SCRATCH. Always modify this existing file.
    2. VERSION CONTROL: You MUST increment the version number in the <title> tag 
-      and the visual header (e.g. v7.82 -> v7.83) with EVERY code change.
+      and the visual header (e.g. v7.83 -> v7.84) with EVERY code change.
    3. UPDATE CONTEXT: You MUST update the 'PROJECT CONTEXT' section at the top 
       and the visual header with EVERY code change.
    4. PRESERVE LOGIC: Do not simplify the complex math in the calculate() function.
@@ -93,7 +88,7 @@ Architecture: Single-File HTML5 Web Application (Vanilla JS + Tailwind CSS)
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SolarCheck Professional v7.83</title>
+    <title>SolarCheck Professional v7.84</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
@@ -371,8 +366,9 @@ Architecture: Single-File HTML5 Web Application (Vanilla JS + Tailwind CSS)
         // v7.73: Added Comms Retrofit & Performance Guarantee Logic
         // v7.74: Added Matrix Generation (Year-by-Year Guarantee)
         // v7.77: Self-Insured Maintenance Model (Direct Replacement vs Warranty)
+        // v7.84: Deduct "Est. Repairs" (rp) from Max Cash Offer
         function calculateBuyback(sizeKw, currentAge, currentAnnualProd, invType, blendedUtilityRate, utilityEscalator) {
-            const { bb_rate, bb_term, bb_irr, bb_opex, bb_capex, cellMon, invBrand, invCount, pC } = window.state;
+            const { bb_rate, bb_term, bb_irr, bb_opex, bb_capex, cellMon, invBrand, invCount, pC, rp } = window.state;
             let offerSum = 0;
             let schedule = [];
             
@@ -485,8 +481,9 @@ Architecture: Single-File HTML5 Web Application (Vanilla JS + Tailwind CSS)
                 utilRateCursor *= (1 + (utilityEscalator / 100)); 
             }
             
-            // Subtract initial retrofit from the purchase offer max
-            window.state.bb_offer = Math.max(0, offerSum - initialCapex);
+            // v7.84: Deduct "Est. Repairs ($)" from the cash offer
+            // Logic: Offer = NPV - Comms Retrofit - Immediate Repair Bill
+            window.state.bb_offer = Math.max(0, offerSum - initialCapex - (rp || 0));
             window.state.bb_schedule = schedule;
             
             // v7.73: Performance Guarantee (90% of Year 1 Est)
@@ -680,7 +677,7 @@ Architecture: Single-File HTML5 Web Application (Vanilla JS + Tailwind CSS)
                 </div>
                 <div class="text-center text-xs text-slate-500 mt-8 max-w-2xl mx-auto">
                     ${disclaimer}
-                    <p>Generated by SolarCheck Professional v7.83 | ${new Date().toLocaleDateString()}</p>
+                    <p>Generated by SolarCheck Professional v7.84 | ${new Date().toLocaleDateString()}</p>
                 </div>
             </div>`;
         }
@@ -1031,7 +1028,7 @@ Architecture: Single-File HTML5 Web Application (Vanilla JS + Tailwind CSS)
             let html = `
             <div class="min-h-screen bg-slate-50 font-sans pb-10">
                 <div class="bg-[#005088] text-white p-4 sticky top-0 z-50 flex justify-between items-center shadow-md no-print">
-                    <div class="flex items-center gap-3"><span class="text-3xl"><i class="fas fa-sun text-yellow-400"></i></span><div><h1 class="font-bold leading-tight text-xl sm:text-2xl">SolarCheck</h1><p class="text-sm opacity-90 font-medium">Pro v7.83</p></div></div>
+                    <div class="flex items-center gap-3"><span class="text-3xl"><i class="fas fa-sun text-yellow-400"></i></span><div><h1 class="font-bold leading-tight text-xl sm:text-2xl">SolarCheck</h1><p class="text-sm opacity-90 font-medium">Pro v7.84</p></div></div>
                     <div class="flex gap-2">
                          <button onclick="openModal('print-modal')" class="bg-yellow-400 hover:bg-yellow-300 text-black px-4 py-2 rounded-lg font-bold text-sm sm:text-base shadow transition-colors flex items-center gap-2"><i class="fas fa-file-pdf"></i> Reports</button>
                          <button onclick="window.open(window.location.href, '_blank')" class="bg-indigo-500 hover:bg-indigo-400 text-white px-4 py-2 rounded-lg font-bold text-sm sm:text-base shadow transition-colors flex items-center gap-2" title="Open Full Screen"><i class="fas fa-expand"></i></button>
@@ -1089,6 +1086,15 @@ Architecture: Single-File HTML5 Web Application (Vanilla JS + Tailwind CSS)
                                     ${S("Cellular Monitoring", cellMon, "cellMon", [{v:'yes', l:'Active (4G/5G)'}, {v:'no', l:'Inactive / 3G / None'}], "Is remote monitoring working?")}
                                 </div>
                                 ${b > 0 && r ? `<div class="text-sm bg-indigo-100 text-indigo-900 p-2 rounded mt-2 font-medium text-center"><strong>Usable:</strong> ${r.usableBat.toFixed(1)} kWh | <strong>Efficiency Boost:</strong> +${r.batBoost.toFixed(1)}%</div>` : ''}
+                            </div>
+
+                            <!-- v7.84: Condition & Repairs -->
+                            <div class="pt-4 border-t border-indigo-200 mt-4">
+                                <h5 class="text-xs font-bold text-indigo-800 uppercase mb-2">Condition & Repairs</h5>
+                                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                    ${I("Est. Repair Cost ($)", rp, "rp", "number", "Cost to restore system to optimal condition.", "100")}
+                                </div>
+                                <p class="text-xs text-indigo-600 mt-2 italic">This amount will be deducted from the Valuation and Buyback Offer.</p>
                             </div>
                         </div>
 
@@ -1181,7 +1187,7 @@ Architecture: Single-File HTML5 Web Application (Vanilla JS + Tailwind CSS)
                         ${C("System Profile", "A snapshot of the system's physical capacity (kW), current age, and the estimated energy it will produce over the next year.", `<div class="grid grid-cols-1 ${remTerm ? 'sm:grid-cols-3' : 'sm:grid-cols-2'} gap-6 pt-2"><div><p class="text-sm uppercase text-slate-600 font-bold">Rated Size</p><p class="text-4xl font-black text-blue-800">${sz.toFixed(2)} kW</p><p class="text-sm text-slate-500">Total DC Power</p></div><div class="border-l pl-6"><p class="text-sm uppercase text-slate-600 font-bold">Age</p><p class="text-4xl font-black text-blue-800">${r.age.toFixed(1)} <span class="text-lg font-normal text-slate-600">Years</span></p><p class="text-sm text-slate-500">Years since install</p></div>${remTerm ? `<div class="border-l pl-6"><p class="text-sm uppercase text-slate-600 font-bold">Remaining</p><p class="text-4xl font-black text-indigo-600">${remTerm} <span class="text-lg font-normal text-slate-600">Years</span></p><p class="text-sm text-slate-500">Left on Agreement</p></div>` : ''}<div class="col-span-1 ${remTerm ? 'sm:col-span-3' : 'sm:col-span-2'} border-t pt-4 grid grid-cols-1 sm:grid-cols-2 gap-6"><div><p class="text-sm text-slate-600">Est. Next 12 Months</p><p class="text-3xl font-bold text-slate-800">${num(r.estN12 / 1000)} MWh</p><p class="text-sm text-slate-500">Forecasted output</p></div><div class="sm:border-l sm:pl-6"><p class="text-sm text-slate-600">Est. Daily Average</p><p class="text-3xl font-bold text-slate-800">${r.estDay.toFixed(1)} kWh</p><p class="text-sm text-slate-500">Average daily yield</p></div></div><div class="col-span-1 ${remTerm ? 'sm:col-span-3' : 'sm:col-span-2'} mt-4 bg-slate-50 p-3 rounded text-sm flex justify-between items-center"><div><span class="font-bold text-slate-600 uppercase text-xs">Degradation Factor</span><br/><span class="text-slate-500">Capacity loss due to age</span></div><div class="text-right"><span class="font-bold text-red-600">-${r.degPercent.toFixed(1)}%</span><br/><span class="text-xs text-slate-400">Max potential: ${num(r.curProd / 1000)} MWh</span></div></div></div>`, 'text-blue-800', 'h-full')}
                         ${o === "owned" ? C("Performance Summary", "Compares the actual lifetime production against the expected output for a system of this specific age, accounting for normal degradation.", `<div class="mb-6 mt-2"><div class="flex justify-between text-sm font-bold mb-3"><span class="${r.pr >= 0.9 ? "text-green-700" : "text-red-700"}">${r.pr >= 0.9 ? "OPTIMIZED" : "UNDERPERFORMING"}</span></div><div class="relative w-full"><div class="absolute bottom-full left-[90%] -translate-x-1/2 mb-1 text-[10px] font-bold text-slate-500 whitespace-nowrap">Goal: 90%</div><div class="w-full bg-slate-100 h-4 rounded-full overflow-hidden relative"><div class="absolute h-full w-0.5 bg-slate-400 left-[90%] z-10"></div><div class="h-full ${r.pr >= 0.9 ? 'bg-green-500' : 'bg-red-500'}" style="width:${Math.min(r.pr * 100, 100)}%"></div></div></div></div>${R("Actual (Lifetime)", num(r.act), "MWh", "Total MWh generated")}${R("Expected (Lifetime)", num(r.physLifeMwh), "MWh", "Modeled target MWh")}<div class="border-t mt-4 pt-3 flex justify-between items-center"><span class="font-bold text-lg text-slate-800">Performance Ratio</span><span class="text-3xl font-black ${r.pr >= 0.9 ? 'text-green-600' : 'text-red-600'}">${per(r.pr)}</span></div><p class="text-sm text-slate-500 text-right font-medium">Efficiency vs Expected</p>`, r.pr >= 0.9 ? "text-green-700" : "text-red-700", 'h-full') : 
                         C(o === "lease" ? "Production & Guarantee" : "Production Analysis", "Comprehensive analysis of actual output against contract estimates and guarantees.", `<div class="space-y-6"><div><h4 class="text-sm font-bold text-slate-500 uppercase mb-3">Performance vs Estimate</h4>${R("Contract Estimate", num(r.estLifeMwh), "MWh", "Original sales projection")}${R("Actual Production", num(r.act), "MWh", "Metered lifetime output")}<div class="mt-3 p-4 bg-slate-50 rounded border border-slate-200"><div class="flex justify-between items-center mb-2"><span class="text-sm font-bold text-slate-600 uppercase">Variance</span><span class="font-bold text-lg ${(r.act - r.estLifeMwh) >= 0 ? 'text-green-700' : 'text-amber-600'}">${(r.act - r.estLifeMwh) >= 0 ? '+' : ''}${num(r.act - r.estLifeMwh)} MWh</span></div><div class="w-full bg-slate-200 h-3 rounded-full overflow-hidden"><div class="h-full ${(r.act - r.estLifeMwh) >= 0 ? 'bg-green-500' : 'bg-amber-500'}" style="width: ${Math.min(100, (r.act / r.estLifeMwh) * 100)}%"></div></div><div class="text-right text-sm font-bold mt-2 ${(r.act - r.estLifeMwh) >= 0 ? 'text-green-700' : 'text-amber-600'}">${((r.act / r.estLifeMwh) * 100).toFixed(1)}% of Estimate</div></div></div>${r.guaL > 0 ? `<div class="border-t border-slate-200 pt-5"><h4 class="text-sm font-bold text-slate-500 uppercase mb-3">Contract Guarantee Status</h4>${R(o === 'lease' ? 'Guaranteed Min' : 'Contract Est. kWh', num(r.guaL), "MWh", "Minimum contractual floor")}<div class="flex items-center gap-4 mt-4 p-4 rounded-lg border-2 ${r.gDiff >= 0 ? 'bg-green-50 border-green-200' : 'bg-red-50 border-red-200'}"><div class="text-3xl">${r.gDiff >= 0 ? '✅' : '⚠️'}</div><div class="flex-1"><div class="text-base font-black uppercase ${r.gDiff >= 0 ? 'text-green-900' : 'text-red-900'}">${r.gDiff >= 0 ? 'PASSING' : 'FAILING'}</div><div class="text-sm text-slate-700 font-medium">${r.gDiff >= 0 ? `Exceeds guarantee by <strong>${num(r.gDiff)} MWh</strong>` : `Underperforming by <strong>${num(Math.abs(r.gDiff))} MWh</strong>. Claim likely available.`}</div></div></div></div>` : ''}${leaseAssessment}</div>`, 'text-blue-800', 'h-full', '📊')}
-                        ${o === "owned" ? C("Est. Utility Savings", "The estimated financial value of the energy produced, calculated against current utility rates.", `<div class="grid grid-cols-1 sm:grid-cols-2 gap-6 mb-6 border-b pb-6"><div><p class="text-sm font-bold text-slate-500">Future Savings</p><p class="text-2xl font-black text-slate-800">${cur(r.futSav)}</p><p class="text-sm text-slate-500 font-medium">Value of energy offset</p></div><div><p class="text-sm font-bold text-slate-500">Total Lifetime</p><p class="text-2xl font-black text-slate-700">${cur(r.totSav)}</p><p class="text-sm text-slate-500 font-medium">${te}-year contract savings</p></div></div><div class="space-y-3 border-b pb-6 mb-3"><div class="flex justify-between"><span class="font-bold text-base text-slate-700">Current Year Annual</span><span class="font-bold text-xl text-green-700">${cur(r.actSav)}</span></div><p class="text-sm text-slate-500 text-right -mt-2 mb-3 font-medium">This year's benefit</p><div class="flex justify-between"><span class="font-bold text-base text-slate-700">Current Monthly Avg</span><span class="font-bold text-xl text-slate-800">${cur(r.actSav / 12)}</span></div><p class="text-sm text-slate-500 text-right -mt-2 font-medium">Avg monthly bill offset</p></div><div class="pt-3">
+                        ${o === "owned" ? C("Est. Utility Savings", "The estimated financial value of the energy produced, calculated against current utility rates.", `<div class="grid grid-cols-1 sm:grid-cols-2 gap-6 mb-6 border-b pb-6"><div><p class="text-sm font-bold text-slate-500">Future Savings</p><p class="text-2xl font-black text-slate-800">${cur(r.futSav)}</p><p class="text-sm text-slate-500 font-medium">Value of energy offset</p></div><div><p class="text-sm font-bold text-slate-500">Total Lifetime</p><p class="text-2xl font-black text-slate-800">${cur(r.totSav)}</p><p class="text-sm text-slate-500 font-medium">${te}-year contract savings</p></div></div><div class="space-y-3 border-b pb-6 mb-3"><div class="flex justify-between"><span class="font-bold text-base text-slate-700">Current Year Annual</span><span class="font-bold text-xl text-green-700">${cur(r.actSav)}</span></div><p class="text-sm text-slate-500 text-right -mt-2 mb-3 font-medium">This year's benefit</p><div class="flex justify-between"><span class="font-bold text-base text-slate-700">Current Monthly Avg</span><span class="font-bold text-xl text-slate-800">${cur(r.actSav / 12)}</span></div><p class="text-sm text-slate-500 text-right -mt-2 font-medium">Avg monthly bill offset</p></div><div class="pt-3">
                         ${(r.loss > lossThreshold && (o === 'owned' || r.act < r.estLifeMwh)) ? 
                         `<div class="mt-3 bg-red-50 text-red-900 p-3 rounded text-sm text-center border border-red-100"><strong>Est. Annual Loss: -${cur(r.loss)}</strong><br/><span class="opacity-90">Value lost due to significant underperformance. May support a performance claim.</span></div>` : 
                         (r.loss > 0 && (o === 'owned' || r.act < r.estLifeMwh)) ? 
@@ -1206,7 +1212,6 @@ Architecture: Single-File HTML5 Web Application (Vanilla JS + Tailwind CSS)
                              <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                  ${Idark("Discount Rate (%)", dr, "dr", "number", "Risk-adjusted discount rate for future cash flows.")}
                                  ${Idark("Utility Escalation (%)", e, "e", "number", "Estimated annual increase in utility electricity rates.")}
-                                 ${Idark("Est. Repairs ($)", rp, "rp", "number", "Estimated cost to repair or replace broken components.", "100")}
                                  ${Idark("Replacement Cost ($/W)", rC, "rC", "number", "Current market cost to install a new system ($/Watt).", "0.1")}
                                  ${Idark("Useful Life (Years)", l, "l", "number", "Total operational life. Industry Std: 25-30y. (Note: TPOs often claim 35y to inflate value).")}
                                  ${Sdark("Export / NEM Policy", ne, "ne", [{v:1.0, l:"Full Retail Credit (NEM 1.0/2.0)"}, {v:0.8, l:"High Export Rate ($0.15+)"}, {v:0.5, l:"Reduced Rate (NEM 3.0)"}, {v:0.2, l:"Wholesale Rate (<$0.05)"}, {v:0.0, l:"No Export Credit"}], "How the utility credits surplus energy.")}
