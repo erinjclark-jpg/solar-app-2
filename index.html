@@ -1,7 +1,7 @@
 <!-- 
 ================================================================================
 PROJECT CONTEXT: SolarCheck Professional
-Current Version: v7.88
+Current Version: v7.90
 Date: February 2026
 Architecture: Single-File HTML5 Web Application (Vanilla JS + Tailwind CSS)
 ================================================================================
@@ -68,7 +68,7 @@ Architecture: Single-File HTML5 Web Application (Vanilla JS + Tailwind CSS)
    - Solar Asset Report: Educational, for homeowners. Visual health bars.
    - Appraisal/FMV Report: Professional, for lenders/agents. USPAP-style.
    - Deal Sheet: Summary of the Buyback Offer (Cash Now + Fixed Rate).
-   - Realtor/Buyer Guide (v7.86): Marketing tool to explain TPO benefits and net monthly savings.
+   - Realtor/Buyer Guide (v7.90): Marketing tool to explain TPO benefits and net monthly savings.
 
 6. VISUAL STANDARDS
    - Timelines: Panels (25y), String Inverter (12y), Microinverter (25y), Battery (10y).
@@ -89,7 +89,7 @@ Architecture: Single-File HTML5 Web Application (Vanilla JS + Tailwind CSS)
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SolarCheck Professional v7.88</title>
+    <title>SolarCheck Professional v7.90</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
@@ -274,16 +274,21 @@ Architecture: Single-File HTML5 Web Application (Vanilla JS + Tailwind CSS)
             const eN = cP * pr; 
             const eD = eN / 365;
 
+            // v7.89: Prepaid Logic for Costs
+            // If agreement is prepaid, monthly payment (pa) is effectively 0 for future cost calcs
+            const isPrepaid = o && o.includes('prepaid');
+            const effPa = isPrepaid ? 0 : pa;
+
             let tEt = 0, tGt = 0; const fY = Math.floor(age);
             for (let i = 0; i < fY; i++) { const d = 1 - (i * DEG_RATE); tEt += tE * d; tGt += tG * d; }
             const par = age - fY; const pDm = 1 - (fY * DEG_RATE); tEt += tE * pDm * par; tGt += tG * pDm * par;
             const gD = (aK / 1000) - (tGt / 1000); const nYg = tG * (1 - (Math.floor(age) * DEG_RATE)); const nYV = (eN / 1000) - (nYg / 1000);
 
-            let tCt = 0, aP = pa * 12;
+            let tCt = 0, aP = effPa * 12;
             for (let i = 0; i < te; i++) { tCt += aP; aP *= (1 + (tEs / 100)); }
 
             let remCost = 0;
-            let payCursor = pa * 12; 
+            let payCursor = effPa * 12; 
             for(let i=0; i<te; i++) {
                 if(i >= age) {
                     remCost += payCursor;
@@ -309,17 +314,17 @@ Architecture: Single-File HTML5 Web Application (Vanilla JS + Tailwind CSS)
             }
             const tS = pSav + fSa;
             const iC = Math.floor(age); const iL = te - 1;
-            const pYC = pa * Math.pow(1 + (tEs / 100), iC); const rYC = (tE * (1 - (iC * DEG_RATE))) > 0 ? (pYC * 12) / (tE * (1 - (iC * DEG_RATE))) : 0;
-            const pYL = pa * Math.pow(1 + (tEs / 100), iL); const rYL = (tE * (1 - (iL * DEG_RATE))) > 0 ? (pYL * 12) / (tE * (1 - (iL * DEG_RATE))) : 0;
+            const pYC = effPa * Math.pow(1 + (tEs / 100), iC); const rYC = (tE * (1 - (iC * DEG_RATE))) > 0 ? (pYC * 12) / (tE * (1 - (iC * DEG_RATE))) : 0;
+            const pYL = effPa * Math.pow(1 + (tEs / 100), iL); const rYL = (tE * (1 - (iL * DEG_RATE))) > 0 ? (pYL * 12) / (tE * (1 - (iL * DEG_RATE))) : 0;
 
-            const paS = Math.max(0, pa - (paB || 0)); 
+            const paS = Math.max(0, effPa - (paB || 0)); 
             
             const usableBat = Math.max(0, b * (1 - (br / 100)));
             const batBoost = scr - 60; 
 
             window.state.r = {
                 age, sz: s, act: ac, estL: tEt / 1000, guaL: tGt / 1000, pr, gDiff: gD, potSav: pS, actSav: aS, loss, curProd: cP, estN12: eN, estDay: eD,
-                nYG: nYg, nYV, tCost: tCt, remCost: remCost, futSav: fSa, totSav: tS, pY1: pa, rY1: tE > 0 ? (paS * 12) / tE : 0, pYC, rYC, pYL, rYL, fTe, fTg,
+                nYG: nYg, nYV, tCost: tCt, remCost: remCost, futSav: fSa, totSav: tS, pY1: effPa, rY1: tE > 0 ? (paS * 12) / tE : 0, pYC, rYC, pYL, rYL, fTe, fTg,
                 estLifeKwh: tEt / 1000, estLifeMwh: tEt / 1000, guarLifeMwh: tGt / 1000, physLifeMwh: eL / 1000, paB, paS,
                 usableBat, batBoost, degPercent // v7.70 added degPercent
             };
@@ -350,7 +355,11 @@ Architecture: Single-File HTML5 Web Application (Vanilla JS + Tailwind CSS)
             }
             const iV = Math.max(0, dcf - (rp === "" ? 0 : parseFloat(rp))); const fC = cV + (b > 0 ? 1500 : 0) - (rp === "" ? 0 : parseFloat(rp));
             
-            let effectiveInc = (o === 'lease' || o === 'ppa') ? dcfContract : dcf;
+            // v7.89: Prepaid Logic for Valuation
+            // If prepaid, "Contract Term Value" (dcfContract) is effectively realized by the homeowner
+            // because there are no payments. So it behaves like ownership for the income approach.
+            let effectiveInc = (isPrepaid || o === 'owned') ? dcf : dcfContract;
+            
             effectiveInc = Math.max(0, effectiveInc - (rp === "" ? 0 : parseFloat(rp)));
 
             const fI = effectiveInc + (b > 0 ? 1500 : 0); 
@@ -552,10 +561,14 @@ Architecture: Single-File HTML5 Web Application (Vanilla JS + Tailwind CSS)
             reportView.innerHTML = `<div class="flex flex-col items-center justify-center min-h-screen text-indigo-600"><i class="fas fa-circle-notch fa-spin text-5xl mb-4"></i><h2 class="text-2xl font-bold">Generating Report...</h2><p class="text-slate-500 mt-2">Preparing PDF Layout...</p></div>`;
             window.scrollTo(0, 0);
 
+            // v7.89: Updated isPrepaid check for reports
+            const isPrepaid = window.state.o && window.state.o.includes('prepaid');
+            const effPa = isPrepaid ? 0 : window.state.pa;
+
             const inputs = {
                 systemSize: window.state.sz, totalCost: window.state.rC * window.state.sz * 1000, annualSavings: window.state.r.actSav,
                 age: window.state.r.age, totalLifetimeSavings: window.state.aR.inc, performanceRatio: window.state.r.pr,
-                fairMarketValue: window.state.aR.val, tpoMonthlyPayment: window.state.pa, tpoEscalator: window.state.tEs,
+                fairMarketValue: window.state.aR.val, tpoMonthlyPayment: effPa, tpoEscalator: window.state.tEs,
                 tpoGuaranteeMWh: window.state.r.guaL, tpoActualMWh: window.state.r.act, address: window.state.a,
                 installDate: window.state.iDt, rC: window.state.rC, dr: window.state.dr, rp: window.state.rp, aR: window.state.aR,
                 r: window.state.r, battery: window.state.b, utilityRate: window.state.ut, inverterType: window.state.it,
@@ -570,7 +583,7 @@ Architecture: Single-File HTML5 Web Application (Vanilla JS + Tailwind CSS)
             if (type === 'val') {
                 finalContent = generateFMVReport(inputs);
             } else if (type === 'realtor') {
-                finalContent = generateRealtorReport(inputs); // v7.86 New Function
+                finalContent = generateRealtorReport(inputs); 
             } else {
                 finalContent = generateEducationalReport(inputs);
             }
@@ -680,7 +693,7 @@ Architecture: Single-File HTML5 Web Application (Vanilla JS + Tailwind CSS)
                 </div>
                 <div class="text-center text-xs text-slate-500 mt-8 max-w-2xl mx-auto">
                     ${disclaimer}
-                    <p>Generated by SolarCheck Professional v7.88 | ${new Date().toLocaleDateString()}</p>
+                    <p>Generated by SolarCheck Professional v7.90 | ${new Date().toLocaleDateString()}</p>
                 </div>
             </div>`;
         }
@@ -689,7 +702,9 @@ Architecture: Single-File HTML5 Web Application (Vanilla JS + Tailwind CSS)
         function generateRealtorReport(inputs) {
             const { annualSavings, tpoMonthlyPayment, o, tpoEscalator, r, address, systemSize, battery } = inputs;
             const comp = COMPANIES[window.state.company] || COMPANIES['rsr'];
-            const isTPO = (o === 'lease' || o === 'ppa');
+            
+            // v7.89 Update: Include prepaid in isTPO
+            const isTPO = ['lease', 'ppa', 'prepaid_lease', 'prepaid_ppa'].includes(o);
             
             // Financials
             // "Annual Savings" in inputs comes from 'r.actSav', which is the calculated value of energy produced.
@@ -718,6 +733,30 @@ Architecture: Single-File HTML5 Web Application (Vanilla JS + Tailwind CSS)
                     <p class="text-xl text-orange-800 font-medium">Why this solar home is a smart investment</p>
                     <div class="mt-4 pt-4 border-t border-orange-200">
                         <p class="font-bold text-slate-700 text-lg">${address || "Property Address"}</p>
+                    </div>
+                </div>
+
+                <!-- v7.90: Visual Certification/Verification Strip -->
+                <div class="grid grid-cols-3 sm:grid-cols-5 gap-3 mb-8 break-inside-avoid">
+                    <div class="flex flex-col items-center justify-center p-3 bg-white rounded-lg border-2 border-green-100 shadow-sm text-center">
+                        <i class="fas fa-check-circle text-green-500 text-2xl mb-1"></i>
+                        <p class="text-[10px] font-bold text-slate-600 uppercase leading-tight">Equipment<br>Inspected</p>
+                    </div>
+                    <div class="flex flex-col items-center justify-center p-3 bg-white rounded-lg border-2 border-green-100 shadow-sm text-center">
+                        <i class="fas fa-check-circle text-green-500 text-2xl mb-1"></i>
+                        <p class="text-[10px] font-bold text-slate-600 uppercase leading-tight">Production<br>Verified</p>
+                    </div>
+                    <div class="flex flex-col items-center justify-center p-3 bg-white rounded-lg border-2 border-green-100 shadow-sm text-center">
+                        <i class="fas fa-check-circle text-green-500 text-2xl mb-1"></i>
+                        <p class="text-[10px] font-bold text-slate-600 uppercase leading-tight">Savings<br>Calculated</p>
+                    </div>
+                    <div class="flex flex-col items-center justify-center p-3 bg-white rounded-lg border-2 border-green-100 shadow-sm text-center">
+                        <i class="fas fa-check-circle text-green-500 text-2xl mb-1"></i>
+                        <p class="text-[10px] font-bold text-slate-600 uppercase leading-tight">Contract<br>Review Completed</p>
+                    </div>
+                    <div class="flex flex-col items-center justify-center p-3 bg-white rounded-lg border-2 border-green-100 shadow-sm text-center">
+                        <i class="fas fa-check-circle text-green-500 text-2xl mb-1"></i>
+                        <p class="text-[10px] font-bold text-slate-600 uppercase leading-tight">Warranty<br>Reviewed</p>
                     </div>
                 </div>
 
@@ -822,7 +861,7 @@ Architecture: Single-File HTML5 Web Application (Vanilla JS + Tailwind CSS)
                 </div>
 
                 <div class="mt-8 text-center text-xs text-slate-400">
-                    <p>Generated by SolarCheck Professional v7.88</p>
+                    <p>Generated by SolarCheck Professional v7.90</p>
                 </div>
             </div>`;
 
@@ -911,7 +950,7 @@ Architecture: Single-File HTML5 Web Application (Vanilla JS + Tailwind CSS)
                 </div>
 
                 <div class="mt-8 text-center text-xs text-slate-400">
-                    <p>Generated by SolarCheck Professional v7.88</p>
+                    <p>Generated by SolarCheck Professional v7.90</p>
                 </div>
             </div>`;
 
@@ -955,7 +994,8 @@ Architecture: Single-File HTML5 Web Application (Vanilla JS + Tailwind CSS)
             let body = `<div class="text-slate-800 text-base leading-relaxed">`;
 
             // UPDATED v7.58: Dynamic "Age / Remaining Contract" Label
-            const isTPO = (o === 'lease' || o === 'ppa');
+            // v7.89 Update: isTPO check
+            const isTPO = ['lease', 'ppa', 'prepaid_lease', 'prepaid_ppa'].includes(o);
             const remLabel = isTPO ? "Remaining Contract" : "Remaining Life";
             const remValue = isTPO ? Math.max(0, contractTerm - age) : Math.max(0, l - age);
 
@@ -1042,7 +1082,7 @@ Architecture: Single-File HTML5 Web Application (Vanilla JS + Tailwind CSS)
             // UPDATED v7.58: Dynamic Removal Cost at $175/panel
             body += sectionHeader("Strategic Leverage Analysis", "chess-queen");
             
-            if (o === 'lease' || o === 'ppa') {
+            if (isTPO) {
                 const remCost = r.remCost || 0;
                 const removalLiability = (panelCount || 0) * 175;
                 const ceilingAlert = fairMarketValue > remCost;
@@ -1129,7 +1169,8 @@ Architecture: Single-File HTML5 Web Application (Vanilla JS + Tailwind CSS)
                     else leaseAssessment = `<div class="mt-4 p-4 rounded-lg border bg-amber-50 text-amber-900 border-amber-200 flex gap-3 items-start"><i class="fas fa-triangle-exclamation mt-1 text-amber-700 text-lg"></i><div class="text-sm font-bold"><span class="uppercase block text-xs text-amber-700 mb-1">Below Estimate</span>System is producing less than originally estimated.</div></div>`;
                  }
             }
-            const isTPO = (o === 'lease' || o === 'ppa'); const remTerm = (r && isTPO) ? Math.max(0, te - r.age).toFixed(1) : null;
+            const isTPO = ['lease', 'ppa', 'prepaid_lease', 'prepaid_ppa'].includes(o);
+            const remTerm = (r && isTPO) ? Math.max(0, te - r.age).toFixed(1) : null;
 
             // v7.59 FIX: Extract complex template logic into variables to avoid syntax errors
             let warrantyHtml = '';
@@ -1264,7 +1305,7 @@ Architecture: Single-File HTML5 Web Application (Vanilla JS + Tailwind CSS)
             let html = `
             <div class="min-h-screen bg-slate-50 font-sans pb-10">
                 <div class="bg-[#005088] text-white p-4 sticky top-0 z-50 flex justify-between items-center shadow-md no-print">
-                    <div class="flex items-center gap-3"><span class="text-3xl"><i class="fas fa-sun text-yellow-400"></i></span><div><h1 class="font-bold leading-tight text-xl sm:text-2xl">SolarCheck</h1><p class="text-sm opacity-90 font-medium">Pro v7.88</p></div></div>
+                    <div class="flex items-center gap-3"><span class="text-3xl"><i class="fas fa-sun text-yellow-400"></i></span><div><h1 class="font-bold leading-tight text-xl sm:text-2xl">SolarCheck</h1><p class="text-sm opacity-90 font-medium">Pro v7.90</p></div></div>
                     <div class="flex gap-2">
                          <button onclick="openModal('print-modal')" class="bg-yellow-400 hover:bg-yellow-300 text-black px-4 py-2 rounded-lg font-bold text-sm sm:text-base shadow transition-colors flex items-center gap-2"><i class="fas fa-file-pdf"></i> Reports</button>
                          <button onclick="window.open(window.location.href, '_blank')" class="bg-indigo-500 hover:bg-indigo-400 text-white px-4 py-2 rounded-lg font-bold text-sm sm:text-base shadow transition-colors flex items-center gap-2" title="Open Full Screen"><i class="fas fa-expand"></i></button>
@@ -1284,7 +1325,7 @@ Architecture: Single-File HTML5 Web Application (Vanilla JS + Tailwind CSS)
                              <h3 class="font-bold mb-4 text-slate-800 flex items-center gap-2 text-lg uppercase tracking-wide">Site & Branding</h3>
                              <div class="grid grid-cols-1 sm:grid-cols-2 gap-6">
                                 ${S("Company Profile", company, "company", [{v:'rsr', l:'Rocklin Solar Repair'}, {v:'shine', l:'Shine on Solar & Maintenance'}, {v:'ssoc', l:'Solar Service of Colorado'}], "Select which company header/footer to use on reports.", "handleCompanyChange")}
-                                ${S("Ownership Agreement", o, "o", [{ v: "owned", l: "Homeowner Owned" }, { v: "lease", l: "Lease (Fixed Payment)" }, { v: "ppa", l: "PPA (Pay per kWh)" }], "Select the type of ownership agreement.")}
+                                ${S("Ownership Agreement", o, "o", [{ v: "owned", l: "Homeowner Owned" }, { v: "lease", l: "Lease (Fixed Payment)" }, { v: "ppa", l: "PPA (Pay per kWh)" }, { v: "prepaid_lease", l: "Prepaid Lease" }, { v: "prepaid_ppa", l: "Prepaid PPA" }], "Select the type of ownership agreement.")}
                                 <div class="col-span-1 sm:col-span-2">
                                     ${I("Property Address", a, "a", "text", "Property address for report generation and solar data lookup.")}
                                 </div>
@@ -1395,16 +1436,24 @@ Architecture: Single-File HTML5 Web Application (Vanilla JS + Tailwind CSS)
                                         ${I("Guaranteed Minimum (kWh)", tG, "tG", "number", "Performance guarantee floor.", "1")}
                                     </div>
 
-                                    <div class="col-span-1 sm:col-span-2 bg-slate-50 p-6 rounded-xl border border-slate-200">
-                                        <h4 class="font-bold text-slate-700 uppercase text-xs tracking-wide border-b pb-1 mb-4">Payment Structure</h4>
-                                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                                            ${I("Solar Rate ($/kWh)", (typeof tR === 'number' ? tR.toFixed(3) : tR), "tR", "number", "Year 1 price per kWh.", "0.001", false, "handleRateChange")}
-                                            ${I("Battery Fixed Fee ($)", paB, "paB", "number", "Monthly adder for battery.", "0.01", false, "handleBatteryPaymentChange")}
-                                            <div class="sm:col-span-2">
-                                                ${I("Total Monthly Payment ($)", (typeof pa === 'number' ? pa.toFixed(2) : pa), "pa", "number", "Total Year 1 monthly cost.", "0.01", false, "handlePaymentChange")}
+                                    ${!o.includes('prepaid') ? `
+                                        <div class="col-span-1 sm:col-span-2 bg-slate-50 p-6 rounded-xl border border-slate-200">
+                                            <h4 class="font-bold text-slate-700 uppercase text-xs tracking-wide border-b pb-1 mb-4">Payment Structure</h4>
+                                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                                                ${I("Solar Rate ($/kWh)", (typeof tR === 'number' ? tR.toFixed(3) : tR), "tR", "number", "Year 1 price per kWh.", "0.001", false, "handleRateChange")}
+                                                ${I("Battery Fixed Fee ($)", paB, "paB", "number", "Monthly adder for battery.", "0.01", false, "handleBatteryPaymentChange")}
+                                                <div class="sm:col-span-2">
+                                                    ${I("Total Monthly Payment ($)", (typeof pa === 'number' ? pa.toFixed(2) : pa), "pa", "number", "Total Year 1 monthly cost.", "0.01", false, "handlePaymentChange")}
+                                                </div>
                                             </div>
                                         </div>
-                                    </div>
+                                    ` : `
+                                        <div class="col-span-1 sm:col-span-2 bg-green-50 p-6 rounded-xl border border-green-200 text-center flex flex-col items-center justify-center">
+                                            <i class="fas fa-check-circle text-green-500 text-3xl mb-2"></i>
+                                            <h4 class="font-bold text-green-800 uppercase text-sm tracking-wide mb-1">Prepaid Agreement</h4>
+                                            <p class="text-green-700 text-sm">This system was fully prepaid. There are no monthly payments.</p>
+                                        </div>
+                                    `}
 
                                     <div class="col-span-1 sm:col-span-2">
                                         <h4 class="font-bold text-slate-700 uppercase text-xs tracking-wide border-b pb-1 mb-4">Lifetime Totals (Auto-Calculated)</h4>
