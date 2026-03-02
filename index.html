@@ -1,14 +1,15 @@
 <!-- 
 ================================================================================
 PROJECT CONTEXT: SolarCheck Professional
-Current Version: v7.261 (STRICT TERMINOLOGY ALIGNMENT - DYNAMIC ADVISORY LOGIC)
+Current Version: v7.262 (STRICT TERMINOLOGY ALIGNMENT - CONTEXT PURGE)
 Date: March 2026
 Architecture: Modular Single-File HTML5 (Sub-Renderer Pattern)
 ================================================================================
 
 1. OVERVIEW
-   Multi-purpose solar platform: Inspection (Field), Valuation (Bank).
-   Investor Buyback logic moved to standalone deep-linked module.
+   Multi-purpose solar platform: Inspection (Field) and Valuation (Bank).
+   Homeowner-centric Advisory Reporting with dynamic benefit narratives.
+   *Investor Buyback logic has been decoupled to standalone deep-link module.*
 
 2. AI SESSION PROTOCOL (STRICT ADHERENCE REQUIRED - DO NOT REMOVE)
    A. CARRY FORWARD: This header and 'window.UI_TEXT' / 'window.UI_NARRATIVES' 
@@ -25,7 +26,9 @@ Architecture: Modular Single-File HTML5 (Sub-Renderer Pattern)
    - BUCKET MODEL: Usable = Total * (1-Reserve). SCR boost = Battery / Daily Gen.
    - PERFORMANCE RATIO: Actual / Benchmark. (Priority: Guarantee > Est > Phys).
    - VALUATION: USPAP Blended. TPO split into Contract Savings vs Residual.
-   - ESCALATION: TPO Escalator applies to both Solar and Battery fixed fees.
+   - ESCALATION: TPO Escalator applies to both Solar and Battery monthly fees.
+   - DYNAMIC NARRATIVE: Report text auto-switches between "Benefit" and "Shortfall" 
+     modes based on actual metered production and net cash flow results.
 ================================================================================
 -->
 <!DOCTYPE html>
@@ -33,7 +36,7 @@ Architecture: Modular Single-File HTML5 (Sub-Renderer Pattern)
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SolarCheck Professional v7.261</title>
+    <title>SolarCheck Professional v7.262</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
@@ -291,29 +294,25 @@ Architecture: Modular Single-File HTML5 (Sub-Renderer Pattern)
             const iC = Math.floor(age); const iL = Math.max(0, (parseFloat(te)||0) - 1);
             const isTPO = ['lease', 'ppa', 'prepaid_lease', 'prepaid_ppa'].includes(o);
             const isPrepaid = o && o.includes('prepaid');
-            
             const nPa = parseFloat(pa) || 0;
             const nPaB = parseFloat(paB) || 0;
             const ntEs = parseFloat(tEs) || 0;
             const ntR = parseFloat(tR) || 0;
-            
             const solY1 = nPa, batY1 = nPaB;
             const solYC = parseFloat((nPa * Math.pow(1 + (ntEs/100), iC)).toFixed(2));
             const batYC = parseFloat((nPaB * Math.pow(1 + (ntEs/100), iC)).toFixed(2));
             const solYL = parseFloat((nPa * Math.pow(1 + (ntEs/100), iL)).toFixed(2));
             const batYL = parseFloat((nPaB * Math.pow(1 + (ntEs/100), iL)).toFixed(2));
-            
             const pY1 = isPrepaid ? 0 : (solY1 + batY1);
             const pYC = isPrepaid ? 0 : (solYC + batYC);
             const pYL = isPrepaid ? 0 : (solYL + batYL);
-            
             const totalB = parseFloat(b) || 0;
             const usableB = totalB * (1 - (parseFloat(br) || 0) / 100);
             const dailyGenAvg = (s * 4.5); 
             const batteryBoost = (usableB / (dailyGenAvg || 1)) * 40; 
             const finalSCR = Math.min(98, (parseFloat(scr) || 0) + (usableB > 0 ? batteryBoost : 0));
             const blendedUtility = (finalSCR/100 * (rU || 0.35)) + ((1 - finalSCR/100) * (eU || 0.05));
-            const YF = { south: 1550, mix: 1500, east_west: 1450, north: 1200 }[or] * { none: 1, some: 0.85, alot: 0.7 }[sh] * { standard: 1, flat: 0.89, steep: 0.96 }[pi];
+            const YF = { south: 1550, mix: 1500, east_west: 1450, north: 1200 }[or] * { none: 1, some: 0.85, alot: 0.7 }[sh] * { standard: 1, flat: 0.89, steeped: 0.96 }[pi];
             const th = s * YF;
             let ptd = 0; for (let i = 0; i < iC; i++) { ptd += th * (1 - (i * DEG_RATE)); }
             ptd += th * (1 - (iC * DEG_RATE)) * (age % 1);
@@ -327,15 +326,12 @@ Architecture: Modular Single-File HTML5 (Sub-Renderer Pattern)
                 if (i < iC) { etd += curE; gtd += curG; }
             }
             etd += ntE * (1 - (iC * DEG_RATE)) * (age % 1); gtd += ntG * (1 - (iC * DEG_RATE)) * (age % 1);
-            
             const rYC_sol = (ntE * (1-(iC*DEG_RATE))) > 0 ? (solYC * 12) / (ntE*(1-(iC*DEG_RATE))) : 0;
             const shortfallkWh = Math.max(0, (gtd * 1) - (nAC * 1000));
             const trueUpRefund = isTPO ? (shortfallkWh * ntR) : 0;
-
             const arbDelta = blendedUtility - rYC_sol, arbDiscount = Math.max(0, (arbDelta / (blendedUtility || 1)) * 100);
             let fSa = 0; const calcTerm = (o === 'owned') ? 25 : nTe; const rM = Math.max(0, calcTerm - age);
             for (let i = 0; i < Math.ceil(rM); i++) { fSa += th * (1-((age+i)*DEG_RATE)) * blendedUtility * Math.pow(1 + (parseFloat(e||0)/100), i); }
-            
             let tCt = 0, remCost = 0;
             let currentPay_sol = solY1 * 12;
             let currentPay_bat = batY1 * 12;
@@ -346,7 +342,6 @@ Architecture: Modular Single-File HTML5 (Sub-Renderer Pattern)
                 currentPay_sol *= (1 + (ntEs/100));
                 currentPay_bat *= (1 + (ntEs/100));
             }
-
             window.state.r = { 
                 age, sz: s, act: nAC, potSav: cP*blendedUtility, 
                 actSav: cP * blendedUtility * (nAC*1000/(ptd||1)), 
@@ -358,7 +353,6 @@ Architecture: Modular Single-File HTML5 (Sub-Renderer Pattern)
                 blendedUtility, effSCR: finalSCR, arbDelta, arbDiscount, estDay: cP/365, estN12: cP, usableB, remCost, ptd,
                 shortfallkWh, trueUpRefund
             };
-            
             const sC = s * 1000 * parseFloat(rC||0); 
             const rL = Math.max(0, (parseFloat(l)||30) - age); 
             const depCost = l > 0 ? (rL / l) * c : 0; const cV = sC * depCost;
@@ -424,7 +418,6 @@ Architecture: Modular Single-File HTML5 (Sub-Renderer Pattern)
             const remAssetYears = isTPO ? Math.max(0, te - r.age).toFixed(1) : Math.max(0, 25 - r.age).toFixed(1);
             const ownershipLabel = isTPO ? "Company Owned (PPA/Lease)" : "Homeowner Owned";
 
-            // PERFORMANCE LOGIC FOR NARRATIVE
             const isUnderperforming = (r.act / (r.guarTD || r.physTD || 1)) < 0.90;
             const isNegativeCashFlow = r.actSavNet < 0;
             const isNegativeTerm = r.futSavNet < 0;
@@ -491,11 +484,7 @@ Architecture: Modular Single-File HTML5 (Sub-Renderer Pattern)
                                 </div>
                                 <div class="bg-slate-100 p-6 rounded-3xl border-2 border-slate-200 flex flex-col justify-center">
                                      <h5 class="text-xs font-black text-slate-900 uppercase tracking-widest mb-3 italic">Benefit Note:</h5>
-                                     <p class="text-xs text-slate-600 font-medium leading-relaxed italic">
-                                        ${isNegativeCashFlow 
-                                            ? "Currently, the solar payment exceeds the value of electricity being saved. This is often due to recent utility rate structures or system underperformance. Financial value in this scenario relies on future utility rate increases." 
-                                            : "This system is currently generating more value in avoided electricity costs than the monthly solar payment. This results in an immediate reduction in the home's total operating expenses."}
-                                     </p>
+                                     <p class="text-xs text-slate-600 font-medium leading-relaxed italic">${isNegativeCashFlow ? "Currently, the solar payment exceeds the value of electricity being saved. This is often due to recent utility rate structures or system underperformance. Financial value in this scenario relies on future utility rate increases." : "This system is currently generating more value in avoided electricity costs than the monthly solar payment. This results in an immediate reduction in the home's total operating expenses."}</p>
                                 </div>
                             </div>
                         </div>
@@ -503,7 +492,7 @@ Architecture: Modular Single-File HTML5 (Sub-Renderer Pattern)
 
                     <div class="mt-auto flex justify-between items-end border-t-2 pt-6">
                         <div><p class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Audit Status</p><p class="text-sm font-bold text-slate-800 uppercase tracking-tighter">${isUnderperforming ? 'Inspection Complete: Shortfall Detected' : 'Verified Operational'}</p></div>
-                        <div class="text-right text-[10px] text-slate-400 font-bold uppercase tracking-widest italic">SolarCheck Pro v7.261</div>
+                        <div class="text-right text-[10px] text-slate-400 font-bold uppercase tracking-widest italic">SolarCheck Pro v7.262</div>
                     </div>
                 </div>
 
@@ -512,29 +501,7 @@ Architecture: Modular Single-File HTML5 (Sub-Renderer Pattern)
                     <div class="mb-10">
                         <h3 class="text-xl font-black text-slate-900 uppercase tracking-widest italic mb-6 border-b-4 border-slate-900 pb-4">Understanding Your Solar Agreement</h3>
                         <div class="grid grid-cols-1 gap-8">
-                            ${isTPO ? `
-                                <div class="bg-blue-50 p-8 rounded-3xl border-2 border-blue-200">
-                                    <h4 class="text-sm font-black text-blue-900 uppercase mb-4 tracking-widest flex items-center gap-3"><i class="fas fa-building text-blue-500"></i> How PPA / Lease Solar Works</h4>
-                                    <p class="text-sm text-blue-800 font-medium leading-relaxed mb-4">In this agreement, the solar gear is owned and maintained by a third-party company. You are simply purchasing the electricity it produces (or leasing the space) at a rate lower than what the local utility charges. <strong>You are not responsible for the equipment; you are responsible for the bill.</strong></p>
-                                    <ul class="grid grid-cols-2 gap-4 text-xs font-bold text-blue-900 uppercase italic">
-                                        <li class="flex gap-2"><i class="fas fa-check"></i> $0 Repair Costs</li>
-                                        <li class="flex gap-2"><i class="fas fa-check"></i> Performance Guarantees</li>
-                                        <li class="flex gap-2"><i class="fas fa-check"></i> Automated Monitoring</li>
-                                        <li class="flex gap-2"><i class="fas fa-check"></i> Fully Transferable</li>
-                                    </ul>
-                                </div>
-                            ` : `
-                                <div class="bg-emerald-50 p-8 rounded-3xl border-2 border-emerald-200">
-                                    <h4 class="text-sm font-black text-emerald-900 uppercase mb-4 tracking-widest flex items-center gap-3"><i class="fas fa-house-chimney-user text-emerald-500"></i> How Owned Solar Works</h4>
-                                    <p class="text-sm text-emerald-800 font-medium leading-relaxed mb-4">The equipment is a permanent part of the real estate. As the owner, you received the initial tax credits and incentives. There is no monthly solar bill to pay; all energy generated is "free" once the system is paid off, significantly increasing the property's value.</p>
-                                    <ul class="grid grid-cols-2 gap-4 text-xs font-bold text-emerald-900 uppercase italic">
-                                        <li class="flex gap-2"><i class="fas fa-check"></i> Property Asset Value</li>
-                                        <li class="flex gap-2"><i class="fas fa-check"></i> No Monthly Payment</li>
-                                        <li class="flex gap-2"><i class="fas fa-check"></i> Full Warranty Protection</li>
-                                        <li class="flex gap-2"><i class="fas fa-check"></i> Max Utility Offset</li>
-                                    </ul>
-                                </div>
-                            `}
+                            ${isTPO ? `<div class="bg-blue-50 p-8 rounded-3xl border-2 border-blue-200"><h4 class="text-sm font-black text-blue-900 uppercase mb-4 tracking-widest flex items-center gap-3"><i class="fas fa-building text-blue-500"></i> How PPA / Lease Solar Works</h4><p class="text-sm text-blue-800 font-medium leading-relaxed mb-4">In this agreement, the solar gear is owned and maintained by a third-party company. You are simply purchasing the electricity it produces (or leasing the space) at a rate lower than what the local utility charges. <strong>You are not responsible for the equipment; you are responsible for the bill.</strong></p><ul class="grid grid-cols-2 gap-4 text-xs font-bold text-blue-900 uppercase italic"><li class="flex gap-2"><i class="fas fa-check"></i> $0 Repair Costs</li><li class="flex gap-2"><i class="fas fa-check"></i> Performance Guarantees</li><li class="flex gap-2"><i class="fas fa-check"></i> Automated Monitoring</li><li class="flex gap-2"><i class="fas fa-check"></i> Fully Transferable</li></ul></div>` : `<div class="bg-emerald-50 p-8 rounded-3xl border-2 border-emerald-200"><h4 class="text-sm font-black text-emerald-900 uppercase mb-4 tracking-widest flex items-center gap-3"><i class="fas fa-house-chimney-user text-emerald-500"></i> How Owned Solar Works</h4><p class="text-sm text-emerald-800 font-medium leading-relaxed mb-4">The equipment is a permanent part of the real estate. As the owner, you received the initial tax credits and incentives. There is no monthly solar bill to pay; all energy generated is "free" once the system is paid off, significantly increasing the property's value.</p><ul class="grid grid-cols-2 gap-4 text-xs font-bold text-emerald-900 uppercase italic"><li class="flex gap-2"><i class="fas fa-check"></i> Property Asset Value</li><li class="flex gap-2"><i class="fas fa-check"></i> No Monthly Payment</li><li class="flex gap-2"><i class="fas fa-check"></i> Full Warranty Protection</li><li class="flex gap-2"><i class="fas fa-check"></i> Max Utility Offset</li></ul></div>`}
                         </div>
                     </div>
 
@@ -561,12 +528,10 @@ Architecture: Modular Single-File HTML5 (Sub-Renderer Pattern)
                         <div class="relative z-10 grid grid-cols-2 gap-12">
                             <div class="space-y-4">
                                 <p class="text-blue-400 text-[10px] font-black uppercase tracking-[0.4em] italic mb-1">Long-Term Value Forecast</p>
-                                
                                 <div class="grid grid-cols-1 gap-2 mb-4">
                                     <div class="flex justify-between items-center text-[11px] font-black uppercase tracking-widest"><span class="text-slate-400">Solar Power Value</span><span class="text-emerald-400">$${r.blendedUtility.toFixed(2)} / kWh</span></div>
                                     <div class="flex justify-between items-center text-[11px] font-black uppercase tracking-widest border-b border-slate-700 pb-2"><span class="text-slate-400">TPO Solar Rate</span><span class="text-red-400">$${r.rYC_sol.toFixed(3)} / kWh</span></div>
                                 </div>
-
                                 <div class="flex justify-between items-end border-b-2 border-slate-700 pb-4"><span class="text-[11px] font-black text-slate-400 uppercase tracking-widest">Net Savings Over Remainder of Term</span></div>
                                 <div class="pt-6 flex flex-col">
                                     <span class="text-7xl font-black italic tracking-tighter ${isNegativeTerm ? 'text-red-400' : 'text-emerald-400'} leading-none">${window.cur(Math.abs(r.futSavNet))}</span>
@@ -655,7 +620,7 @@ Architecture: Modular Single-File HTML5 (Sub-Renderer Pattern)
                     <div class="bg-slate-900 text-white px-4 sm:px-6 py-3 sm:py-4 sticky top-0 z-50 flex justify-between items-center shadow-lg border-b border-white/5 gap-2">
                         <div class="flex items-center gap-2 sm:gap-4 min-w-0">
                             <span class="text-2xl sm:text-3xl flex-shrink-0"><i class="fas fa-sun text-yellow-400"></i></span>
-                            <div class="min-w-0 truncate"><h1 class="font-bold text-lg sm:text-2xl tracking-tighter italic truncate">SolarCheck Pro</h1><p class="text-[7px] sm:text-[9px] opacity-60 font-black uppercase tracking-[0.4em]">v7.261</p></div>
+                            <div class="min-w-0 truncate"><h1 class="font-bold text-lg sm:text-2xl tracking-tighter italic truncate">SolarCheck Pro</h1><p class="text-[7px] sm:text-[9px] opacity-60 font-black uppercase tracking-[0.4em]">v7.262</p></div>
                         </div>
                         <div class="flex items-center gap-2 flex-shrink-0">
                             <button onclick="window.open(window.location.href, '_blank')" class="header-btn bg-slate-800 text-white/80 p-2 sm:px-4 sm:py-2.5 rounded-xl text-sm shadow-xl transition-all hover:bg-slate-700 active:scale-95"><i class="fas fa-expand"></i></button>
