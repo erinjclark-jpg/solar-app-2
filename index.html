@@ -1,13 +1,14 @@
 <!-- 
 ================================================================================
 PROJECT CONTEXT: SolarCheck Professional
-Current Version: v7.246 (STRICT TERMINOLOGY ALIGNMENT)
+Current Version: v7.261 (STRICT TERMINOLOGY ALIGNMENT - DYNAMIC ADVISORY LOGIC)
 Date: March 2026
 Architecture: Modular Single-File HTML5 (Sub-Renderer Pattern)
 ================================================================================
 
 1. OVERVIEW
-   Multi-purpose solar platform: Inspection (Field), Valuation (Bank), Buyback (Investor).
+   Multi-purpose solar platform: Inspection (Field), Valuation (Bank).
+   Investor Buyback logic moved to standalone deep-linked module.
 
 2. AI SESSION PROTOCOL (STRICT ADHERENCE REQUIRED - DO NOT REMOVE)
    A. CARRY FORWARD: This header and 'window.UI_TEXT' / 'window.UI_NARRATIVES' 
@@ -24,7 +25,7 @@ Architecture: Modular Single-File HTML5 (Sub-Renderer Pattern)
    - BUCKET MODEL: Usable = Total * (1-Reserve). SCR boost = Battery / Daily Gen.
    - PERFORMANCE RATIO: Actual / Benchmark. (Priority: Guarantee > Est > Phys).
    - VALUATION: USPAP Blended. TPO split into Contract Savings vs Residual.
-   - BUYBACK: NPV @ Target IRR. String inverters auto-replaced at Year 12.
+   - ESCALATION: TPO Escalator applies to both Solar and Battery fixed fees.
 ================================================================================
 -->
 <!DOCTYPE html>
@@ -32,7 +33,7 @@ Architecture: Modular Single-File HTML5 (Sub-Renderer Pattern)
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SolarCheck Professional v7.246</title>
+    <title>SolarCheck Professional v7.261</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
@@ -86,11 +87,11 @@ Architecture: Modular Single-File HTML5 (Sub-Renderer Pattern)
             batteryBrand: { l: "Battery Brand", d: "Energy storage manufacturer.", p: "e.g. Tesla" },
             b: { l: "Battery Capacity (kWh)", d: "Total nameplate energy storage.", p: "e.g. 13.5" },
             br: { l: "Reserve Setting (%)", d: "Energy reserved for power outages.", p: "e.g. 20" },
-            cellMon: { l: "Cellular Comms", d: "Active cellular reporting status.", p: "" },
+            cellMon: { l: "Site Monitoring", d: "Method used for energy production reporting.", p: "" },
             iDt: { l: "Install Date (PTO)", d: "Permission to Operate (original activation date).", p: "" },
-            ac: { l: "Meter Reading (MWh)", d: "Verified lifetime output from the solar monitoring app.", p: "e.g. 35.5" },
+            ac: { l: "Lifetime (MWH)", d: "Verified lifetime output from the solar monitoring app.", p: "e.g. 35.5" },
             pDt: { l: "Reading Date", d: "Date the meter was read.", p: "" },
-            ut: { l: "Utility Preset", d: "Select the regional utility tariff structure.", p: "" },
+            ut: { l: "Utility Buyback Plan", d: "Select the regional utility tariff structure.", p: "" },
             scr: { l: "Site Consumption (%)", d: "The percentage of energy consumed on-site vs exported to grid.", p: "e.g. 60" },
             rU: { l: "Retail Rate ($)", d: "Utility import cost.", p: "0.48" },
             eU: { l: "Export Rate ($)", d: "Excess solar credit.", p: "0.05" },
@@ -101,9 +102,10 @@ Architecture: Modular Single-File HTML5 (Sub-Renderer Pattern)
             tEs: { l: "Annual Escalator (%)", d: "The fixed annual increase in the solar rate.", p: "e.g. 2.9" },
             tE: { l: "Year 1 Est. Production (kWh)", d: "The original sales estimate for the first year.", p: "e.g. 10000" },
             tG: { l: "Guaranteed Minimum (kWh)", d: "The contractual floor for production claims.", p: "e.g. 9000" },
-            tR: { l: "Solar Rate ($/kWh)", d: "Initial price per unit of solar energy.", p: "e.g. 0.255" },
-            paB: { l: "Battery Fixed Fee ($)", d: "Optional fixed monthly storage cost.", p: "e.g. 0.00" },
-            pa: { l: "Total Monthly Payment ($)", d: "The actual initial monthly liability.", p: "e.g. 150.00" },
+            tR: { l: "Year 1 Solar Rate ($/kWh)", d: "Initial contractual price per unit of solar energy.", p: "e.g. 0.255" },
+            paB: { l: "Year 1 Battery Fee", d: "The initial fixed monthly storage fee.", p: "e.g. 0.00" },
+            pa: { l: "Year 1 Solar Payment", d: "The initial monthly liability for energy generation.", p: "e.g. 150.00" },
+            combinedPayment: { l: "Year 1 Total Monthly Payment", d: "Combined initial Solar and Battery fee components.", p: "" },
             fTe: { l: "Total Estimated (kWh)", d: "Calculated total term energy output.", p: "Awaiting data..." },
             fTg: { l: "Total Guaranteed (kWh)", d: "Calculated legal production floor.", p: "Awaiting data..." },
             dr: { l: "Discount Rate (%)", d: "Target return or cost of capital (Standard: 6-10%).", p: "7.88" },
@@ -114,15 +116,11 @@ Architecture: Modular Single-File HTML5 (Sub-Renderer Pattern)
             c: { l: "Asset Condition (0-1)", d: "Physical health multiplier (1.0 = Perfect).", p: "0.9" },
             srec: { l: "Include SRECs / Incentives?", d: "Toggle for secondary solar revenue streams.", p: "" },
             srecP: { l: "SREC Value ($/MWh)", d: "Current market value of Solar Renewable Energy Credits.", p: "25" },
-            bb_rate: { l: "Annual Lease Rate", d: "Proposed solar rate for the homeowner.", p: "0.15" },
-            bb_term: { l: "Lease Term (Years)", d: "Investor hold period.", p: "15" },
-            bb_irr: { l: "Target IRR (%)", d: "Yield requirement for the acquisition.", p: "12" },
-            bb_opex: { l: "Admin OpEx ($/kW)", d: "Estimated annual overhead costs.", p: "10" },
             
-            // Result Specific Consistency Keys (Used in both Summary Tab and Report)
+            // Result Specific Consistency Keys
             sz_label: { l: "Rated Size", d: "System DC capacity." },
-            age_label: { l: "Age", d: "Years since PTO." },
-            rem_label: { l: "Remaining", d: "Liability end date." },
+            age_label: { l: "Solar System Current Age", d: "Years since PTO." },
+            rem_label: { l: "Contract Remaining Years", d: "Liability end date." },
             blendedValue: { l: "Solar Power Value", d: "Avoided Utility Cost" },
             selfConsumption: { l: "Self-Consumption", d: "The percentage of solar energy used to power the home directly, reducing grid imports." },
             arbitrageSlice: { l: "Arbitrage Slice", d: "The usable battery capacity utilized daily to shift solar power into expensive evening hours." },
@@ -131,29 +129,28 @@ Architecture: Modular Single-File HTML5 (Sub-Renderer Pattern)
             totalTermCost: { l: "Total Term Cost", d: "The cumulative financial liability over the full length of the agreement." },
             netBenefit: { l: "Net Benefit", d: "Calculated monthly energy alpha." },
             solYC_label: { l: "Solar Payment", d: "Escalated portion for energy generation." },
-            batYC_label: { l: "Battery Payment", d: "Fixed energy storage service fee." },
+            batYC_label: { l: "Battery Payment", d: "Escalated energy storage service fee." },
             remLiability: { l: "Agreement Liabilities", d: "Total remaining payoff or balance of the service contract." },
-            performanceMatrix: { l: "Performance Matrix", d: "Annual Acquisition & Revenue Schedule" },
 
             // SYNCED LABELS & DESCRIPTIONS (Dashboard & Report)
-            perfHeader: { l: "Performance Verification", d: "Metered output compared against dynamic benchmarks." },
-            yieldAccuracy: { l: "Performance vs.", d: "Metered accuracy relative to benchmark." },
-            verifyDashboard: { l: "Verification Dashboard", d: "Subject property asset status." },
-            verifyDashboardLabel1: { l: "Equipment Inspected", d: "Physical hardware health audit." },
-            verifyDashboardLabel2: { l: "Production Verified", d: "Metered output vs. physical yield model." },
-            verifyDashboardLabel3: { l: "Savings Calculated", d: "Utility rate arbitrage analysis." },
-            verifyDashboardLabel4: { l: "Contract Reviewed", d: "3rd Party agreement liability audit." },
-            verifyDashboardLabel5: { l: "Warranty Audited", d: "Manufacturer coverage status." },
-            cashFlowAudit: { l: "Monthly Cash Flow Audit", d: "Avoided grid cost vs. solar payment liability." },
-            maintMatrix: { l: "Maintenance Matrix", d: "Service and repair responsibility audit." },
-            transTimeline: { l: "Transaction Timeline", d: "Transfer requirements for the property sale." },
-            valueProj: { l: "Long-Term Value Projection", d: "Total forecasted net energy savings over the term." },
-            narrativeHeader: { l: "Verification Narrative Summary", d: "Professional executive evaluation." },
-            narrLabelEquip: { l: "Equipment Inspection", d: "Physical hardware audit summary." },
-            narrLabelProd: { l: "System Production & Offset", d: "Energy generation evaluation." },
-            narrLabelCash: { l: "Monthly Cash Flow", d: "Net savings evaluation." },
-            narrLabelTerm: { l: "Remaining Term & Position", d: "Future liability and benefit summary." },
-            narrLabelMaint: { l: "Maintenance & Responsibility", d: "Service coverage overview." }
+            perfHeader: { l: "Solar System Health", d: "Review of energy production versus original design." },
+            yieldAccuracy: { l: "Overall Efficiency", d: "Actual performance compared to benchmark." },
+            verifyDashboard: { l: "Certified Solar Summary", d: "Final audit results for this property." },
+            verifyDashboardLabel1: { l: "Hardware Inspection", d: "Physical equipment check." },
+            verifyDashboardLabel2: { l: "Energy Production", d: "Metered harvest check." },
+            verifyDashboardLabel3: { l: "Utility Savings", d: "Bill reduction audit." },
+            verifyDashboardLabel4: { l: "Agreement Review", d: "Contractual status check." },
+            verifyDashboardLabel5: { l: "Warranty Status", d: "Coverage verification." },
+            cashFlowAudit: { l: "Your Monthly Solar Benefit", d: "Comparison of grid savings vs solar cost." },
+            maintMatrix: { l: "Service & Maintenance", d: "Who handles repairs and monitoring." },
+            transTimeline: { l: "Transfer Requirements", d: "Steps to move this system to a new owner." },
+            valueProj: { l: "Estimated Future Value", d: "Projected net benefit over the term." },
+            narrativeHeader: { l: "Professional Summary & Narrative", d: "Executive evaluation." },
+            narrLabelEquip: { l: "The Solar Equipment", d: "Physical hardware audit summary." },
+            narrLabelProd: { l: "Energy Production Results", d: "Generation evaluation." },
+            narrLabelCash: { l: "Monthly Savings Impact", d: "Net benefit evaluation." },
+            narrLabelTerm: { l: "Remaining Financial Position", d: "Future savings projection." },
+            narrLabelMaint: { l: "Ongoing Peace of Mind", d: "Service coverage overview." }
         };
 
         window.UI_NARRATIVES = {
@@ -162,8 +159,6 @@ Architecture: Modular Single-File HTML5 (Sub-Renderer Pattern)
             perf_ratio_intro: "This is the health score of the system. 100% means the system is performing exactly as designed. If a legal guarantee exists, we compare actual production to that floor. Otherwise, we compare to the original estimate.",
             valuation_cost_footer: "Value based on building a new system today minus depreciation.",
             valuation_inc_footer: "Value based on the net energy savings the system provides over its life.",
-            buyback_intro: "This model determines the maximum price an investor can offer to buy the system and lease it back to the homeowner while meeting a target Internal Rate of Return (IRR).",
-            tpo_costs_intro: "This schedule tracks how your monthly payments and effective solar rate increase over the life of the agreement based on the contractual escalator.",
             valuation_tpo_split: "For 3rd party agreements, Fair Market Value is weighted toward the immediate savings provided during the remaining contract term."
         };
 
@@ -175,35 +170,34 @@ Architecture: Modular Single-File HTML5 (Sub-Renderer Pattern)
 
         window.I = function(l, v, key, t = "number", d, st = "0.01", disabled = false, handler = "handleInputChange", placeholder = "") { 
             const txt = window.UI_TEXT[key] || { l, d, p: placeholder };
-            return `<div class=""><label for="${key}" class="block text-slate-700 text-xs sm:text-sm mb-1 font-bold uppercase tracking-wide">${txt.l}</label><input type="${t}" step="${st}" id="${key}" placeholder="${txt.p}" class="w-full p-2 sm:p-2.5 border border-slate-300 rounded-lg text-slate-800 text-base sm:text-lg font-semibold focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow ${disabled ? 'bg-slate-100 text-slate-500' : 'bg-white'}" value="${v}" ${disabled ? 'disabled' : ''} onchange="${handler}(event,'${key}')"/><p class="text-[10px] text-slate-500 mt-1 leading-snug font-medium italic">${txt.d || ''}</p></div>`; 
+            return `<div class=""><label for="${key}" class="block text-slate-700 text-xs sm:text-sm mb-1 font-bold uppercase tracking-wide">${txt.l}</label><input type="${t}" step="${st}" id="${key}" placeholder="${txt.p}" class="w-full p-2 sm:p-2.5 border border-slate-300 rounded-lg text-slate-800 text-base sm:text-lg font-semibold focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow ${disabled ? 'bg-slate-100 text-slate-500' : 'bg-white'}" value="${v}" ${disabled ? 'disabled' : ''} onchange="${handler}(event,'${key}')"/><p class="text-[12px] text-slate-700 mt-1 leading-snug font-medium italic">${txt.d || ''}</p></div>`; 
         };
         window.Idark = function(l, v, key, t = "number", d, st = "0.01", disabled = false) { 
             const txt = window.UI_TEXT[key] || { l, d, p: "" };
-            return `<div class=""><label for="${key}" class="block text-blue-200 text-xs sm:text-sm mb-1 font-bold uppercase tracking-wide">${txt.l}</label><input type="${t}" step="${st}" id="${key}" placeholder="${txt.p}" class="w-full p-2 sm:p-2.5 border border-slate-500 rounded-lg bg-slate-700/50 text-white text-base sm:text-lg font-semibold focus:ring-2 focus:ring-blue-400 focus:border-blue-400 placeholder-slate-400 backdrop-blur-sm ${disabled ? 'opacity-50 cursor-not-allowed' : ''}" value="${v}" ${disabled ? 'disabled' : ''} onchange="handleInputChange(event,'${key}')"/><p class="text-[10px] text-blue-300 mt-1 leading-snug italic">${txt.d || ''}</p></div>`; 
+            return `<div class=""><label for="${key}" class="block text-blue-200 text-xs sm:text-sm mb-1 font-bold uppercase tracking-wide">${txt.l}</label><input type="${t}" step="${st}" id="${key}" placeholder="${txt.p}" class="w-full p-2 sm:p-2.5 border border-slate-500 rounded-lg bg-slate-700/50 text-white text-base sm:text-lg font-semibold focus:ring-2 focus:ring-blue-400 focus:border-blue-400 placeholder-slate-400 backdrop-blur-sm ${disabled ? 'opacity-50 cursor-not-allowed' : ''}" value="${v}" ${disabled ? 'disabled' : ''} onchange="handleInputChange(event,'${key}')"/><p class="text-[12px] text-blue-100 mt-1 leading-snug italic">${txt.d || ''}</p></div>`; 
         };
         window.Sdark = function(l, v, key, o, d) { 
             const txt = window.UI_TEXT[key] || { l, d };
-            return `<div class=""><label for="${key}" class="block text-blue-200 text-xs sm:text-sm mb-1 font-bold uppercase tracking-wide">${txt.l}</label><select id="${key}" class="w-full p-2 sm:p-2.5 border border-slate-500 rounded-lg bg-slate-700/50 text-white text-base sm:text-lg font-semibold focus:ring-2 focus:ring-blue-400 focus:border-blue-400 backdrop-blur-sm" onchange="handleInputChange(event,'${key}')">${o.map(x => `<option value="${x.v}" ${v == x.v ? 'selected' : ''}>${x.l}</option>`).join('')}</select><p class="text-[10px] text-blue-300 mt-1 leading-snug italic">${txt.d || ''}</p></div>`; 
+            return `<div class=""><label for="${key}" class="block text-blue-200 text-xs sm:text-sm mb-1 font-bold uppercase tracking-wide">${txt.l}</label><select id="${key}" class="w-full p-2 sm:p-2.5 border border-slate-500 rounded-lg bg-slate-700/50 text-white text-base sm:text-lg font-semibold focus:ring-2 focus:ring-blue-400 focus:border-blue-400 backdrop-blur-sm" onchange="handleInputChange(event,'${key}')">${o.map(x => `<option value="${x.v}" ${v == x.v ? 'selected' : ''}>${x.l}</option>`).join('')}</select><p class="text-[12px] text-blue-100 mt-1 leading-snug italic">${txt.d || ''}</p></div>`; 
         };
         window.S = function(l, v, key, o, d, handler = "handleInputChange") { 
             const txt = window.UI_TEXT[key] || { l, d };
-            return `<div class=""><label for="${key}" class="block text-slate-700 text-xs sm:text-sm mb-1 font-bold uppercase tracking-wide">${txt.l}</label><select id="${key}" class="w-full p-2 sm:p-2.5 border border-slate-300 rounded-lg text-slate-800 text-base sm:text-lg font-semibold focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white" onchange="${handler}(event,'${key}')">${o.map(x => `<option value="${x.v}" ${v == x.v ? 'selected' : ''}>${x.l}</option>`).join('')}</select><p class="text-[10px] text-slate-500 mt-1 leading-snug font-medium italic">${txt.d || ''}</p></div>`; 
+            return `<div class=""><label for="${key}" class="block text-slate-700 text-xs sm:text-sm mb-1 font-bold uppercase tracking-wide">${txt.l}</label><select id="${key}" class="w-full p-2 sm:p-2.5 border border-slate-300 rounded-lg text-slate-800 text-base sm:text-lg font-semibold focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white" onchange="${handler}(event,'${key}')">${o.map(x => `<option value="${x.v}" ${v == x.v ? 'selected' : ''}>${x.l}</option>`).join('')}</select><p class="text-[12px] text-slate-700 mt-1 leading-snug font-medium italic">${txt.d || ''}</p></div>`; 
         };
         window.R = function(l, v, s, d) { 
-            return `<div class="mb-4 border-b border-slate-100 pb-3 last:border-0 last:pb-0"><div class="flex justify-between items-center text-sm sm:text-base"><span class="font-bold text-slate-700">${l}</span><span class="font-bold text-slate-900 text-base sm:text-lg">${v} <span class="text-xs text-slate-600 font-normal">${s}</span></span></div>${d ? `<p class="text-[10px] sm:text-[11px] text-slate-600 leading-tight mt-1 font-medium">${d}</p>` : ''}</div>`; 
+            return `<div class="mb-4 border-b border-slate-100 pb-3 last:border-0 last:pb-0"><div class="flex justify-between items-center text-sm sm:text-base"><span class="font-bold text-slate-700">${l}</span><span class="font-bold text-slate-900 text-base sm:text-lg">${v} <span class="text-xs text-slate-600 font-normal">${s}</span></span></div>${d ? `<p class="text-[13px] text-slate-800 leading-tight mt-1 font-semibold">${d}</p>` : ''}</div>`; 
         };
         window.C = function(t, d, children, c = 'text-slate-800', cl = '', icon = '', wrapperCl = '') {
             let iH = '';
             if (icon === '🛡️' || t.includes("Warranty")) iH = '<i class="fas fa-shield-halved mr-2 text-indigo-600"></i>';
             else if (icon === '📊' || t.includes("Performance")) iH = '<i class="fas fa-chart-line mr-2 text-green-600"></i>';
-            else if (t.includes("Profile")) iH = '<i class="fas fa-solar-panel mr-2 text-blue-600"></i>';
-            else if (t.includes("Economics") || t.includes("Savings") || t.includes("Homeowner Value")) iH = '<i class="fas fa-sack-dollar mr-2 text-emerald-700"></i>';
+            else if (t.includes("Profile") || t.includes("Solar System")) iH = '<i class="fas fa-solar-panel mr-2 text-blue-600"></i>';
+            else if (t.includes("Economics") || t.includes("Savings") || t.includes("Benefit")) iH = '<i class="fas fa-sack-dollar mr-2 text-emerald-700"></i>';
             else if (t.includes("TPO") || t.includes("Contract")) iH = '<i class="fas fa-file-contract mr-2 text-slate-700"></i>';
-            else if (t.includes("Buyback") || t.includes("Deal") || t.includes("Investor")) iH = '<i class="fas fa-handshake mr-2 text-yellow-600"></i>';
             else if (t.includes("Matrix")) iH = '<i class="fas fa-table mr-2 text-blue-700"></i>';
             else if (t.includes("Analysis") || icon === 'chart-bar') iH = '<i class="fas fa-chart-bar mr-2 text-indigo-600"></i>';
             else if (t.includes("Arbitrage") || icon === 'balance-scale') iH = '<i class="fas fa-balance-scale-right mr-2 text-purple-600"></i>';
-            return `<div class="bg-white p-5 sm:p-6 rounded-2xl border border-slate-200 shadow-md hover:shadow-lg transition-shadow duration-300 break-inside-avoid ${cl} ${wrapperCl}"><div class="border-b border-slate-100 pb-4 mb-5"><h3 class="text-lg sm:text-xl font-bold flex items-center ${c}">${iH}${t}</h3>${d ? `<p class="text-[11px] sm:text-xs text-slate-600 mt-1 font-medium italic">${d}</p>` : ''}</div>${children}</div>`;
+            return `<div class="bg-white p-5 sm:p-6 rounded-2xl border border-slate-200 shadow-md hover:shadow-lg transition-shadow duration-300 break-inside-avoid ${cl} ${wrapperCl}"><div class="border-b border-slate-100 pb-4 mb-5"><h3 class="text-lg sm:text-xl font-bold flex items-center ${c}">${iH}${t}</h3>${d ? `<p class="text-[13px] text-slate-800 mt-1 font-semibold italic">${d}</p>` : ''}</div>${children}</div>`;
         };
 
         // =====================================================================
@@ -224,10 +218,10 @@ Architecture: Modular Single-File HTML5 (Sub-Renderer Pattern)
                     <h4 class="font-bold text-indigo-900 text-xs sm:text-sm uppercase mb-4 border-b border-indigo-200 pb-2 flex items-center gap-2"><i class="fas fa-microchip"></i> Hardware Registry</h4>
                     <div class="mb-4"><h5 class="text-[9px] font-black text-indigo-800 uppercase mb-2 tracking-widest">Solar Panels</h5><div class="grid grid-cols-2 sm:grid-cols-3 gap-3 sm:gap-4">${window.I("Panel Count", st.pC, "pC", "number")}${window.I("Panel Watts", st.pW, "pW", "number")}<div class="col-span-2 sm:col-span-1">${window.I("Panel Brand", st.panelBrand, "panelBrand", "text")}</div></div></div>
                     <div class="mb-4 pt-4 border-t border-indigo-200"><h5 class="text-[9px] font-black text-indigo-800 uppercase mb-2 tracking-widest">Inverter System</h5><div class="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">${window.S("Type", st.it, "it", [{ v: "string", l: "String" }, { v: "micro", l: "Micro" }])}${window.S("Brand", st.invBrand, "invBrand", [{v:'Enphase', l:'Enphase'}, {v:'SolarEdge', l:'SolarEdge'}, {v:'SMA', l:'SMA'}, {v:'Fronius', l:'Fronius'}, {v:'Other', l:'Other'}])}${window.I("Unit Count", st.invCount, "invCount", "number")}${window.I("Hardware Age", st.invAge, "invAge", "number")}</div></div>
-                    <div class="pt-4 border-t border-indigo-200"><h5 class="text-[9px] font-black text-indigo-800 uppercase mb-2 tracking-widest">Storage & Monitoring</h5><div class="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">${window.I("Battery Brand", st.batteryBrand, "batteryBrand", "text")}${window.I("Capacity (kWh)", st.b, "b", "number")}${window.I("Reserve (%)", st.br, "br", "number")}${window.S("Cellular", st.cellMon, "cellMon", [{v:'yes', l:'Active'}, {v:'no', l:'None'}])}</div></div>
+                    <div class="pt-4 border-t border-indigo-200"><h5 class="text-[9px] font-black text-indigo-800 uppercase mb-2 tracking-widest">Storage & Monitoring</h5><div class="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">${window.I("Battery Brand", st.batteryBrand, "batteryBrand", "text")}${window.I("Capacity (kWh)", st.b, "b", "number")}${window.I("Reserve (%)", st.br, "br", "number")}${window.S("Site Monitoring", st.cellMon, "cellMon", [{v:'wifi', l:'Wi-Fi'}, {v:'cellular', l:'Cellular'}, {v:'none', l:'None'}])}</div></div>
                 </div>
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
-                    <div class="bg-white p-5 sm:p-6 rounded-2xl shadow-md border border-slate-200"><h4 class="font-bold text-slate-800 text-xs sm:text-sm uppercase mb-4 flex items-center gap-2"><i class="fas fa-chart-line text-green-600"></i> Production & Utility</h4><div class="space-y-4">${window.I("Install Date", st.iDt, "iDt", "date")}${window.I("Meter (MWh)", st.ac, "ac", "number")}${window.I("Reading Date", st.pDt, "pDt", "date")}${window.S("Utility Preset", st.ut, "ut", [{ v: "nem2", l: "NEM 2 (CA)" }, { v: "nem3", l: "NEM 3 (CA)" }, { v: "roseville", l: "Roseville" }, { v: "smud", l: "SMUD" }, { v: "xcel_co", l: "Xcel Co" }, { v: "other", l: "Custom Rate" }], "", "handleUtilityChange")}${window.I("Site Consumption (%)", st.scr, "scr", "number")}<div class="grid grid-cols-2 gap-3 sm:gap-4">${window.I("Retail Rate ($)", st.rU, "rU", "number")}${window.I("Export Rate ($)", st.eU, "eU", "number")}</div></div></div>
+                    <div class="bg-white p-5 sm:p-6 rounded-2xl shadow-md border border-slate-200"><h4 class="font-bold text-slate-800 text-xs sm:text-sm uppercase mb-4 flex items-center gap-2"><i class="fas fa-chart-line text-green-600"></i> Production & Utility</h4><div class="space-y-4">${window.I("Install Date", st.iDt, "iDt", "date")}${window.I("Lifetime (MWH)", st.ac, "ac", "number")}${window.I("Reading Date", st.pDt, "pDt", "date")}${window.S("Utility Buyback Plan", st.ut, "ut", [{ v: "nem2", l: "NEM 2 (CA)" }, { v: "nem3", l: "NEM 3 (CA)" }, { v: "roseville", l: "Roseville" }, { v: "smud", l: "SMUD" }, { v: "xcel_co", l: "Xcel Co" }, { v: "other", l: "Custom Rate" }], "", "handleUtilityChange")}${window.I("Site Consumption (%)", st.scr, "scr", "number")}<div class="grid grid-cols-2 gap-3 sm:gap-4">${window.I("Retail Rate ($)", st.rU, "rU", "number")}${window.I("Export Rate ($)", st.eU, "eU", "number")}</div></div></div>
                     <div class="bg-white p-5 sm:p-6 rounded-2xl shadow-md border border-slate-200"><h4 class="font-bold text-slate-800 text-xs sm:text-sm uppercase mb-4 flex items-center gap-2"><i class="fas fa-compass text-orange-500"></i> Site Characteristics</h4><div class="space-y-4">${window.S("Array Azimuth", st.or, "or", [{ v: "south", l: "South (Ideal)" }, { v: "mix", l: "Mixed" }, { v: "east_west", l: "East / West" }, { v: "north", l: "North (Poor)" }])}${window.S("Roof Pitch", st.pi, "pi", [{ v: "standard", l: "Standard (20-30°)" }, { v: "flat", l: "Flat (0-10°)" }, { v: "steep", l: "Steep (>35°)" }])}${window.S("Shading Impact", st.sh, "sh", [{ v: "none", l: "No Shade (100%)" }, { v: "some", l: "Some Shade (85%)" }, { v: "alot", l: "Heavy Shade (70%)" }])}</div></div>
                 </div>
             </div>`;
@@ -235,12 +229,13 @@ Architecture: Modular Single-File HTML5 (Sub-Renderer Pattern)
 
         window.renderContractTab = function(st, r) {
             if (st.o === 'owned') return `<div class="tab-content bg-white p-8 rounded-3xl shadow-md border border-slate-200 min-h-[400px] flex flex-col items-center justify-center text-center text-slate-400"><i class="fas fa-file-circle-check text-7xl mb-6 text-slate-200"></i><h3 class="text-xl font-bold text-slate-500">No Contract Data Required</h3><p class="max-w-md mt-2 text-sm leading-relaxed">Homeowner Owned assets do not require contractual audit data as there is no 3rd party liability.</p></div>`;
+            const combinedVal = (parseFloat(st.pa) || 0) + (parseFloat(st.paB) || 0);
             return `<div class="tab-content bg-white p-5 sm:p-8 rounded-3xl shadow-md border border-slate-200 min-h-[400px]"><div class="max-w-3xl mx-auto"><div class="flex items-center gap-4 mb-6 border-b border-slate-200 pb-6"><div class="bg-blue-100 p-4 rounded-2xl text-blue-600 shadow-sm"><i class="fas fa-file-signature text-3xl"></i></div><div><h3 class="text-xl sm:text-2xl font-bold text-slate-800 uppercase tracking-tight">Lease / PPA Agreement</h3><p class="text-[11px] sm:text-xs text-slate-500 mt-1 uppercase tracking-widest font-bold">Audit terms to define financial liability.</p></div></div>
-                <div class="mb-6 bg-blue-50 p-4 rounded-2xl border border-blue-100 text-[11px] font-medium text-blue-800 leading-relaxed"><i class="fas fa-info-circle mr-2"></i><strong>Why this matters:</strong> ${window.UI_NARRATIVES.contract_intro}</div>
+                <div class="mb-6 bg-blue-50 p-4 rounded-2xl border border-blue-100 text-[13px] font-semibold text-blue-900 leading-relaxed"><i class="fas fa-info-circle mr-2"></i><strong>Why this matters:</strong> ${window.UI_NARRATIVES.contract_intro}</div>
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-6 sm:gap-8">
                 <div class="space-y-4"><h4 class="font-bold text-slate-700 uppercase text-[9px] sm:text-[10px] tracking-widest border-b pb-1">Term & Escalation</h4>${window.I("Contract Term (Years)", st.te, "te")}${window.I("Annual Escalator (%)", st.tEs, "tEs")}</div>
                 <div class="space-y-4"><h4 class="font-bold text-slate-700 uppercase text-[9px] sm:text-[10px] tracking-widest border-b pb-1">Production Guarantees</h4>${window.I("Year 1 Est. Production (kWh)", st.tE, "tE", "number", "", "1", false, "handleProductionChange")}${window.I("Guaranteed Minimum (kWh)", st.tG, "tG")}</div>
-                ${!st.o.includes('prepaid') ? `<div class="col-span-1 sm:col-span-2 bg-slate-50 p-5 sm:p-6 rounded-3xl border border-slate-200 shadow-inner"><h4 class="font-bold text-slate-700 uppercase text-[9px] sm:text-[10px] tracking-widest border-b pb-1 mb-4">Payment Structure</h4><div class="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">${window.I("Solar Rate ($/kWh)", (typeof st.tR === 'number' ? st.tR.toFixed(3) : st.tR), "tR", "number", "", "0.001", false, "handleRateChange")}${window.I("Battery Fixed Fee ($)", (typeof st.paB === 'number' ? st.paB.toFixed(2) : st.paB), "paB", "number", "", "0.01", false, "handleBatteryPaymentChange")}<div class="sm:col-span-2">${window.I("Total Monthly Payment ($)", (typeof st.pa === 'number' ? st.pa.toFixed(2) : st.pa), "pa", "number", "", "0.01", false, "handlePaymentChange")}</div></div></div>` : `<div class="col-span-1 sm:col-span-2 bg-green-50 p-8 rounded-3xl border border-green-200 text-center flex flex-col items-center justify-center shadow-inner"><i class="fas fa-check-circle text-green-500 text-4xl mb-3"></i><h4 class="font-bold text-green-800 uppercase text-xs tracking-widest mb-1">Prepaid Agreement</h4><p class="text-green-700 text-sm italic">No monthly payment liabilities exist for the remaining term.</p></div>`}
+                ${!st.o.includes('prepaid') ? `<div class="col-span-1 sm:col-span-2 bg-slate-50 p-5 sm:p-6 rounded-3xl border border-slate-200 shadow-inner"><h4 class="font-bold text-slate-700 uppercase text-[9px] sm:text-[10px] tracking-widest border-b pb-1 mb-4">Payment Structure (Year 1 Numbers)</h4><div class="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">${window.I("Year 1 Solar Rate ($/kWh)", (typeof st.tR === 'number' ? st.tR.toFixed(3) : st.tR), "tR", "number", "", "0.001", false, "handleRateChange")}<div class="hidden sm:block"></div>${window.I("Year 1 Solar Payment", (typeof st.pa === 'number' ? st.pa.toFixed(2) : st.pa), "pa", "number", "", "0.01", false, "handlePaymentChange")}${window.I("Year 1 Battery Fee", (typeof st.paB === 'number' ? st.paB.toFixed(2) : st.paB), "paB", "number", "", "0.01", false, "handleBatteryPaymentChange")}<div class="sm:col-span-2 pt-2 border-t border-slate-200 mt-2"><div class="bg-blue-50/50 p-4 rounded-2xl border border-blue-100 shadow-sm">${window.I("Year 1 Total Monthly Payment", window.cur(combinedVal), "combinedPayment", "text", "", "", true)}</div></div></div></div>` : `<div class="col-span-1 sm:col-span-2 bg-green-50 p-8 rounded-3xl border border-green-200 text-center flex flex-col items-center justify-center shadow-inner"><i class="fas fa-check-circle text-green-500 text-4xl mb-3"></i><h4 class="font-bold text-green-800 uppercase text-xs tracking-widest mb-1">Prepaid Agreement</h4><p class="text-green-700 text-sm italic">No monthly payment liabilities exist for the remaining term.</p></div>`}
                 <div class="col-span-1 sm:col-span-2"><h4 class="font-bold text-slate-700 uppercase text-[9px] sm:text-[10px] tracking-widest border-b pb-1 mb-4">Full Term Forecasts</h4><div class="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">${window.I("Total Estimated (kWh)", (r && r.fTe) ? window.num(r.fTe * 1000) : "", "fTe", "text", "", "", true)}${window.I("Total Guaranteed (kWh)", (r && r.fTg) ? window.num(r.fTg * 1000) : "", "fTg", "text", "", "", true)}</div></div>
             </div></div></div>`;
         };
@@ -265,32 +260,13 @@ Architecture: Modular Single-File HTML5 (Sub-Renderer Pattern)
                 }
             }
             const variancePercent = isFinite(ratio) ? Math.min(100, ratio * 100) : 0;
-            return `<div class="tab-content space-y-6">
-                ${window.C("System Profile", "Physical capacity snapshots and current system age.", `<div class="grid grid-cols-2 ${remTerm ? 'sm:grid-cols-3' : 'sm:grid-cols-2'} gap-4 sm:gap-6 pt-2"><div><p class="text-[9px] uppercase text-slate-400 font-bold tracking-widest">${window.UI_TEXT.sz_label.l}</p><p class="text-2xl sm:text-4xl font-black text-blue-800 tracking-tighter">${st.sz.toFixed(2)} <span class="text-xs sm:text-lg font-bold">kW</span></p><p class="text-[8px] text-slate-400 font-medium">${window.UI_TEXT.sz_label.d}</p></div><div class="sm:border-l sm:pl-6"><p class="text-[9px] uppercase text-slate-400 font-bold tracking-widest">${window.UI_TEXT.age_label.l}</p><p class="text-2xl sm:text-4xl font-black text-blue-800 tracking-tighter">${r.age.toFixed(1)} <span class="text-xs sm:text-lg font-bold">Yrs</span></p><p class="text-[8px] text-slate-400 font-medium">${window.UI_TEXT.age_label.d}</p></div>${remTerm ? `<div class="sm:border-l sm:pl-6"><p class="text-[9px] uppercase text-slate-400 font-bold tracking-widest">${window.UI_TEXT.rem_label.l}</p><p class="text-2xl sm:text-4xl font-black text-indigo-600 tracking-tighter">${remTerm} <span class="text-xs sm:text-lg font-bold">Yrs</span></p><p class="text-[8px] text-slate-400 font-medium">${window.UI_TEXT.rem_label.d}</p></div>` : ''}<div class="col-span-2 ${remTerm ? 'sm:col-span-3' : 'sm:col-span-2'} border-t pt-4 grid grid-cols-2 gap-4"><div><p class="text-[9px] text-slate-400 font-bold uppercase tracking-widest">Next 12M Est.</p><p class="text-xl sm:text-2xl font-bold text-slate-800 tracking-tight">${window.num(r.estN12 / 1000)} MWh</p><p class="text-[8px] text-slate-400 font-medium italic">Projected future yield.</p></div><div class="sm:border-l sm:pl-6"><p class="text-[9px] text-slate-400 font-bold uppercase tracking-widest">Daily Avg.</p><p class="text-xl sm:text-2xl font-bold text-slate-800 tracking-tight">${r.estDay.toFixed(1)} kWh</p><p class="text-[8px] text-slate-400 font-medium italic">Standard daily harvest.</p></div></div></div>`, 'text-blue-800')}
-                ${window.C("Rate Arbitrage Audit", "Comparison of solar cost vs grid import value.", `<div class="mb-4 bg-purple-50 p-4 rounded-2xl border border-purple-100 text-[11px] font-medium text-purple-800 leading-relaxed"><i class="fas fa-balance-scale mr-2"></i><strong>Arbitrage:</strong> ${window.UI_NARRATIVES.arbitrage_intro}</div><div class="grid grid-cols-2 gap-3 sm:gap-6 mb-4 pt-2"><div class="bg-slate-50 p-4 sm:p-6 rounded-2xl border border-slate-100 shadow-inner text-center"><p class="text-[9px] font-black uppercase text-slate-400 mb-1 tracking-widest">TPO Solar Rate</p><p class="text-xl sm:text-3xl font-black text-blue-800 italic leading-none">$${r.rYC_sol.toFixed(2)}</p><p class="text-[8px] text-slate-400 font-bold mt-1 uppercase italic">Yield-Adjusted (Solar Only)</p></div><div class="bg-slate-50 p-4 sm:p-6 rounded-2xl border border-slate-100 shadow-inner text-center"><p class="text-[9px] font-black uppercase text-slate-400 mb-1 tracking-widest">${window.UI_TEXT.blendedValue.l}</p><p class="text-xl sm:text-3xl font-black text-purple-700 italic leading-none">$${r.blendedUtility.toFixed(2)}</p><p class="text-[8px] text-slate-400 font-bold mt-1 uppercase italic">${window.UI_TEXT.blendedValue.d}</p></div></div><div class="grid grid-cols-3 gap-2 sm:gap-4 mb-4"><div class="p-2 sm:p-3 bg-slate-50 rounded-xl border text-center flex flex-col justify-between"><p class="text-[8px] font-bold text-slate-500 uppercase tracking-tighter">${window.UI_TEXT.selfConsumption.l}</p><p class="text-sm sm:text-xl font-black text-slate-800 my-1">${r.effSCR.toFixed(0)}%</p><p class="text-[7px] leading-tight text-slate-400 font-medium italic">${window.UI_TEXT.selfConsumption.d}</p></div><div class="p-2 sm:p-3 bg-slate-50 rounded-xl border text-center flex flex-col justify-between"><p class="text-[8px] font-bold text-slate-500 uppercase tracking-tighter">${window.UI_TEXT.arbitrageSlice.l}</p><p class="text-sm sm:text-xl font-black text-green-700 my-1">${r.usableB.toFixed(1)} <span class="text-[8px]">kWh</span></p><p class="text-[7px] leading-tight text-slate-400 font-medium italic">${window.UI_TEXT.arbitrageSlice.d}</p></div><div class="p-2 sm:p-3 bg-slate-50 rounded-xl border text-center flex flex-col justify-between"><p class="text-[8px] font-bold text-slate-500 uppercase tracking-tighter">${window.UI_TEXT.backupReserve.l}</p><p class="text-sm sm:text-xl font-black text-amber-600 my-1">${st.br || 0}%</p><p class="text-[7px] leading-tight text-slate-400 font-medium italic">${window.UI_TEXT.backupReserve.d}</p></div></div>`, 'text-purple-800', 'h-full', 'balance-scale')}
-                ${window.C(window.UI_TEXT.perfHeader.l, window.UI_TEXT.perfHeader.d, `<div class="mb-4 bg-blue-50 p-4 rounded-2xl border border-blue-100 text-[11px] font-medium text-blue-800 leading-relaxed"><i class="fas fa-chart-line mr-2"></i><strong>Audit Logic:</strong> ${window.UI_NARRATIVES.perf_ratio_intro}</div><div class="space-y-4"><div class="bg-slate-50 p-6 sm:p-8 rounded-3xl border border-slate-200 flex flex-col items-center justify-center text-center shadow-inner"><span class="text-[9px] font-black uppercase text-slate-400 tracking-[0.2em] mb-1">${window.UI_TEXT.yieldAccuracy.l} ${r.guarTD > 0 ? 'Guarantee' : 'Estimate'}</span><span class="text-4xl sm:text-6xl font-black italic tracking-tighter leading-none ${statusColor}">${isFinite(ratio) ? (ratio * 100).toFixed(1) : '0.0'}%</span><div class="mt-4 px-3 py-1.5 rounded-full border border-white shadow-sm bg-white flex items-center gap-2"><div class="w-2 h-2 rounded-full ${barColor} animate-pulse"></div><span class="text-[9px] sm:text-xs font-black uppercase tracking-widest ${statusColor}">${statusLabel}</span></div></div><div class="space-y-3 pt-2">${window.R("Primary Benchmark", window.num(benchmarkValue), "MWh", `Calculated ${benchmarkLabel} for a system age of ${r.age.toFixed(1)} years.`)}${window.R("Actual Production", window.num(r.act), "MWh", "Verified cumulative energy harvest read from site monitoring.")}<div class="mt-2 p-4 bg-slate-50 rounded-2xl border border-slate-200"><div class="flex justify-between items-center mb-2"><span class="text-[10px] font-bold text-slate-500 uppercase">Variance to Benchmark</span><span class="font-black text-base sm:text-lg ${(r.act - benchmarkValue) >= 0 ? 'text-green-700' : 'text-amber-600'}">${(r.act - benchmarkValue) >= 0 ? '+' : ''}${window.num(r.act - benchmarkValue)} MWh</span></div><div class="w-full bg-slate-200 h-2 rounded-full overflow-hidden"><div class="h-full ${barColor} transition-all duration-1000" style="width: ${variancePercent}%"></div></div></div>
-                ${r.trueUpRefund > 0 ? `<div class="mt-4 p-5 bg-orange-50 rounded-2xl border-2 border-orange-200 shadow-sm animate-pulse">
-                    <div class="flex justify-between items-start">
-                        <div>
-                            <h5 class="text-[10px] font-black text-orange-800 uppercase tracking-widest flex items-center gap-2"><i class="fas fa-exclamation-triangle"></i> True-Up Refund Liability</h5>
-                            <p class="text-[9px] text-orange-600 font-medium italic mt-1 leading-snug">Calculated energy shortfall refund based on contractual $/kWh rate.</p>
-                        </div>
-                        <div class="text-right">
-                            <span class="text-2xl font-black text-orange-700 tracking-tighter">${window.cur(r.trueUpRefund)}</span>
-                            <p class="text-[8px] font-bold text-orange-500 uppercase tracking-widest">${window.num(r.shortfallkWh)} kWh Gap</p>
-                        </div>
-                    </div>
-                </div>` : ''}
-                </div></div>`, 'text-blue-800', 'h-full', '📊')}
-                ${window.C("Est. Utility Savings", "Financial value created by avoided utility grid costs.", `<div class="grid grid-cols-2 gap-4 mb-4 border-b pb-4"><div class="space-y-1"><p class="text-[8px] font-bold text-slate-400 uppercase tracking-widest">Future Sav.</p><p class="text-xl font-black text-slate-800 tracking-tight">${window.cur(r.futSav)}</p>${isTPO ? `<p class="text-[8px] font-bold text-green-600 bg-green-50 px-1.5 py-0.5 rounded inline-block">Net: ${window.cur(r.futSavNet)}</p>` : ''}</div><div class="space-y-1"><p class="text-[8px] font-bold text-slate-400 uppercase tracking-widest">Lifetime Sav.</p><p class="text-xl font-black text-slate-800 tracking-tight">${window.cur(r.totSav)}</p>${isTPO ? `<p class="text-[8px] font-bold text-green-600 bg-green-50 px-1.5 py-0.5 rounded inline-block">Net: ${window.cur(r.totSavNet)}</p>` : ''}</div></div><div class="space-y-4"><div class="flex justify-between items-center"><div><span class="font-bold text-slate-700 text-sm">Annual Value</span><p class="text-[9px] text-slate-400 italic">Annual grid cost avoidance.</p></div><div class="text-right"><span class="font-bold text-lg">${window.cur(r.actSav)}</span>${isTPO ? `<p class="text-[10px] font-bold text-green-700">Net: ${window.cur(r.actSavNet)}</p>` : ''}</div></div><div class="flex justify-between items-center"><div><span class="font-bold text-slate-700 text-sm">Monthly Avg</span><p class="text-[9px] text-slate-400 italic">Avoided cost per month.</p></div><div class="text-right"><span class="font-bold text-lg">${window.cur(r.actSav / 12)}</span>${isTPO ? `<p class="text-[10px] font-bold text-green-700">Net: ${window.cur(r.actSavNet / 12)}</p>` : ''}</div></div></div>`, 'text-emerald-700')}
-                ${isTPO ? window.C(window.UI_TEXT.tpoCostsCard.l, window.UI_TEXT.tpoCostsCard.d, `<div class="mb-4 bg-slate-50 p-4 rounded-2xl border border-slate-100 text-[11px] font-medium text-slate-600 logic italic"><i class="fas fa-chart-line mr-2"></i><strong>Payment Forecast:</strong> ${window.UI_NARRATIVES.tpo_costs_intro}</div><div class="flex justify-between items-end border-b pb-4 mb-4"><div><p class="text-[9px] font-bold text-slate-400 uppercase tracking-widest">${window.UI_TEXT.totalTermCost.l}</p><p class="text-3xl font-black text-slate-800">${window.cur(r.tCost)}</p></div><div class="text-right"><p class="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Escalator</p><p class="text-2xl font-black text-red-600">${st.tEs}%</p></div></div><div class="bg-slate-50 rounded-2xl text-[8px] sm:text-[9px] overflow-hidden divide-y border border-slate-200 shadow-inner"><div class="grid grid-cols-4 p-3 font-bold text-slate-400 bg-slate-100/50 uppercase tracking-widest"><span>Period</span><span class="text-center">Solar</span><span class="text-center">Battery</span><span class="text-right">Total</span></div><div class="grid grid-cols-4 p-3 sm:p-4 text-slate-600"><span>Year 1</span><span class="text-center">${window.cur(r.solY1)}</span><span class="text-center">${window.cur(r.batY1)}</span><span class="text-right font-bold text-slate-900">${window.cur(r.pY1)}</span></div><div class="grid grid-cols-4 p-3 sm:p-4 bg-blue-50 font-bold text-blue-800"><span>Current (Y${Math.floor(r.age)})</span><span class="text-center">${window.cur(r.solYC)}</span><span class="text-center">${window.cur(r.batYC)}</span><span class="text-right font-black italic tracking-tighter">${window.cur(r.pYC)}</span></div><div class="grid grid-cols-4 p-3 sm:p-4 text-slate-400"><span>Term End</span><span class="text-center">${window.cur(r.solYL)}</span><span class="text-center">${window.cur(r.batYL)}</span><span class="text-right font-bold text-slate-500">${window.cur(r.pYL)}</span></div></div>`, 'text-slate-800') : ''}
-            </div>`;
+            return `<div class="tab-content space-y-6">${window.C("System Profile", "Physical capacity snapshots and current system age.", `<div class="grid grid-cols-2 ${remTerm ? 'sm:grid-cols-3' : 'sm:grid-cols-2'} gap-4 sm:gap-6 pt-2"><div><p class="text-[9px] uppercase text-slate-400 font-bold tracking-widest">${window.UI_TEXT.sz_label.l}</p><p class="text-2xl sm:text-4xl font-black text-blue-800 tracking-tighter">${st.sz.toFixed(2)} <span class="text-xs sm:text-lg font-bold">kW</span></p><p class="text-[11px] text-slate-700 font-semibold">${window.UI_TEXT.sz_label.d}</p></div><div class="sm:border-l sm:pl-6"><p class="text-[9px] uppercase text-slate-400 font-bold tracking-widest">${window.UI_TEXT.age_label.l}</p><p class="text-2xl sm:text-4xl font-black text-blue-800 tracking-tighter">${r.age.toFixed(1)} <span class="text-xs sm:text-lg font-bold">Yrs</span></p><p class="text-[11px] text-slate-700 font-semibold">${window.UI_TEXT.age_label.d}</p></div>${remTerm ? `<div class="sm:border-l sm:pl-6"><p class="text-[9px] uppercase text-slate-400 font-bold tracking-widest">${window.UI_TEXT.rem_label.l}</p><p class="text-2xl sm:text-4xl font-black text-indigo-600 tracking-tighter">${remTerm} <span class="text-xs sm:text-lg font-bold">Yrs</span></p><p class="text-[11px] text-slate-700 font-semibold">${window.UI_TEXT.rem_label.d}</p></div>` : ''}<div class="col-span-2 ${remTerm ? 'sm:col-span-3' : 'sm:col-span-2'} border-t pt-4 grid grid-cols-2 gap-4"><div><p class="text-[9px] text-slate-400 font-bold uppercase tracking-widest">Next 12M Est.</p><p class="text-xl sm:text-2xl font-bold text-slate-800 tracking-tight">${window.num(r.estN12 / 1000)} MWh</p><p class="text-[11px] text-slate-700 font-semibold italic">Projected future yield.</p></div><div class="sm:border-l sm:pl-6"><p class="text-[9px] text-slate-400 font-bold uppercase tracking-widest">Daily Avg.</p><p class="text-xl sm:text-2xl font-bold text-slate-800 tracking-tight">${r.estDay.toFixed(1)} kWh</p><p class="text-[11px] text-slate-700 font-semibold italic">solar system production</p></div></div></div>`, 'text-blue-800')}${window.C("Rate Arbitrage Audit", "Comparison of solar cost vs grid import value.", `<div class="mb-4 bg-purple-50 p-4 rounded-2xl border border-purple-100 text-[13px] font-semibold text-purple-900 leading-relaxed"><i class="fas fa-balance-scale mr-2"></i><strong>Arbitrage:</strong> ${window.UI_NARRATIVES.arbitrage_intro}</div><div class="grid grid-cols-2 gap-3 sm:gap-6 mb-4 pt-2"><div class="bg-slate-50 p-4 sm:p-6 rounded-2xl border border-slate-100 shadow-inner text-center"><p class="text-[9px] font-black uppercase text-slate-400 mb-1 tracking-widest">TPO Solar Rate</p><p class="text-xl sm:text-3xl font-black text-blue-800 italic leading-none">$${r.rYC_sol.toFixed(2)}</p><p class="text-[11px] text-slate-600 font-bold mt-1 uppercase italic">Yield-Adjusted (Solar Only)</p></div><div class="bg-slate-50 p-4 sm:p-6 rounded-2xl border border-slate-100 shadow-inner text-center"><p class="text-[9px] font-black uppercase text-slate-400 mb-1 tracking-widest">${window.UI_TEXT.blendedValue.l}</p><p class="text-xl sm:text-3xl font-black text-purple-700 italic leading-none">$${r.blendedUtility.toFixed(2)}</p><p class="text-[11px] text-slate-600 font-bold mt-1 uppercase italic">${window.UI_TEXT.blendedValue.d}</p></div></div><div class="grid grid-cols-3 gap-2 sm:gap-4 mb-4"><div class="p-2 sm:p-3 bg-slate-50 rounded-xl border text-center flex flex-col justify-between"><p class="text-[8px] font-bold text-slate-500 uppercase tracking-tighter">${window.UI_TEXT.selfConsumption.l}</p><p class="text-sm sm:text-xl font-black text-slate-800 my-1">${r.effSCR.toFixed(0)}%</p><p class="text-[10px] leading-tight text-slate-600 font-semibold italic">${window.UI_TEXT.selfConsumption.d}</p></div><div class="p-2 sm:p-3 bg-slate-50 rounded-xl border text-center flex flex-col justify-between"><p class="text-[8px] font-bold text-slate-500 uppercase tracking-tighter">${window.UI_TEXT.arbitrageSlice.l}</p><p class="text-sm sm:text-xl font-black text-green-700 my-1">${r.usableB.toFixed(1)} <span class="text-[8px]">kWh</span></p><p class="text-[10px] leading-tight text-slate-600 font-semibold italic">${window.UI_TEXT.arbitrageSlice.d}</p></div><div class="p-2 sm:p-3 bg-slate-50 rounded-xl border text-center flex flex-col justify-between"><p class="text-[8px] font-bold text-slate-500 uppercase tracking-tighter">${window.UI_TEXT.backupReserve.l}</p><p class="text-sm sm:text-xl font-black text-amber-600 my-1">${st.br || 0}%</p><p class="text-[10px] leading-tight text-slate-600 font-semibold italic">${window.UI_TEXT.backupReserve.d}</p></div></div>`, 'text-purple-800', 'h-full', 'balance-scale')}${window.C(window.UI_TEXT.perfHeader.l, window.UI_TEXT.perfHeader.d, `<div class="mb-4 bg-blue-50 p-4 rounded-2xl border border-blue-100 text-[13px] font-semibold text-blue-900 leading-relaxed"><i class="fas fa-chart-line mr-2"></i><strong>Audit Logic:</strong> ${window.UI_NARRATIVES.perf_ratio_intro}</div><div class="space-y-4"><div class="bg-slate-50 p-6 sm:p-8 rounded-3xl border border-slate-200 flex flex-col items-center justify-center text-center shadow-inner"><span class="text-[9px] font-black uppercase text-slate-400 tracking-[0.2em] mb-1">${window.UI_TEXT.yieldAccuracy.l} ${r.guarTD > 0 ? 'Guarantee' : 'Estimate'}</span><span class="text-4xl sm:text-6xl font-black italic tracking-tighter leading-none ${statusColor}">${isFinite(ratio) ? (ratio * 100).toFixed(1) : '0.0'}%</span><div class="mt-4 px-3 py-1.5 rounded-full border border-white shadow-sm bg-white flex items-center gap-2"><div class="w-2 h-2 rounded-full ${barColor} animate-pulse"></div><span class="text-[9px] sm:text-xs font-black uppercase tracking-widest ${statusColor}">${statusLabel}</span></div></div><div class="space-y-3 pt-2">${window.R("Primary Benchmark", window.num(benchmarkValue), "MWh", `Calculated ${benchmarkLabel} for a system age of ${r.age.toFixed(1)} years.`)}${window.R("Actual Production", window.num(r.act), "MWh", "Verified cumulative energy harvest read from site monitoring.")}<div class="mt-2 p-4 bg-slate-50 rounded-2xl border border-slate-200"><div class="flex justify-between items-center mb-2"><span class="text-[10px] font-bold text-slate-500 uppercase">Variance to Benchmark</span><span class="font-black text-base sm:text-lg ${(r.act - benchmarkValue) >= 0 ? 'text-green-700' : 'text-amber-600'}">${(r.act - benchmarkValue) >= 0 ? '+' : ''}${window.num(r.act - benchmarkValue)} MWh</span></div><div class="w-full bg-slate-200 h-2 rounded-full overflow-hidden"><div class="h-full ${barColor} transition-all duration-1000" style="width: ${variancePercent}%"></div></div></div>${r.trueUpRefund > 0 ? `<div class="mt-4 p-5 bg-orange-50 rounded-2xl border-2 border-orange-200 shadow-sm animate-pulse"><div class="flex justify-between items-start"><div><h5 class="text-[10px] font-black text-orange-800 uppercase tracking-widest flex items-center gap-2"><i class="fas fa-exclamation-triangle"></i> True-Up Refund Liability</h5><p class="text-[11px] text-orange-700 font-bold italic mt-1 leading-snug">Calculated energy shortfall refund based on contractual $/kWh rate.</p></div><div class="text-right"><span class="text-2xl font-black text-orange-700 tracking-tighter">${window.cur(r.trueUpRefund)}</span><p class="text-[8px] font-bold text-orange-500 uppercase tracking-widest">${window.num(r.shortfallkWh)} kWh Gap</p></div></div></div>` : ''}</div>`, 'text-blue-800', 'h-full', '📊')}${window.C("Est. Utility Savings", "Financial value created by avoided utility grid costs.", `<div class="grid grid-cols-2 gap-4 mb-4 border-b pb-4 pt-2"><div class="space-y-1"><p class="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Future Sav.</p><p class="text-2xl sm:text-4xl font-black text-emerald-700 tracking-tighter">${window.cur(r.futSav)}</p>${isTPO ? `<p class="text-[9px] font-bold text-green-700 bg-green-50 px-1.5 py-0.5 rounded inline-block">Net: ${window.cur(r.futSavNet)}</p>` : ''}</div><div class="space-y-1 sm:border-l sm:pl-6"><p class="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Lifetime Sav.</p><p class="text-2xl sm:text-4xl font-black text-emerald-700 tracking-tighter">${window.cur(r.totSav)}</p>${isTPO ? `<p class="text-[9px] font-bold text-green-700 bg-green-50 px-1.5 py-0.5 rounded inline-block">Net: ${window.cur(r.totSavNet)}</p>` : ''}</div></div><div class="space-y-4 pt-2"><div class="flex justify-between items-center"><div><span class="font-bold text-slate-700 text-sm uppercase tracking-tight">Annual Value</span><p class="text-[11px] text-slate-600 italic font-semibold">Annual grid cost avoidance.</p></div><div class="text-right"><span class="font-black text-xl text-slate-900 tracking-tight">${window.cur(r.actSav)}</span>${isTPO ? `<p class="text-[12px] font-black text-emerald-700">Net: ${window.cur(r.actSavNet)}</p>` : ''}</div></div><div class="flex justify-between items-center border-t border-slate-50 pt-4"><div><span class="font-bold text-slate-700 text-sm uppercase tracking-tight">Monthly Avg</span><p class="text-[11px] text-slate-600 italic font-semibold">Avoided cost per month.</p></div><div class="text-right"><span class="font-black text-xl text-slate-900 tracking-tight">${window.cur(r.actSav / 12)}</span>${isTPO ? `<p class="text-[12px] font-black text-emerald-700">Net: ${window.cur(r.actSavNet / 12)}</p>` : ''}</div></div></div>`, 'text-emerald-700')}${isTPO ? window.C(window.UI_TEXT.tpoCostsCard.l, window.UI_TEXT.tpoCostsCard.d, `<div class="mb-6 bg-slate-50 p-4 rounded-2xl border border-slate-100 text-[13px] font-semibold text-slate-800 logic italic"><i class="fas fa-chart-line mr-2 text-blue-600"></i><strong>Payment Forecast:</strong> This schedule reflects both Solar and Battery components escalated by the contractual rate.</div><div class="grid grid-cols-2 gap-4 mb-6 border-b pb-6"><div class="space-y-1"><p class="text-[9px] font-bold text-slate-400 uppercase tracking-widest">${window.UI_TEXT.totalTermCost.l}</p><p class="text-2xl sm:text-4xl font-black text-slate-900 tracking-tighter">${window.cur(r.tCost)}</p><p class="text-[11px] text-slate-500 font-semibold italic">Cumulative term liability.</p></div><div class="space-y-1 sm:border-l sm:pl-6 text-right"><p class="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Escalator</p><p class="text-2xl sm:text-4xl font-black text-red-600 tracking-tighter">${st.tEs}%</p><p class="text-[11px] text-slate-500 font-semibold italic">Annual fixed growth.</p></div></div><div class="bg-slate-50 rounded-2xl overflow-hidden divide-y border border-slate-200 shadow-inner text-[11px] sm:text-[13px]"><div class="grid grid-cols-4 p-4 font-black text-slate-600 bg-slate-100/80 uppercase tracking-widest border-b border-slate-200"><span>Period</span><span class="text-center">Solar</span><span class="text-center">Battery</span><span class="text-right">Total</span></div><div class="grid grid-cols-4 p-4 sm:p-5 text-slate-800 font-medium"><span class="font-bold">Year 1</span><span class="text-center">${window.cur(r.solY1)}</span><span class="text-center">${window.cur(r.batY1)}</span><span class="text-right font-black text-slate-900">${window.cur(r.pY1)}</span></div><div class="grid grid-cols-4 p-4 sm:p-6 bg-blue-50/50 font-bold text-blue-900 border-y-2 border-blue-100"><span class="font-black flex flex-col"><span class="text-[9px] uppercase text-blue-400 tracking-tighter leading-none mb-1">Current</span>Year ${Math.floor(r.age)}</span><span class="text-center flex items-center justify-center">${window.cur(r.solYC)}</span><span class="text-center flex items-center justify-center">${window.cur(r.batYC)}</span><span class="text-right text-base sm:text-2xl font-black italic tracking-tighter text-blue-950">${window.cur(r.pYC)}</span></div><div class="grid grid-cols-4 p-4 sm:p-5 text-slate-500 font-medium italic"><span class="font-bold">Term End</span><span class="text-center">${window.cur(r.solYL)}</span><span class="text-center">${window.cur(r.batYL)}</span><span class="text-right font-bold">${window.cur(r.pYL)}</span></div></div>`, 'text-slate-800') : ''}</div>`;
         };
 
         window.renderValuationTab = function(st, aR) {
             const isTPO = ['lease', 'ppa', 'prepaid_lease', 'prepaid_ppa'].includes(st.o);
             return `<div class="tab-content space-y-6">
-                <div class="bg-slate-800 text-white p-8 sm:p-10 rounded-3xl shadow-xl relative overflow-hidden text-center"><p class="text-[9px] sm:text-[10px] font-black text-blue-300 uppercase tracking-[0.3em] mb-3 opacity-80">Fair Market Value (FMV)</p><p class="text-5xl sm:text-7xl font-black mb-2 tracking-tighter italic leading-none">${window.cur(aR.val)}</p><p class="text-[9px] text-slate-400 font-bold uppercase tracking-widest">${st.w === 100 ? 'Income Approach' : st.w === 0 ? 'Cost Approach' : `Blended (${st.w}% Income)`}</p><div class="absolute right-[-10%] top-[-10%] text-[140px] sm:text-[160px] opacity-10 rotate-12"><i class="fas fa-balance-scale"></i></div></div>
+                <div class="bg-slate-800 text-white p-8 sm:p-10 rounded-3xl shadow-xl relative overflow-hidden text-center"><p class="text-[9px] sm:text-[10px] font-black text-blue-300 uppercase tracking-[0.3em] mb-3 opacity-80">Fair Market Value (FMV)</p><p class="text-5xl sm:text-7xl font-black mb-2 tracking-tighter italic leading-none">${window.cur(aR.val)}</p><p class="text-[12px] text-slate-200 font-bold uppercase tracking-widest">${st.w === 100 ? 'Income Approach' : st.w === 0 ? 'Cost Approach' : `Blended (${st.w}% Income)`}</p><div class="absolute right-[-10%] top-[-10%] text-[140px] sm:text-[160px] opacity-10 rotate-12"><i class="fas fa-balance-scale"></i></div></div>
                 <div class="bg-slate-700 p-6 sm:p-8 rounded-3xl border border-slate-600 shadow-xl">
                     <h4 class="text-[9px] font-black text-white uppercase mb-6 border-b border-slate-600 pb-3 tracking-widest">Adjustments & Assumptions</h4>
                     <div class="grid grid-cols-1 sm:grid-cols-2 gap-5 sm:gap-6">${window.Idark("Discount Rate (%)", st.dr, "dr")}${window.Idark("Utility Esc. (%)", st.e, "e")}${window.Idark("Rep. Cost ($/W)", st.rC, "rC")}${window.Idark("Life (Years)", st.l, "l")}${window.Sdark("NEM Policy", st.ne, "ne", [{v:1.0, l:"Full Retail"}, {v:0.8, l:"High Export"}, {v:0.5, l:"Reduced"}])}${window.Idark("Condition (0-1)", st.c, "c")}</div>
@@ -298,22 +274,8 @@ Architecture: Modular Single-File HTML5 (Sub-Renderer Pattern)
                     ${st.srec ? `<div class="mt-4">${window.Idark("SREC Value ($/MWh)", st.srecP, "srecP")}</div>` : ''}
                     <div class="mt-8 pt-8 border-t border-slate-600 text-center"><label class="block text-blue-200 text-[9px] font-black uppercase mb-4 tracking-widest">Methodology</label><div class="flex bg-slate-800 p-1 rounded-2xl border border-slate-600 shadow-inner max-w-sm mx-auto"><button onclick="updateState('w', 100)" class="flex-1 py-3 rounded-xl text-[9px] font-black transition-all ${st.w === 100 ? 'bg-blue-600 text-white shadow-lg' : 'text-slate-500'} uppercase">Income</button><button onclick="updateState('w', 0)" class="flex-1 py-3 rounded-xl text-[9px] font-black ${st.w === 0 ? 'bg-blue-600 text-white shadow-lg' : 'text-slate-500'} uppercase">Cost</button></div></div>
                 </div>
-                ${isTPO ? `<div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-md"><h4 class="text-xs font-bold text-slate-800 uppercase tracking-widest mb-4">Income Basis Breakdown (TPO Model)</h4><div class="space-y-3">${window.R("Contract Savings", window.cur(aR.incContract), "", "Discounted value of net energy savings during remaining lease term.")}${window.R("Residual Value", window.cur(aR.incResidual), "", "Discounted value of energy savings after contract expiration.")}<div class="bg-indigo-50 p-3 rounded-xl border border-indigo-100 mt-4 text-[10px] font-medium text-indigo-800 leading-relaxed">${window.UI_NARRATIVES.valuation_tpo_split}</div></div></div>` : ''}
-                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">${window.C("Cost Basis", "Physical value.", `<p class="text-2xl sm:text-4xl font-black italic text-slate-700">${window.cur(aR.cost)}</p><p class="text-[9px] text-slate-400 mt-2">${window.UI_NARRATIVES.valuation_cost_footer}</p>`, 'text-slate-700')}${window.C("Income Basis", "Discounted savings.", `<p class="text-2xl sm:text-4xl font-black italic text-green-700">${window.cur(aR.inc)}</p><p class="text-[9px] text-slate-400 mt-2">${window.UI_NARRATIVES.valuation_inc_footer}</p>`, 'text-green-700')}</div>
-            </div>`;
-        };
-
-        window.renderBuybackTab = function(st, r) {
-            const { bb_offer: offer, bb_metrics: metrics, bb_term: term, bb_rate: rate, bb_irr: irr, bb_opex: opex, bb_schedule: schedule } = st;
-            let status = 'green', messages = [], title = "DEAL LOOKS VIABLE", icon = "check-circle", colorClass = "bg-green-100 border-green-400 text-green-900";
-            if (r.age > 15 || metrics.totalProfit < 0) { status = 'red'; messages.push(`Age or Profit threshold failed.`); title = "STOP: DO NOT PROCEED"; icon = "ban"; colorClass = "bg-red-100 border-red-400 text-red-900"; }
-            else if (metrics.totalProfit < (offer * 0.15)) { title = "CAUTION: LOW MARGIN"; icon = "exclamation-triangle"; colorClass = "bg-yellow-100 border-yellow-400 text-yellow-900"; }
-            return `<div class="tab-content space-y-4 sm:space-y-6">
-                <div class="${colorClass} border-l-[8px] sm:border-l-[10px] p-5 sm:p-6 rounded-2xl shadow-md flex items-start gap-4 sm:gap-6"><div class="text-3xl sm:text-4xl pt-1"><i class="fas fa-${icon}"></i></div><div><h3 class="font-black text-xl sm:text-2xl uppercase tracking-wide leading-none">${title}</h3><ul class="mt-2 list-disc list-inside text-[10px] sm:text-[11px] font-bold opacity-90">${messages.length ? messages.map(m=>`<li>${m}</li>`).join('') : '<li>Parameters meet investor acquisition criteria.</li>'}</ul></div></div>
-                <div class="mb-4 bg-amber-50 p-4 rounded-2xl border border-amber-100 text-[11px] font-medium text-amber-800 leading-relaxed shadow-md"><i class="fas fa-handshake mr-2"></i><strong>Investor Buyback:</strong> ${window.UI_NARRATIVES.buyback_intro}</div>
-                <div class="bg-gradient-to-r from-yellow-500 to-amber-600 text-white p-8 sm:p-12 rounded-3xl shadow-2xl text-center relative overflow-hidden"><div class="relative z-10"><p class="text-[9px] font-black uppercase tracking-[0.3em] mb-3 opacity-80">Max Cash Offer</p><p class="text-5xl sm:text-7xl font-black mb-3 italic leading-none">${window.cur(offer)}</p><p class="text-[9px] font-black uppercase tracking-widest opacity-90">${term}-Yr @ ${window.cur3(rate)}/kWh (${irr}% IRR)</p></div><div class="absolute right-[-10%] top-[-10%] text-[140px] sm:text-[200px] opacity-10"><i class="fas fa-handshake"></i></div></div>
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">${window.C("Deal Structure", "Investor configurations.", `<div class="grid grid-cols-2 gap-4">${window.I("Lease Rate", rate, "bb_rate")}${window.I("Term (Yrs)", term, "bb_term")}${window.I("IRR (%)", irr, "bb_irr")}${window.I("OpEx ($/kW)", opex, "bb_opex")}</div>`, 'text-yellow-700')}${window.C("Investor Pro-Forma", "Breakdown.", `<div class="grid grid-cols-2 gap-3 text-center"><div class="p-3 sm:p-4 bg-slate-50 rounded-2xl border border-slate-200"><p class="text-[8px] uppercase font-black text-slate-400 tracking-widest">Profit</p><p class="text-base sm:text-xl font-black text-green-700">${window.cur(metrics.totalProfit)}</p></div><div class="p-3 sm:p-4 bg-slate-50 rounded-2xl border border-slate-200"><p class="text-[8px] uppercase font-black text-slate-400 tracking-widest">Net CF</p><p class="text-base sm:text-xl font-black text-blue-700">${window.cur(metrics.totalNet)}</p></div><div class="p-3 sm:p-4 bg-slate-50 rounded-2xl border border-slate-200"><p class="text-[8px] uppercase font-black text-slate-400 tracking-widest">Total Rev</p><p class="text-base sm:text-xl font-black text-slate-800">${window.cur(metrics.totalRev)}</p></div><div class="p-3 sm:p-4 bg-slate-50 rounded-2xl border border-slate-200"><p class="text-[8px] uppercase font-black text-slate-400 tracking-widest">OpEx</p><p class="text-base sm:text-xl font-black text-red-600">-${window.cur(metrics.totalOpex)}</p></div></div>`, 'text-indigo-800', 'md:col-span-2')}</div>
-                ${window.C(window.UI_TEXT.performanceMatrix.l, window.UI_TEXT.performanceMatrix.d, `<div class="max-h-[400px] overflow-y-auto border border-slate-200 rounded-2xl shadow-inner bg-slate-50/50"><table class="w-full text-xs text-left"><thead><tr class="bg-slate-50 border-b sticky top-0"><th class="p-4 uppercase font-black text-slate-500 tracking-widest">Year</th><th class="p-4 uppercase font-black text-slate-500 tracking-widest">Exp kWh</th><th class="p-4 uppercase font-black text-slate-500 tracking-widest">Revenue</th><th class="p-4 uppercase font-black text-slate-500 tracking-widest">Net CF</th></tr></thead><tbody class="divide-y">${schedule.map(s=>`<tr><td class="p-4 font-bold text-slate-600">Year ${s.year}</td><td class="p-4 text-slate-600">${window.num(s.expectedGen)}</td><td class="p-4 text-slate-600">${window.cur(s.revenue)}</td><td class="p-4 font-black text-blue-700">${window.cur(s.net)}</td></tr>`).join('')}</tbody></table></div>`, 'text-slate-800', 'md:col-span-2')}
+                ${isTPO ? `<div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-md"><h4 class="text-xs font-bold text-slate-800 uppercase tracking-widest mb-4">Income Basis Breakdown (TPO Model)</h4><div class="space-y-3">${window.R("Contract Savings", window.cur(aR.incContract), "", "Discounted value of net energy savings during remaining lease term.")}${window.R("Residual Value", window.cur(aR.incResidual), "", "Discounted value of energy savings after contract expiration.")}<div class="bg-indigo-50 p-3 rounded-xl border border-indigo-100 mt-4 text-[13px] font-semibold text-indigo-900 leading-relaxed">${window.UI_NARRATIVES.valuation_tpo_split}</div></div></div>` : ''}
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">${window.C("Cost Basis", "Physical value.", `<p class="text-2xl sm:text-4xl font-black italic text-slate-700">${window.cur(aR.cost)}</p><p class="text-[12px] text-slate-800 font-bold mt-2">${window.UI_NARRATIVES.valuation_cost_footer}</p>`, 'text-slate-700')}${window.C("Income Basis", "Discounted savings.", `<p class="text-2xl sm:text-4xl font-black italic text-green-700">${window.cur(aR.inc)}</p><p class="text-[12px] text-slate-800 font-bold mt-2">${window.UI_NARRATIVES.valuation_inc_footer}</p>`, 'text-green-700')}</div>
             </div>`;
         };
 
@@ -336,8 +298,10 @@ Architecture: Modular Single-File HTML5 (Sub-Renderer Pattern)
             const ntR = parseFloat(tR) || 0;
             
             const solY1 = nPa, batY1 = nPaB;
-            const solYC = parseFloat((nPa * Math.pow(1 + (ntEs/100), iC)).toFixed(2)), batYC = nPaB;
-            const solYL = parseFloat((nPa * Math.pow(1 + (ntEs/100), iL)).toFixed(2)), batYL = nPaB;
+            const solYC = parseFloat((nPa * Math.pow(1 + (ntEs/100), iC)).toFixed(2));
+            const batYC = parseFloat((nPaB * Math.pow(1 + (ntEs/100), iC)).toFixed(2));
+            const solYL = parseFloat((nPa * Math.pow(1 + (ntEs/100), iL)).toFixed(2));
+            const batYL = parseFloat((nPaB * Math.pow(1 + (ntEs/100), iL)).toFixed(2));
             
             const pY1 = isPrepaid ? 0 : (solY1 + batY1);
             const pYC = isPrepaid ? 0 : (solYC + batYC);
@@ -364,9 +328,7 @@ Architecture: Modular Single-File HTML5 (Sub-Renderer Pattern)
             }
             etd += ntE * (1 - (iC * DEG_RATE)) * (age % 1); gtd += ntG * (1 - (iC * DEG_RATE)) * (age % 1);
             
-            const rY1 = ntE > 0 ? (solY1 * 12) / ntE : 0, rYC_sol = (ntE * (1-(iC*DEG_RATE))) > 0 ? (solYC * 12) / (ntE*(1-(iC*DEG_RATE))) : 0;
-            const rYL = (ntE * (1-(iL*DEG_RATE))) > 0 ? (solYL * 12) / (ntE*(1-(iL*DEG_RATE))) : 0;
-            
+            const rYC_sol = (ntE * (1-(iC*DEG_RATE))) > 0 ? (solYC * 12) / (ntE*(1-(iC*DEG_RATE))) : 0;
             const shortfallkWh = Math.max(0, (gtd * 1) - (nAC * 1000));
             const trueUpRefund = isTPO ? (shortfallkWh * ntR) : 0;
 
@@ -376,11 +338,13 @@ Architecture: Modular Single-File HTML5 (Sub-Renderer Pattern)
             
             let tCt = 0, remCost = 0;
             let currentPay_sol = solY1 * 12;
+            let currentPay_bat = batY1 * 12;
             for (let i = 0; i < nTe; i++) {
-                const totalYearly = currentPay_sol + (batY1 * 12);
+                const totalYearly = currentPay_sol + currentPay_bat;
                 tCt += totalYearly;
                 if (i >= iC) remCost += totalYearly;
                 currentPay_sol *= (1 + (ntEs/100));
+                currentPay_bat *= (1 + (ntEs/100));
             }
 
             window.state.r = { 
@@ -389,7 +353,7 @@ Architecture: Modular Single-File HTML5 (Sub-Renderer Pattern)
                 actSavNet: isTPO && !isPrepaid ? ((cP * blendedUtility * (nAC*1000/(ptd||1))) - (pYC * 12)) : (cP * blendedUtility), 
                 futSav: fSa, futSavNet: isTPO && !isPrepaid ? (fSa - remCost) : fSa, 
                 totSav: fSa + (nAC*1000*blendedUtility), totSavNet: isTPO && !isPrepaid ? (fSa + (nAC*1000*blendedUtility) - tCt) : (fSa + (nAC*1000*blendedUtility)), 
-                tCost: tCt, pY1, solY1, batY1, solYC, batYC, pYC, solYL, batYL, pYL, rY1, rYC_sol, rYL, 
+                tCost: tCt, pY1, solY1, batY1, solYC, batYC, pYC, solYL, batYL, pYL, rYC_sol, 
                 physTD: ptd/1000, estTD: etd/1000, guarTD: gtd/1000, fTe: fTe/1000, fTg: fTg/1000, 
                 blendedUtility, effSCR: finalSCR, arbDelta, arbDiscount, estDay: cP/365, estN12: cP, usableB, remCost, ptd,
                 shortfallkWh, trueUpRefund
@@ -398,46 +362,27 @@ Architecture: Modular Single-File HTML5 (Sub-Renderer Pattern)
             const sC = s * 1000 * parseFloat(rC||0); 
             const rL = Math.max(0, (parseFloat(l)||30) - age); 
             const depCost = l > 0 ? (rL / l) * c : 0; const cV = sC * depCost;
-            let dcfContract = 0, dcfResidual = 0; let uRC = blendedUtility, lCA_sol = solYC * 12, pC_ = cP;
+            let dcfContract = 0, dcfResidual = 0; let uRC = blendedUtility, lCA_sol = solYC * 12, lCA_bat = batYC * 12, pC_ = cP;
             for (let y = 1; y <= Math.ceil(rL); y++) { 
                 const srev = (srec && srecP) ? (pC_ / 1000) * srecP : 0;
-                const yearlyLiab = (isTPO && !isPrepaid && (age+y)<=nTe) ? (lCA_sol + (batY1 * 12)) : 0;
+                const yearlyLiab = (isTPO && !isPrepaid && (age+y)<=nTe) ? (lCA_sol + lCA_bat) : 0;
                 const net = (pC_ * uRC) + srev - yearlyLiab; 
                 const discounted = net / Math.pow(1 + (dr / 100), y);
                 if (isTPO && (age+y) <= nTe) dcfContract += discounted; else dcfResidual += discounted;
-                uRC *= (1 + (parseFloat(e||0) / 100)); lCA_sol *= (1 + (ntEs / 100)); pC_ *= 0.995;
+                uRC *= (1 + (parseFloat(e||0) / 100)); 
+                lCA_sol *= (1 + (ntEs / 100)); 
+                lCA_bat *= (1 + (ntEs / 100));
+                pC_ *= 0.995;
             }
             const totalDCF = dcfContract + dcfResidual;
             const valInput = (isTPO && w === 100) ? dcfContract : totalDCF;
             window.state.aR = { cost: cV - rp, inc: totalDCF - rp, incContract: dcfContract, incResidual: dcfResidual, val: Math.max(0, (valInput * (w / 100)) + (cV * (1 - (w / 100))) - rp) };
-            window.calculateBuyback(s, age, cP, window.state.it, blendedUtility, e);
-        };
-
-        window.calculateBuyback = function(sz, age, prod, it, blendedRate, e) {
-            const { bb_rate, bb_term, bb_irr, bb_opex, rp, bb_capex } = window.state;
-            let sum = 0, totalRev = 0, totalOpex = 0, totalCapex = 0, schedule = [];
-            let pC_ = prod;
-            for (let i = 0; i < bb_term; i++) {
-                const curAge = age + i;
-                const rev = pC_ * bb_rate;
-                const op = (sz * bb_opex) + 100;
-                let cp = 0;
-                if (it === 'string' && Math.floor(curAge) === 12) cp = (parseFloat(bb_capex) || 2500);
-                totalRev += rev; totalOpex += op; totalCapex += cp;
-                let net = rev - op - cp;
-                sum += net / Math.pow(1 + (bb_irr/100), i+1);
-                schedule.push({ year: i+1, revenue: rev, net, expectedGen: pC_ });
-                pC_ *= 0.995;
-            }
-            window.state.bb_offer = Math.max(0, sum - rp);
-            window.state.bb_schedule = schedule;
-            window.state.bb_metrics = { totalRev, totalOpex, totalNet: totalRev - totalOpex - totalCapex, totalProfit: Math.max(0, (totalRev - totalOpex - totalCapex) - window.state.bb_offer) };
         };
 
         // --- STATE & UTILITIES ---
         window.state = {
             activeTab: "inputs", activeModal: null, a: "", iDt: "", pDt: new Date().toISOString().split('T')[0],
-            o: "lease", pC: "", pW: "", sz: 0, or: "mix", pi: "standard", sh: "some", ac: "", b: "", br: "", scr: 60, it: "string", invBrand: "SolarEdge", invCount: "", invAge: "", panelBrand: "", batteryBrand: "", cellMon: "no", ut: "nem2", rU: 0.48, eU: 0.45, te: "", tE: "", tG: "", tEs: "", pa: "", paB: "", tR: "", rR: 0.20, rC: 3.50, ne: 0.8, c: 0.9, aC: true, l: 30, om: 20, dr: 7.88, rp: 0, tx: false, e: 7.0, w: 100, srec: false, srecP: 25, r: null, aR: null, bb_rate: 0.15, bb_term: 15, bb_irr: 12, bb_opex: 10, bb_capex: 2500, bb_offer: 0, bb_schedule: [], bb_metrics: { totalRev: 0, totalOpex: 0, totalCapex: 0, totalNet: 0, totalSavings: 0, monthlySavings: 0, totalProfit: 0, guaranteedGen: 0, annualCM: 0 }, company: localStorage.getItem('solarCheck_company') || 'rsr'
+            o: "lease", pC: "", pW: "", sz: 0, or: "mix", pi: "standard", sh: "some", ac: "", b: "", br: "", scr: 60, it: "string", invBrand: "SolarEdge", invCount: "", invAge: "", panelBrand: "", batteryBrand: "", cellMon: "none", ut: "nem2", rU: 0.48, eU: 0.45, te: "", tE: "", tG: "", tEs: "", pa: "", paB: "", tR: "", rR: 0.20, rC: 3.50, ne: 0.8, c: 0.9, aC: true, l: 30, om: 20, dr: 7.88, rp: 0, tx: false, e: 7.0, w: 100, srec: false, srecP: 25, r: null, aR: null, company: localStorage.getItem('solarCheck_company') || 'rsr'
         };
 
         const COMPANIES = {
@@ -451,7 +396,7 @@ Architecture: Modular Single-File HTML5 (Sub-Renderer Pattern)
         window.updateState = function(k, v) { window.state[k] = v; window.calculate(); window.render(); };
         window.handleInputChange = function(e, k) { let v = e.target.value; if (e.target.type === 'number') v = v === "" ? "" : parseFloat(v); window.state[k] = v; window.calculate(); window.render(); };
         window.handleCompanyChange = function(e) { window.state.company = e.target.value; localStorage.setItem('solarCheck_company', e.target.value); window.render(); };
-        window.handleProductionChange = function(e) { const val = parseFloat(e.target.value); window.state.tE = isNaN(val) ? "" : val; window.calculate(); window.render(); };
+        window.handleProductionChange = function(e) { const val = parseFloat(e.target.value); window.state.tE = isNaN(val) ? "" : val; const tR = parseFloat(window.state.tR); if (!isNaN(val) && !isNaN(tR) && val > 0) { window.state.pa = parseFloat(((tR * val) / 12).toFixed(2)); } window.calculate(); window.render(); };
         window.handleRateChange = function(e) { const val = parseFloat(e.target.value); window.state.tR = isNaN(val) ? "" : val; const tE = parseFloat(window.state.tE); if (!isNaN(val) && !isNaN(tE) && tE > 0) { window.state.pa = parseFloat(((val * tE) / 12).toFixed(2)); } window.calculate(); window.render(); };
         window.handlePaymentChange = function(e) { const val = parseFloat(e.target.value); window.state.pa = isNaN(val) ? "" : val; const tE = parseFloat(window.state.tE); if (!isNaN(val) && !isNaN(tE) && tE > 0) { window.state.tR = parseFloat(((val * 12) / tE).toFixed(4)); } window.calculate(); window.render(); };
         window.handleBatteryPaymentChange = function(e) { const val = parseFloat(e.target.value); window.state.paB = isNaN(val) ? "" : val; window.calculate(); window.render(); };
@@ -459,217 +404,231 @@ Architecture: Modular Single-File HTML5 (Sub-Renderer Pattern)
         window.openModal = (id) => { const m = document.getElementById(id); if (m) { m.showModal(); window.state.activeModal = id; } };
         window.closeModal = () => { const m = document.getElementById(window.state.activeModal); if (m) m.close(); window.state.activeModal = null; };
 
+        window.handleBuybackExport = function() {
+            if (!window.state.r) return;
+            const { a, sz, it } = window.state;
+            const { age, estN12 } = window.state.r;
+            const params = new URLSearchParams({ a: a || "Subject Property", sz: sz || 0, age: age.toFixed(2), prod: estN12.toFixed(0), it: it || "string" });
+            window.open(`buyback.html?${params.toString()}`, '_blank');
+        };
+
         window.handleGenerateReport = function(type) {
-            const { r, aR, company, a, sz, o, te, pa, tEs } = window.state;
+            const { r, aR, company, a, sz, o, te, pa, tEs, pC, it, invBrand, panelBrand, batteryBrand, b } = window.state;
             if (!r || !aR) return;
             const co = COMPANIES[company];
             const reportView = document.getElementById('report-view');
             const root = document.getElementById('root');
             const reportId = Math.random().toString(36).substr(2, 9).toUpperCase();
             const isTPO = ['lease', 'ppa', 'prepaid_lease', 'prepaid_ppa'].includes(o);
-            
-            // SINGLE SOURCE OF TRUTH: Labels pulled exclusively from UI_TEXT
             const labels = window.UI_TEXT;
-            
-            const benchmarkLabel = r.guarTD > 0 ? labels.fTg.l : labels.fTe.l;
-            const benchmarkValue = r.guarTD > 0 ? r.guarTD : r.physTD;
-            const perfRatio = (r.act / (benchmarkValue || 1)) * 100;
-            const barColor = perfRatio >= 95 ? "bg-green-600" : perfRatio >= 85 ? "bg-amber-600" : "bg-red-600";
-            
             const remAssetYears = isTPO ? Math.max(0, te - r.age).toFixed(1) : Math.max(0, 25 - r.age).toFixed(1);
-            const ownershipLabel = isTPO ? "3rd Party (TPO)" : "Homeowner Owned";
+            const ownershipLabel = isTPO ? "Company Owned (PPA/Lease)" : "Homeowner Owned";
+
+            // PERFORMANCE LOGIC FOR NARRATIVE
+            const isUnderperforming = (r.act / (r.guarTD || r.physTD || 1)) < 0.90;
+            const isNegativeCashFlow = r.actSavNet < 0;
+            const isNegativeTerm = r.futSavNet < 0;
 
             const content = `
             <div id="report-content" class="bg-slate-300 py-10 print:py-0 min-h-screen font-sans space-y-10 print:space-y-0">
-                <!-- PAGE 1: VERIFICATION DASHBOARD -->
+                <!-- PAGE 1: HOME OVERVIEW -->
                 <div class="p-12 max-w-4xl mx-auto min-h-[1056px] relative border-t-[16px] border-slate-900 shadow-2xl report-card bg-white flex flex-col page-break">
                     <div class="flex justify-between items-start mb-10 border-b-4 border-slate-900 pb-8">
                         <div><h2 class="text-3xl font-black text-slate-900 tracking-tighter italic uppercase">${co.name}</h2><p class="text-[10px] font-black text-slate-500 uppercase tracking-[0.3em] mt-1">${co.license}</p></div>
-                        <div class="text-right"><h1 class="text-4xl font-black text-blue-600 uppercase italic leading-none">Verification Report</h1><p class="text-[10px] font-black text-slate-400 mt-2 uppercase tracking-[0.2em]">Asset ID: ${reportId}</p></div>
-                    </div>
-
-                    <div class="bg-slate-900 text-white p-8 rounded-3xl mb-8 flex justify-between items-center relative overflow-hidden shadow-xl border-b-8 border-blue-600">
-                        <div class="relative z-10">
-                            <p class="text-blue-400 text-[10px] font-black uppercase tracking-[0.3em] mb-2">Subject Property Verification</p>
-                            <h2 class="text-3xl font-black italic tracking-tighter uppercase mb-6">${a || '123 Value Court'}</h2>
-                            <div class="flex items-center gap-6">
-                                <div class="bg-white/10 px-5 py-3 rounded-2xl border border-white/20 shadow-inner">
-                                    <p class="text-[8px] font-bold text-blue-300 uppercase tracking-widest mb-1">${labels.sz_label.l}</p>
-                                    <p class="text-2xl font-black">${sz.toFixed(2)} kW</p>
-                                </div>
-                                <div class="bg-white/10 px-5 py-3 rounded-2xl border border-white/20 shadow-inner">
-                                    <p class="text-[8px] font-bold text-blue-300 uppercase tracking-widest mb-1">${labels.rem_label.l}</p>
-                                    <p class="text-2xl font-black">${remAssetYears} Yrs</p>
-                                </div>
-                                <div class="bg-blue-600 px-5 py-3 rounded-2xl border border-white/30 shadow-lg">
-                                    <p class="text-[8px] font-bold text-blue-100 uppercase tracking-widest mb-1">Ownership Status</p>
-                                    <p class="text-sm font-black uppercase tracking-wide">${ownershipLabel}</p>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="text-right relative z-10 flex flex-col items-end">
-                            <p class="text-[10px] font-black text-slate-400 uppercase mb-2">Global Audit Status</p>
-                            <div class="bg-emerald-500 px-7 py-5 rounded-2xl flex items-center gap-3 border-4 border-white/30 shadow-2xl">
-                                <i class="fas fa-check-circle text-white text-3xl"></i>
-                                <span class="text-3xl font-black text-white italic tracking-tighter">VERIFIED</span>
-                            </div>
-                        </div>
-                        <div class="absolute right-[-5%] top-[-10%] text-[200px] text-white/5 rotate-12"><i class="fas fa-file-invoice"></i></div>
-                    </div>
-
-                    <div class="grid grid-cols-5 gap-4 mb-10">
-                        <div class="bg-slate-50 p-4 rounded-2xl border-2 border-slate-200 text-center shadow-md">
-                            <div class="w-8 h-8 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mx-auto mb-2 border-2 border-emerald-500"><i class="fas fa-check text-xs"></i></div>
-                            <p class="text-[9px] font-black text-slate-600 uppercase leading-tight">${labels.verifyDashboardLabel1.l}</p>
-                        </div>
-                        <div class="bg-slate-50 p-4 rounded-2xl border-2 border-slate-200 text-center shadow-md">
-                            <div class="w-8 h-8 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mx-auto mb-2 border-2 border-emerald-500"><i class="fas fa-check text-xs"></i></div>
-                            <p class="text-[9px] font-black text-slate-600 uppercase leading-tight">${labels.verifyDashboardLabel2.l}</p>
-                        </div>
-                        <div class="bg-slate-50 p-4 rounded-2xl border-2 border-slate-200 text-center shadow-md">
-                            <div class="w-8 h-8 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mx-auto mb-2 border-2 border-emerald-500"><i class="fas fa-check text-xs"></i></div>
-                            <p class="text-[9px] font-black text-slate-600 uppercase leading-tight">${labels.verifyDashboardLabel3.l}</p>
-                        </div>
-                        <div class="bg-slate-50 p-4 rounded-2xl border-2 border-slate-200 text-center shadow-md">
-                            <div class="w-8 h-8 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mx-auto mb-2 border-2 border-emerald-500"><i class="fas fa-check text-xs"></i></div>
-                            <p class="text-[9px] font-black text-slate-600 uppercase leading-tight">${labels.verifyDashboardLabel4.l}</p>
-                        </div>
-                        <div class="bg-slate-50 p-4 rounded-2xl border-2 border-slate-200 text-center shadow-md">
-                            <div class="w-8 h-8 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mx-auto mb-2 border-2 border-emerald-500"><i class="fas fa-check text-xs"></i></div>
-                            <p class="text-[9px] font-black text-slate-600 uppercase leading-tight">${labels.verifyDashboardLabel5.l}</p>
-                        </div>
-                    </div>
-
-                    <!-- MONTHLY CASH FLOW BOX -->
-                    <div class="bg-white rounded-[40px] border-4 border-slate-900 shadow-2xl overflow-hidden mb-10">
-                        <div class="bg-slate-900 text-white px-8 py-5 flex items-center justify-between"><div class="flex items-center gap-3"><i class="fas fa-money-bill-transfer text-blue-400 text-xl"></i><h4 class="text-base font-black uppercase tracking-widest italic">${labels.cashFlowAudit.l}</h4></div><span class="text-[10px] font-bold opacity-60 uppercase">Calculated Yield Adjusted</span></div>
-                        <div class="p-10 bg-slate-50">
-                            <div class="max-w-md mx-auto space-y-8">
-                                <div class="flex justify-between items-center"><span class="text-xl font-bold text-slate-500 uppercase tracking-tight">${labels.blendedValue.l}</span><span class="text-3xl font-black text-slate-800 tracking-tighter">${window.cur(r.actSav / 12)}</span></div>
-                                <div class="flex justify-between items-center border-b-2 border-slate-200 pb-6"><span class="text-xl font-bold text-slate-500 uppercase tracking-tight">${labels.pa.l}</span><span class="text-3xl font-black text-red-600 tracking-tighter">- ${window.cur(r.pYC)}</span></div>
-                                <div class="bg-emerald-600 p-10 rounded-[40px] shadow-2xl flex justify-between items-center text-white border-b-8 border-emerald-800 relative overflow-hidden group">
-                                    <div class="relative z-10"><span class="text-sm font-black uppercase tracking-[0.3em] opacity-80">${labels.netBenefit.l}</span><p class="text-[11px] font-bold">${labels.netBenefit.d}</p></div>
-                                    <span class="text-6xl font-black italic tracking-tighter relative z-10">${window.cur(r.actSavNet / 12)}</span>
-                                    <div class="absolute right-[-10%] top-[-20%] text-[140px] text-white/10 rotate-12"><i class="fas fa-sack-dollar"></i></div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="mt-auto grid grid-cols-2 gap-8 items-end">
-                        <div class="bg-slate-100 p-6 rounded-3xl border-2 border-slate-200">
-                             <p class="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-2 italic">Verification Summary</p>
-                             <p class="text-xs font-medium text-slate-600 leading-relaxed italic">System operation and financial position have been verified against metered performance and regional utility tariffs. Estimates are based on current production rates.</p>
-                        </div>
                         <div class="text-right">
-                             <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Generated Via</p>
-                             <p class="text-sm font-bold text-slate-800 uppercase tracking-tighter">SolarCheck Pro v7.246</p>
+                             <p class="text-xs font-black text-slate-400 uppercase tracking-widest mb-1">Site Address</p>
+                             <h1 class="text-2xl font-black text-blue-600 uppercase italic leading-none">${a || 'Subject Property Address'}</h1>
                         </div>
+                    </div>
+
+                    <div class="bg-slate-900 text-white p-10 rounded-[40px] mb-8 relative overflow-hidden shadow-2xl border-b-8 border-blue-600">
+                        <div class="relative z-10 flex justify-between items-center">
+                            <div>
+                                <p class="text-blue-400 text-[10px] font-black uppercase tracking-[0.3em] mb-2">System Inspection Status</p>
+                                <div class="${isUnderperforming ? 'bg-amber-500' : 'bg-emerald-500'} px-7 py-4 rounded-2xl flex items-center gap-3 border-4 border-white/30 shadow-2xl">
+                                    <i class="fas ${isUnderperforming ? 'fa-triangle-exclamation' : 'fa-check-circle'} text-white text-3xl"></i>
+                                    <span class="text-3xl font-black text-white italic tracking-tighter uppercase">Verified</span>
+                                </div>
+                            </div>
+                            <div class="text-right">
+                                <p class="text-[10px] font-black text-slate-400 uppercase mb-2">Ownership Type</p>
+                                <p class="text-xl font-black text-white uppercase tracking-wide">${ownershipLabel}</p>
+                            </div>
+                        </div>
+                        <div class="absolute right-[-5%] top-[-10%] text-[200px] text-white/5 rotate-12"><i class="fas fa-solar-panel"></i></div>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-8 mb-10">
+                        <div class="bg-slate-50 p-8 rounded-3xl border-2 border-slate-200">
+                            <h4 class="text-xs font-black text-slate-400 uppercase tracking-widest mb-4">Equipment Summary</h4>
+                            <ul class="space-y-3 text-sm font-bold text-slate-700">
+                                <li class="flex justify-between border-b pb-2"><span>PV Modules:</span> <span class="text-blue-700">${pC || 0} x ${panelBrand || 'Tier 1'}</span></li>
+                                <li class="flex justify-between border-b pb-2"><span>Inverter:</span> <span class="text-blue-700">${it === 'micro' ? 'Microinverters' : 'String Inverter'} (${invBrand})</span></li>
+                                <li class="flex justify-between"><span>Battery:</span> <span class="text-blue-700">${b > 0 ? (batteryBrand + ' ' + b + 'kWh') : 'None'}</span></li>
+                            </ul>
+                        </div>
+                        <div class="bg-slate-50 p-8 rounded-3xl border-2 border-slate-200">
+                            <h4 class="text-xs font-black text-slate-400 uppercase tracking-widest mb-4">Agreement Term</h4>
+                            <div class="space-y-4">
+                                <div><p class="text-3xl font-black text-slate-900">${remAssetYears} Years</p><p class="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Remaining in Contract</p></div>
+                                <div><p class="text-3xl font-black text-slate-900">${sz.toFixed(2)} kW</p><p class="text-[10px] font-bold text-slate-500 uppercase tracking-widest">System Power Rating</p></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="bg-white rounded-[40px] border-4 border-slate-900 shadow-2xl overflow-hidden mb-10">
+                        <div class="bg-slate-900 text-white px-8 py-5 flex items-center justify-between"><div class="flex items-center gap-3"><i class="fas fa-hand-holding-dollar text-blue-400 text-xl"></i><h4 class="text-base font-black uppercase tracking-widest italic">${labels.cashFlowAudit.l}</h4></div></div>
+                        <div class="p-10 bg-slate-50">
+                            <div class="grid grid-cols-2 gap-10">
+                                <div class="space-y-6">
+                                    <div class="flex justify-between items-center"><span class="text-lg font-bold text-slate-500 uppercase tracking-tight">Grid Savings</span><span class="text-2xl font-black text-slate-800 tracking-tighter">${window.cur(r.actSav / 12)}</span></div>
+                                    <div class="flex justify-between items-center border-b-2 border-slate-200 pb-6"><span class="text-lg font-bold text-slate-500 uppercase tracking-tight">Solar Cost</span><span class="text-2xl font-black text-red-600 tracking-tighter">- ${window.cur(r.pYC)}</span></div>
+                                    <div class="text-center pt-2">
+                                         <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">${isNegativeCashFlow ? 'Current Monthly Cost' : 'Your Net Profit'}</p>
+                                         <p class="text-6xl font-black ${isNegativeCashFlow ? 'text-red-600' : 'text-emerald-600'} italic tracking-tighter leading-none">${window.cur(Math.abs(r.actSavNet / 12))}</p>
+                                         <p class="text-[10px] font-bold text-slate-500 uppercase mt-2">Per Month ${isNegativeCashFlow ? 'Net Out-of-Pocket' : 'in Savings'}</p>
+                                    </div>
+                                </div>
+                                <div class="bg-slate-100 p-6 rounded-3xl border-2 border-slate-200 flex flex-col justify-center">
+                                     <h5 class="text-xs font-black text-slate-900 uppercase tracking-widest mb-3 italic">Benefit Note:</h5>
+                                     <p class="text-xs text-slate-600 font-medium leading-relaxed italic">
+                                        ${isNegativeCashFlow 
+                                            ? "Currently, the solar payment exceeds the value of electricity being saved. This is often due to recent utility rate structures or system underperformance. Financial value in this scenario relies on future utility rate increases." 
+                                            : "This system is currently generating more value in avoided electricity costs than the monthly solar payment. This results in an immediate reduction in the home's total operating expenses."}
+                                     </p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="mt-auto flex justify-between items-end border-t-2 pt-6">
+                        <div><p class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Audit Status</p><p class="text-sm font-bold text-slate-800 uppercase tracking-tighter">${isUnderperforming ? 'Inspection Complete: Shortfall Detected' : 'Verified Operational'}</p></div>
+                        <div class="text-right text-[10px] text-slate-400 font-bold uppercase tracking-widest italic">SolarCheck Pro v7.261</div>
                     </div>
                 </div>
 
-                <!-- PAGE 2: PERFORMANCE & RESPONSIBILITY -->
+                <!-- PAGE 2: SOLAR 101 & MAINTENANCE -->
                 <div class="p-12 max-w-4xl mx-auto min-h-[1056px] relative border-t-8 border-slate-900 shadow-2xl report-card bg-white flex flex-col page-break">
                     <div class="mb-10">
-                        <h3 class="text-xs font-black text-slate-800 uppercase tracking-[0.3em] mb-6 flex items-center gap-2 border-b-2 border-slate-100 pb-2"><i class="fas fa-chart-line text-blue-600"></i> ${labels.perfHeader.l}</h3>
-                        <div class="bg-slate-50 border-4 border-slate-900 p-10 rounded-[40px] shadow-2xl relative overflow-hidden">
-                            <div class="flex justify-between items-end mb-8 relative z-10">
-                                <div><p class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1 italic">${labels.yieldAccuracy.l} ${r.guarTD > 0 ? 'Guarantee' : 'Estimate'}</p><p class="text-7xl font-black text-slate-900 tracking-tighter leading-none">${perfRatio.toFixed(1)}%</p></div>
-                                <div class="text-right"><p class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1 italic">Status vs ${benchmarkLabel}</p><p class="text-2xl font-black ${perfRatio >= 95 ? 'text-green-600' : 'text-amber-600'} italic uppercase tracking-tighter">Performance Secure</p></div>
-                            </div>
-                            <div class="w-full bg-slate-200 h-8 rounded-full overflow-hidden shadow-inner border border-slate-300 relative z-10">
-                                <div class="h-full ${barColor} shadow-lg transition-all duration-1000" style="width: ${Math.min(perfRatio, 100)}%"></div>
-                            </div>
-                            <div class="absolute right-[-5%] bottom-[-10%] text-[240px] text-slate-900/5"><i class="fas fa-sun"></i></div>
+                        <h3 class="text-xl font-black text-slate-900 uppercase tracking-widest italic mb-6 border-b-4 border-slate-900 pb-4">Understanding Your Solar Agreement</h3>
+                        <div class="grid grid-cols-1 gap-8">
+                            ${isTPO ? `
+                                <div class="bg-blue-50 p-8 rounded-3xl border-2 border-blue-200">
+                                    <h4 class="text-sm font-black text-blue-900 uppercase mb-4 tracking-widest flex items-center gap-3"><i class="fas fa-building text-blue-500"></i> How PPA / Lease Solar Works</h4>
+                                    <p class="text-sm text-blue-800 font-medium leading-relaxed mb-4">In this agreement, the solar gear is owned and maintained by a third-party company. You are simply purchasing the electricity it produces (or leasing the space) at a rate lower than what the local utility charges. <strong>You are not responsible for the equipment; you are responsible for the bill.</strong></p>
+                                    <ul class="grid grid-cols-2 gap-4 text-xs font-bold text-blue-900 uppercase italic">
+                                        <li class="flex gap-2"><i class="fas fa-check"></i> $0 Repair Costs</li>
+                                        <li class="flex gap-2"><i class="fas fa-check"></i> Performance Guarantees</li>
+                                        <li class="flex gap-2"><i class="fas fa-check"></i> Automated Monitoring</li>
+                                        <li class="flex gap-2"><i class="fas fa-check"></i> Fully Transferable</li>
+                                    </ul>
+                                </div>
+                            ` : `
+                                <div class="bg-emerald-50 p-8 rounded-3xl border-2 border-emerald-200">
+                                    <h4 class="text-sm font-black text-emerald-900 uppercase mb-4 tracking-widest flex items-center gap-3"><i class="fas fa-house-chimney-user text-emerald-500"></i> How Owned Solar Works</h4>
+                                    <p class="text-sm text-emerald-800 font-medium leading-relaxed mb-4">The equipment is a permanent part of the real estate. As the owner, you received the initial tax credits and incentives. There is no monthly solar bill to pay; all energy generated is "free" once the system is paid off, significantly increasing the property's value.</p>
+                                    <ul class="grid grid-cols-2 gap-4 text-xs font-bold text-emerald-900 uppercase italic">
+                                        <li class="flex gap-2"><i class="fas fa-check"></i> Property Asset Value</li>
+                                        <li class="flex gap-2"><i class="fas fa-check"></i> No Monthly Payment</li>
+                                        <li class="flex gap-2"><i class="fas fa-check"></i> Full Warranty Protection</li>
+                                        <li class="flex gap-2"><i class="fas fa-check"></i> Max Utility Offset</li>
+                                    </ul>
+                                </div>
+                            `}
                         </div>
                     </div>
 
                     <div class="grid grid-cols-2 gap-10 mb-10">
                         <div class="bg-white p-8 rounded-3xl border-4 border-slate-200 shadow-xl">
                             <h4 class="text-xs font-black text-slate-800 uppercase tracking-widest mb-6 flex items-center gap-2"><i class="fas fa-screwdriver-wrench text-blue-600"></i> ${labels.maintMatrix.l}</h4>
-                            <ul class="space-y-6 text-xs font-bold text-slate-700">
-                                <li class="flex gap-4 border-b border-slate-100 pb-4"><i class="fas fa-check-double text-emerald-500 mt-0.5"></i> <span>Hardware & Parts: <p class="font-medium text-slate-500 mt-1">Covered by Provider for full term.</p></span></li>
-                                <li class="flex gap-4 border-b border-slate-100 pb-4"><i class="fas fa-check-double text-emerald-500 mt-0.5"></i> <span>Service & Labor: <p class="font-medium text-slate-500 mt-1">Provider covers routine repair costs.</p></span></li>
-                                <li class="flex gap-4"><i class="fas fa-check-double text-emerald-500 mt-0.5"></i> <span>Monitoring: <p class="font-medium text-slate-500 mt-1">Included (Remote diagnostics active).</p></span></li>
+                            <ul class="space-y-6 text-xs font-bold text-slate-700 leading-snug">
+                                <li class="flex gap-4 border-b border-slate-100 pb-4"><i class="fas fa-check-double text-emerald-500 mt-0.5"></i> <span>Hardware & Parts: <p class="font-medium text-slate-500 mt-1">Provider or manufacturer covers hardware defects for the full warranty term.</p></span></li>
+                                <li class="flex gap-4 border-b border-slate-100 pb-4"><i class="fas fa-check-double text-emerald-500 mt-0.5"></i> <span>Service & Labor: <p class="font-medium text-slate-500 mt-1">Labor coverage is active under current agreement status.</p></span></li>
+                                <li class="flex gap-4"><i class="fas fa-check-double text-emerald-500 mt-0.5"></i> <span>Monitoring: <p class="font-medium text-slate-500 mt-1">System is remotely tracked for health and production issues.</p></span></li>
                             </ul>
                         </div>
                         <div class="bg-white p-8 rounded-3xl border-4 border-slate-200 shadow-xl">
                             <h4 class="text-xs font-black text-slate-800 uppercase tracking-widest mb-6 flex items-center gap-2"><i class="fas fa-handshake-angle text-blue-600"></i> ${labels.transTimeline.l}</h4>
-                            <ul class="space-y-6 text-xs font-bold text-slate-700">
-                                <li class="flex gap-4 border-b border-slate-100 pb-4"><i class="fas fa-file-contract text-blue-400 mt-0.5"></i> <span>Transfer Qualification: <p class="font-medium text-slate-500 mt-1">Buyer assumes existing payment schedule.</p></span></li>
-                                <li class="flex gap-4 border-b border-slate-100 pb-4"><i class="fas fa-id-card text-blue-400 mt-0.5"></i> <span>Credit Verification: <p class="font-medium text-slate-500 mt-1">Standard soft pull required by lessor.</p></span></li>
-                                <li class="flex gap-4"><i class="fas fa-clock text-blue-400 mt-0.5"></i> <span>Processing Goal: <p class="font-medium text-slate-500 mt-1">Typically completed in 7-14 business days.</p></span></li>
+                            <ul class="space-y-6 text-xs font-bold text-slate-700 leading-snug">
+                                <li class="flex gap-4 border-b border-slate-100 pb-4"><i class="fas fa-file-contract text-blue-400 mt-0.5"></i> <span>Qualification: <p class="font-medium text-slate-500 mt-1">Buyer assumes the payment plan at closing.</p></span></li>
+                                <li class="flex gap-4 border-b border-slate-100 pb-4"><i class="fas fa-id-card text-blue-400 mt-0.5"></i> <span>Credit Check: <p class="font-medium text-slate-500 mt-1">Standard simple check required by the solar company.</p></span></li>
+                                <li class="flex gap-4"><i class="fas fa-clock text-blue-400 mt-0.5"></i> <span>Timeline: <p class="font-medium text-slate-500 mt-1">Usually takes about 1-2 weeks to finalize.</p></span></li>
                             </ul>
                         </div>
                     </div>
 
-                    <div class="bg-slate-900 p-12 rounded-[40px] text-white relative overflow-hidden mt-auto mb-10 shadow-2xl border-b-8 border-slate-700">
+                    <div class="bg-slate-900 p-12 rounded-[40px] text-white relative overflow-hidden mt-auto mb-10 shadow-2xl">
                         <div class="relative z-10 grid grid-cols-2 gap-12">
                             <div class="space-y-4">
-                                <p class="text-blue-400 text-[10px] font-black uppercase tracking-[0.4em] italic mb-1">${labels.valueProj.l}</p>
-                                <div class="flex justify-between items-end"><span class="text-[11px] font-black text-slate-400 uppercase tracking-widest">Gross Utility Savings</span><span class="text-2xl font-black text-emerald-400 tracking-tighter">${window.cur(r.futSav)}</span></div>
-                                <div class="flex justify-between items-end border-b-2 border-slate-700 pb-4"><span class="text-[11px] font-black text-slate-400 uppercase tracking-widest">${labels.remLiability.l}</span><span class="text-2xl font-black text-red-400 tracking-tighter">- ${window.cur(r.remCost)}</span></div>
+                                <p class="text-blue-400 text-[10px] font-black uppercase tracking-[0.4em] italic mb-1">Long-Term Value Forecast</p>
+                                
+                                <div class="grid grid-cols-1 gap-2 mb-4">
+                                    <div class="flex justify-between items-center text-[11px] font-black uppercase tracking-widest"><span class="text-slate-400">Solar Power Value</span><span class="text-emerald-400">$${r.blendedUtility.toFixed(2)} / kWh</span></div>
+                                    <div class="flex justify-between items-center text-[11px] font-black uppercase tracking-widest border-b border-slate-700 pb-2"><span class="text-slate-400">TPO Solar Rate</span><span class="text-red-400">$${r.rYC_sol.toFixed(3)} / kWh</span></div>
+                                </div>
+
+                                <div class="flex justify-between items-end border-b-2 border-slate-700 pb-4"><span class="text-[11px] font-black text-slate-400 uppercase tracking-widest">Net Savings Over Remainder of Term</span></div>
                                 <div class="pt-6 flex flex-col">
-                                    <span class="text-[11px] font-black text-blue-300 uppercase mb-2 tracking-[0.2em] italic">Projected Net Term Benefit</span>
-                                    <span class="text-7xl font-black italic tracking-tighter text-white leading-none">${window.cur(r.futSavNet)}</span>
+                                    <span class="text-7xl font-black italic tracking-tighter ${isNegativeTerm ? 'text-red-400' : 'text-emerald-400'} leading-none">${window.cur(Math.abs(r.futSavNet))}</span>
+                                    <p class="text-xs font-bold text-slate-400 mt-2 uppercase tracking-widest italic">${isNegativeTerm ? 'Cumulative Financial Cost' : 'Cumulative Financial Advantage'}</p>
                                 </div>
                             </div>
-                            <div class="flex flex-col justify-center border-l-4 border-slate-800 pl-16 space-y-8">
-                                <div><p class="text-[10px] font-black text-slate-400 uppercase mb-1 tracking-widest">${labels.e.l}</p><p class="text-3xl font-black text-slate-100">${window.per(window.state.e/100)} Avg / Yr</p></div>
-                                <div><p class="text-[10px] font-black text-slate-400 uppercase mb-1 tracking-widest">Verification Status</p><p class="text-3xl font-black text-emerald-400 italic">ACTIVE</p></div>
+                            <div class="flex flex-col justify-center border-l-4 border-slate-800 pl-16 space-y-6">
+                                <div><p class="text-[10px] font-black text-slate-400 uppercase mb-1 tracking-widest">Utility Rate Stability</p><p class="text-2xl font-black text-slate-100 italic">SECURE</p></div>
+                                <div><p class="text-[10px] font-black text-slate-400 uppercase mb-1 tracking-widest">Home Value Impact</p><p class="text-2xl font-black ${isNegativeTerm ? 'text-amber-500' : 'text-emerald-400'} italic">${isNegativeTerm ? 'NEUTRAL' : 'POSITIVE'}</p></div>
                             </div>
                         </div>
                         <div class="absolute right-[-2%] bottom-[-5%] text-9xl text-white/5"><i class="fas fa-sack-dollar"></i></div>
                     </div>
                 </div>
 
-                <!-- PAGE 3: EXECUTIVE NARRATIVE -->
+                <!-- PAGE 3: NARRATIVE SUMMARY -->
                 <div class="p-16 max-w-4xl mx-auto min-h-[1056px] relative border-t-8 border-blue-600 shadow-2xl report-card bg-white flex flex-col page-break">
                     <div class="flex justify-between items-center mb-12 border-b-4 border-slate-900 pb-8">
                         <h2 class="text-2xl font-black text-slate-900 uppercase tracking-widest italic">${labels.narrativeHeader.l}</h2>
-                        <span class="text-[10px] font-black text-slate-400 uppercase tracking-widest italic">Home Sale Pack ID: ${reportId}</span>
+                        <span class="text-[10px] font-black text-slate-400 uppercase tracking-widest italic">Reference ID: ${reportId}</span>
                     </div>
 
                     <div class="space-y-10 text-slate-700 leading-relaxed max-w-3xl">
-                        <p class="text-xl font-bold text-slate-900 border-l-[12px] border-blue-600 pl-8 py-4 bg-slate-50 rounded-r-3xl">
-                            This property at <strong>${a || '123 Value Court'}</strong> includes a <strong>${sz.toFixed(2)} kW</strong> solar energy system that has been physically inspected, production-verified, and contract-reviewed.
+                        <p class="text-xl font-bold text-slate-900 border-l-[12px] ${isUnderperforming ? 'border-amber-500' : 'border-blue-600'} pl-8 py-4 bg-slate-50 rounded-r-3xl">
+                            The solar energy system at <strong>${a || 'this property'}</strong> has been thoroughly reviewed. ${isUnderperforming ? 'Our audit indicates that the system is currently underperforming relative to its technical design.' : 'It is performing as intended and is providing immediate financial benefits by reducing the monthly cost of power.'}
                         </p>
                         
                         <div class="space-y-4">
                             <h4 class="text-sm font-black text-slate-900 uppercase tracking-[0.3em] flex items-center gap-4"><span class="w-16 h-1 bg-blue-600"></span> ${labels.narrLabelEquip.l}</h4>
-                            <p class="text-base text-slate-600">The solar equipment was physically inspected — not just reviewed on paper. Panels, inverters, mounting hardware, and visible wiring were evaluated, and system production was confirmed through monitoring data. The equipment observed matches the agreement on file and was verified as operational at the time of inspection, providing confidence that the home includes a functioning, professionally reviewed solar asset.</p>
+                            <p class="text-base text-slate-600">The hardware—including panels and inverters—was inspected for integrity. ${isUnderperforming ? 'While the equipment is operational, the metered energy harvest is lower than expected for a system of this size and age. This could be due to excessive shading, hardware degradation, or communication gaps in the monitoring software.' : 'The system matches the legal agreement on file and is verified as functional and professionally installed. The panels observed are clean and generating power efficiently.'}</p>
                         </div>
 
                         <div class="space-y-4">
                             <h4 class="text-sm font-black text-slate-900 uppercase tracking-[0.3em] flex items-center gap-4"><span class="w-16 h-1 bg-blue-600"></span> ${labels.narrLabelProd.l}</h4>
-                            <p class="text-base text-slate-600">The <strong>${sz.toFixed(2)} kW</strong> system is estimated to produce approximately <strong>${window.num(r.estN12 / 1000)} megawatt-hours</strong> per year, offsetting a meaningful portion of the home’s electricity usage. In practical terms, a significant share of the property’s energy is generated from the roof rather than purchased at full retail utility rates, reducing exposure to future rate increases.</p>
+                            <p class="text-base text-slate-600">This ${sz.toFixed(2)} kW system generated approximately <strong>${window.num(r.act)} MWh</strong> of energy since installation. ${isUnderperforming ? 'This production level represents a shortfall against our physical benchmark. We recommend a technical onsite diagnostic to ensure the inverter string logic or microinverter reporting is synchronized correctly.' : 'This is a high-producer, generating enough energy to offset a significant majority of the home’s electricity usage, effectively shielding the owner from rising utility costs.'}</p>
                         </div>
 
                         <div class="space-y-4">
                             <h4 class="text-sm font-black text-slate-900 uppercase tracking-[0.3em] flex items-center gap-4"><span class="w-16 h-1 bg-blue-600"></span> ${labels.narrLabelCash.l}</h4>
-                            <p class="text-base text-slate-600">The system is estimated to generate approximately <strong>${window.cur(r.actSav / 12)}</strong> in monthly utility savings against a <strong>${window.cur(r.pYC)}</strong> solar payment, resulting in a projected positive net position of about <strong>${window.cur(r.actSavNet / 12)}</strong> per month. The agreement is structured to produce more value than it costs, helping reduce overall energy expenses while stabilizing a portion of the home’s monthly utility exposure.</p>
+                            <p class="text-base text-slate-600">${isNegativeCashFlow ? 'Currently, the monthly solar payment is higher than the calculated utility savings. This results in a net monthly cost of about <strong>' + window.cur(Math.abs(r.actSavNet / 12)) + '</strong>. Homeowners in this position often rely on future utility inflation to reach a "break-even" point where the solar becomes cheaper than the grid.' : 'The math is simple: the solar bill is lower than the utility savings. Every month, this system creates approximately <strong>' + window.cur(r.actSavNet / 12) + '</strong> in net profit for the home. It is a "cash-flow positive" asset.'}</p>
                         </div>
 
                         <div class="space-y-4">
                             <h4 class="text-sm font-black text-slate-900 uppercase tracking-[0.3em] flex items-center gap-4"><span class="w-16 h-1 bg-blue-600"></span> ${labels.narrLabelTerm.l}</h4>
-                            <p class="text-base text-slate-600">With approximately <strong>${remAssetYears} years</strong> remaining on the current agreement, projected future utility savings of <strong>${window.cur(r.futSav)}</strong> are estimated to exceed the remaining solar payments of <strong>${window.cur(r.remCost)}</strong>, resulting in a projected net positive position of approximately <strong>${window.cur(r.futSavNet)}</strong> over the remainder of the term. In addition to this projected benefit, the system provides long-term pricing stability by securing a portion of the home’s energy costs.</p>
+                            <p class="text-base text-slate-600">With <strong>${remAssetYears} years</strong> left on the agreement, ${isNegativeTerm ? 'the total remaining cost of the solar agreement is projected to exceed the utility savings by ' + window.cur(Math.abs(r.futSavNet)) + '. This system is currently acting as a utility hedge rather than a direct savings vehicle.' : 'the total projected net benefit is over <strong>' + window.cur(r.futSavNet) + '</strong>. This represents a significant long-term reduction in the home\'s total cost of ownership.'}</p>
                         </div>
 
                         <div class="space-y-4">
                             <h4 class="text-sm font-black text-slate-900 uppercase tracking-[0.3em] flex items-center gap-4"><span class="w-16 h-1 bg-blue-600"></span> ${labels.narrLabelMaint.l}</h4>
-                            <p class="text-base text-slate-600">Under the current agreement structure, monitoring and major equipment performance are covered by the provider, reducing the likelihood of unexpected repair expenses during the remaining term.</p>
+                            <p class="text-base text-slate-600">Regardless of production performance, service and monitoring are handled under the current agreement structure, ensuring that major repairs do not become an unexpected out-of-pocket expense for the homeowner.</p>
                         </div>
                     </div>
 
                     <div class="mt-auto pt-10 border-t-8 border-slate-900 flex justify-between items-end">
                         <div class="text-left">
-                            <p class="text-[11px] font-black text-slate-400 uppercase tracking-[0.4em] mb-2 italic">Verification Certification Signature</p>
+                            <p class="text-[11px] font-black text-slate-400 uppercase tracking-[0.4em] mb-2 italic">Certified Inspector</p>
                             <p class="text-3xl font-black italic text-slate-900 tracking-tighter uppercase">${co.name}</p>
                             <p class="text-xs font-bold text-slate-500">${co.license} <span class="mx-3 text-slate-300">|</span> ${new Date().toLocaleDateString()}</p>
                         </div>
                         <div class="no-print pb-2 flex gap-4">
-                            <button onclick="window.printReport()" class="bg-blue-600 text-white px-12 py-5 rounded-3xl font-black uppercase text-xs tracking-widest shadow-2xl transition-all hover:bg-blue-500 active:scale-95 border-b-4 border-blue-800">Print Pack</button>
-                            <button onclick="window.closeReport()" class="bg-slate-100 text-slate-700 px-12 py-5 rounded-3xl font-black uppercase text-xs tracking-widest transition-all hover:bg-slate-200 border-b-4 border-slate-300">Exit</button>
+                            <button onclick="window.printReport()" class="bg-blue-600 text-white px-12 py-5 rounded-3xl font-black uppercase text-xs tracking-widest shadow-2xl transition-all hover:bg-blue-500 active:scale-95 border-b-4 border-blue-800">Print Report</button>
+                            <button onclick="window.closeReport()" class="bg-slate-100 text-slate-700 px-12 py-5 rounded-3xl font-black uppercase text-xs tracking-widest transition-all hover:bg-slate-200 border-b-4 border-slate-300">Back</button>
                         </div>
                     </div>
                 </div>
@@ -690,14 +649,13 @@ Architecture: Modular Single-File HTML5 (Sub-Renderer Pattern)
             else if (activeTab === 'contract') tabContent = window.renderContractTab(window.state, r);
             else if (activeTab === 'summary' && r) tabContent = window.renderSummaryTab(window.state, r);
             else if (activeTab === 'valuation' && aR) tabContent = window.renderValuationTab(window.state, aR);
-            else if (activeTab === 'buyback' && r) tabContent = window.renderBuybackTab(window.state, r);
 
             root.innerHTML = `
                 <div class="min-h-screen bg-slate-200 pb-10">
                     <div class="bg-slate-900 text-white px-4 sm:px-6 py-3 sm:py-4 sticky top-0 z-50 flex justify-between items-center shadow-lg border-b border-white/5 gap-2">
                         <div class="flex items-center gap-2 sm:gap-4 min-w-0">
                             <span class="text-2xl sm:text-3xl flex-shrink-0"><i class="fas fa-sun text-yellow-400"></i></span>
-                            <div class="min-w-0 truncate"><h1 class="font-bold text-lg sm:text-2xl tracking-tighter italic truncate">SolarCheck Pro</h1><p class="text-[7px] sm:text-[9px] opacity-60 font-black uppercase tracking-[0.4em]">v7.246</p></div>
+                            <div class="min-w-0 truncate"><h1 class="font-bold text-lg sm:text-2xl tracking-tighter italic truncate">SolarCheck Pro</h1><p class="text-[7px] sm:text-[9px] opacity-60 font-black uppercase tracking-[0.4em]">v7.261</p></div>
                         </div>
                         <div class="flex items-center gap-2 flex-shrink-0">
                             <button onclick="window.open(window.location.href, '_blank')" class="header-btn bg-slate-800 text-white/80 p-2 sm:px-4 sm:py-2.5 rounded-xl text-sm shadow-xl transition-all hover:bg-slate-700 active:scale-95"><i class="fas fa-expand"></i></button>
@@ -705,17 +663,24 @@ Architecture: Modular Single-File HTML5 (Sub-Renderer Pattern)
                         </div>
                     </div>
                     <div class="bg-white/90 backdrop-blur-md border-b sticky top-[56px] sm:top-[72px] z-40 px-2 sm:px-4 flex gap-1 pt-1 no-print overflow-x-auto shadow-sm no-scrollbar">
-                        ${['inputs','contract','summary','valuation','buyback'].map(t => `<button onclick="updateState('activeTab', '${t}')" class="flex-1 py-3 sm:py-5 border-b-4 font-black transition-all ${activeTab === t ? 'border-blue-600 text-blue-600' : 'border-transparent text-slate-400'} uppercase text-[8px] sm:text-[10px] tracking-widest sm:tracking-[0.2em] whitespace-nowrap flex flex-col items-center justify-center gap-1 sm:gap-2"><i class="fas ${t === 'inputs' ? 'fa-edit' : t === 'contract' ? 'fa-file-signature' : t === 'summary' ? 'fa-list-check' : t === 'valuation' ? 'fa-scale-balanced' : 'fa-handshake'} text-base sm:text-xl"></i>${t}</button>`).join('')}
+                        ${['inputs','contract','summary','valuation'].map(t => `<button onclick="updateState('activeTab', '${t}')" class="flex-1 py-3 sm:py-5 border-b-4 font-black transition-all ${activeTab === t ? 'border-blue-600 text-blue-600' : 'border-transparent text-slate-400'} uppercase text-[8px] sm:text-[10px] tracking-widest sm:tracking-[0.2em] whitespace-nowrap flex flex-col items-center justify-center gap-1 sm:gap-2"><i class="fas ${t === 'inputs' ? 'fa-edit' : t === 'contract' ? 'fa-file-signature' : t === 'summary' ? 'fa-list-check' : t === 'valuation' ? 'fa-scale-balanced' : 'fa-question'} text-base sm:text-xl"></i>${t}</button>`).join('')}
                     </div>
                     <div class="max-w-5xl mx-auto p-4 sm:p-8">${tabContent}</div>
                     <dialog id="print-modal" class="modal p-0 rounded-[32px] shadow-2xl border-0 overflow-hidden bg-white">
                         <div class="p-8 sm:p-10 w-full relative text-center">
                             <button onclick="closeModal()" class="absolute top-6 right-6 text-slate-300 hover:text-slate-600 transition-colors"><i class="fas fa-times text-2xl"></i></button>
                             <h3 class="font-black mb-6 uppercase text-[9px] tracking-[0.4em] border-b border-slate-100 pb-5 text-slate-400">Generate Audit</h3>
-                            <button onclick="handleGenerateReport('realtor')" class="w-full text-left p-5 sm:p-6 border-2 border-slate-50 rounded-2xl hover:bg-blue-50 hover:border-blue-200 transition-all group flex items-center justify-between">
-                                <div><p class="font-black uppercase text-xs tracking-widest text-slate-800">Branded Advisory Report</p><p class="text-[9px] sm:text-[10px] font-bold text-slate-500 mt-1">Full technical & economic asset audit.</p></div>
-                                <i class="fas fa-chevron-right text-slate-300 group-hover:text-blue-400"></i>
-                            </button>
+                            <div class="space-y-3">
+                                <button onclick="handleGenerateReport('realtor')" class="w-full text-left p-5 sm:p-6 border-2 border-slate-50 rounded-2xl hover:bg-blue-50 hover:border-blue-200 transition-all group flex items-center justify-between">
+                                    <div><p class="font-black uppercase text-xs tracking-widest text-slate-800">Branded Advisory Report</p><p class="text-[9px] sm:text-[10px] font-bold text-slate-500 mt-1">Plain English homeowner audit.</p></div>
+                                    <i class="fas fa-chevron-right text-slate-300 group-hover:text-blue-400"></i>
+                                </button>
+                                
+                                <button onclick="handleBuybackExport()" class="w-full text-left p-5 sm:p-6 border-2 border-amber-50 bg-amber-50/30 rounded-2xl hover:bg-amber-100 hover:border-amber-300 transition-all group flex items-center justify-between">
+                                    <div><p class="font-black uppercase text-xs tracking-widest text-amber-800">Export to Investor Buyback</p><p class="text-[9px] sm:text-[10px] font-bold text-amber-600 mt-1">Run deal pro-forma in standalone calculator.</p></div>
+                                    <i class="fas fa-external-link-alt text-amber-300 group-hover:text-amber-500"></i>
+                                </button>
+                            </div>
                         </div>
                     </dialog>
                 </div>`;
