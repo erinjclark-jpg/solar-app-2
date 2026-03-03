@@ -1,7 +1,7 @@
 <!-- 
 ================================================================================
 PROJECT CONTEXT: SolarCheck Professional
-Current Version: v7.264 (FIXED SCRIPT ESCAPING SYNTAX ERROR)
+Current Version: v7.265 (FIXED PDF PAGE ROLLOVER & MARGIN OVERFLOW)
 Date: March 2026
 Architecture: Modular Single-File HTML5 (Sub-Renderer Pattern)
 ================================================================================
@@ -36,7 +36,7 @@ Architecture: Modular Single-File HTML5 (Sub-Renderer Pattern)
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SolarCheck Professional v7.264</title>
+    <title>SolarCheck Professional v7.265</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
@@ -51,8 +51,8 @@ Architecture: Modular Single-File HTML5 (Sub-Renderer Pattern)
         @media print {
             body { background: white !important; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
             .no-print { display: none !important; }
-            .page-break { page-break-before: always; }
-            .report-card { border: 2px solid #0f172a !important; box-shadow: none !important; margin-bottom: 0 !important; }
+            .page-break { page-break-after: always !important; break-after: page !important; }
+            .report-card { border: 2px solid #0f172a !important; box-shadow: none !important; margin-bottom: 0 !important; height: 296mm !important; }
         }
         input[type=number]::-webkit-inner-spin-button, input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
         input[type=number] { -moz-appearance: textfield; }
@@ -388,27 +388,37 @@ Architecture: Modular Single-File HTML5 (Sub-Renderer Pattern)
         window.closeReport = () => { document.getElementById('report-view').classList.add('hidden'); document.getElementById('root').classList.remove('hidden'); window.scrollTo(0, 0); window.render(); };
         
         // =====================================================================
-        // [PRINT_ENGINE] - ENHANCED FOR PDF STABILITY (v7.264)
+        // [PRINT_ENGINE] - FIXED FOR PDF PAGE ROLLOVER (v7.265)
         // =====================================================================
         window.printReport = () => { 
             const c = document.getElementById('report-content').innerHTML; 
             const win = window.open('', '_blank'); 
             
-            // Build absolute head for the new window to ensure assets load
             const headContent = `
                 <title>Solar Audit Report</title>
                 <script src="https://cdn.tailwindcss.com"><\/script>
                 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
                 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
                 <style>
-                    body { font-family: 'Inter', sans-serif; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+                    /* Reset margins to prevent rollover */
+                    @page { size: auto; margin: 0mm; }
+                    body { margin: 0; padding: 0; font-family: 'Inter', sans-serif; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; background: white !important; }
+                    
+                    /* Define explicit page sizes for print to avoid 1px overflow rollovers */
                     @media print { 
-                        .page-break { page-break-before: always; } 
+                        .report-card { 
+                            height: 287mm !important; /* Slightly shy of 297mm to fit letter/A4 margins */
+                            width: 100% !important;
+                            max-width: 100% !important;
+                            margin: 0 !important;
+                            border: none !important;
+                            box-shadow: none !important;
+                            page-break-after: always !important; 
+                            break-after: page !important; 
+                            overflow: hidden; /* Lock content to the page */
+                        } 
                         .no-print { display: none !important; } 
-                        .report-card { border: 2px solid #0f172a !important; box-shadow: none !important; margin-bottom: 0 !important; } 
-                        body { background: white !important; }
                     }
-                    /* Ensure icons show up */
                     .fas, .fa-solid { font-family: "Font Awesome 6 Free" !important; font-weight: 900 !important; }
                 </style>
             `;
@@ -417,14 +427,12 @@ Architecture: Modular Single-File HTML5 (Sub-Renderer Pattern)
                 <html>
                     <head>${headContent}</head>
                     <body>
-                        <div class="p-4 sm:p-10 max-w-[850px] mx-auto">${c}</div>
+                        <div class="report-wrapper">${c}</div>
                         <script>
-                            // Wait for Tailwind and Fonts to initialize before popping the print dialog
                             window.onload = () => {
                                 setTimeout(() => {
                                     window.print();
-                                    // Optional: win.close();
-                                }, 800); 
+                                }, 1000); 
                             };
                         <\/script>
                     </body>
@@ -471,7 +479,7 @@ Architecture: Modular Single-File HTML5 (Sub-Renderer Pattern)
             const content = `
             <div id="report-content" class="bg-slate-300 py-10 print:py-0 min-h-screen font-sans space-y-10 print:space-y-0">
                 <!-- PAGE 1: HOME OVERVIEW -->
-                <div class="p-12 max-w-4xl mx-auto min-h-[1056px] relative border-t-[16px] border-slate-900 shadow-2xl report-card bg-white flex flex-col page-break">
+                <div class="p-12 max-w-4xl mx-auto h-[1056px] print:h-[287mm] relative border-t-[16px] border-slate-900 shadow-2xl report-card bg-white flex flex-col page-break">
                     <div class="flex justify-between items-start mb-10 border-b-4 border-slate-900 pb-8">
                         <div><h2 class="text-3xl font-black text-slate-900 tracking-tighter italic uppercase">${co.name}</h2><p class="text-[10px] font-black text-slate-500 uppercase tracking-[0.3em] mt-1">${co.license}</p></div>
                         <div class="text-right">
@@ -538,12 +546,12 @@ Architecture: Modular Single-File HTML5 (Sub-Renderer Pattern)
 
                     <div class="mt-auto flex justify-between items-end border-t-2 pt-6">
                         <div><p class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Audit Status</p><p class="text-sm font-bold text-slate-800 uppercase tracking-tighter">${isUnderperforming ? 'Inspection Complete: Shortfall Detected' : 'Verified Operational'}</p></div>
-                        <div class="text-right text-[10px] text-slate-400 font-bold uppercase tracking-widest italic">SolarCheck Pro v7.264</div>
+                        <div class="text-right text-[10px] text-slate-400 font-bold uppercase tracking-widest italic">SolarCheck Pro v7.265</div>
                     </div>
                 </div>
 
                 <!-- PAGE 2: SOLAR 101 & MAINTENANCE -->
-                <div class="p-12 max-w-4xl mx-auto min-h-[1056px] relative border-t-8 border-slate-900 shadow-2xl report-card bg-white flex flex-col page-break">
+                <div class="p-12 max-w-4xl mx-auto h-[1056px] print:h-[287mm] relative border-t-8 border-slate-900 shadow-2xl report-card bg-white flex flex-col page-break">
                     <div class="mb-10">
                         <h3 class="text-xl font-black text-slate-900 uppercase tracking-widest italic mb-6 border-b-4 border-slate-900 pb-4">Understanding Your Solar Agreement</h3>
                         <div class="grid grid-cols-1 gap-8">
@@ -594,7 +602,7 @@ Architecture: Modular Single-File HTML5 (Sub-Renderer Pattern)
                 </div>
 
                 <!-- PAGE 3: NARRATIVE SUMMARY -->
-                <div class="p-16 max-w-4xl mx-auto min-h-[1056px] relative border-t-8 border-blue-600 shadow-2xl report-card bg-white flex flex-col page-break">
+                <div class="p-16 max-w-4xl mx-auto h-[1056px] print:h-[287mm] relative border-t-8 border-blue-600 shadow-2xl report-card bg-white flex flex-col page-break">
                     <div class="flex justify-between items-center mb-12 border-b-4 border-slate-900 pb-8">
                         <h2 class="text-2xl font-black text-slate-900 uppercase tracking-widest italic">${labels.narrativeHeader.l}</h2>
                         <span class="text-[10px] font-black text-slate-400 uppercase tracking-widest italic">Reference ID: ${reportId}</span>
@@ -666,7 +674,7 @@ Architecture: Modular Single-File HTML5 (Sub-Renderer Pattern)
                     <div class="bg-slate-900 text-white px-4 sm:px-6 py-3 sm:py-4 sticky top-0 z-50 flex justify-between items-center shadow-lg border-b border-white/5 gap-2">
                         <div class="flex items-center gap-2 sm:gap-4 min-w-0">
                             <span class="text-2xl sm:text-3xl flex-shrink-0"><i class="fas fa-sun text-yellow-400"></i></span>
-                            <div class="min-w-0 truncate"><h1 class="font-bold text-lg sm:text-2xl tracking-tighter italic truncate">SolarCheck Pro</h1><p class="text-[7px] sm:text-[9px] opacity-60 font-black uppercase tracking-[0.4em]">v7.264</p></div>
+                            <div class="min-w-0 truncate"><h1 class="font-bold text-lg sm:text-2xl tracking-tighter italic truncate">SolarCheck Pro</h1><p class="text-[7px] sm:text-[9px] opacity-60 font-black uppercase tracking-[0.4em]">v7.265</p></div>
                         </div>
                         <div class="flex items-center gap-2 flex-shrink-0">
                             <button onclick="window.open(window.location.href, '_blank')" class="header-btn bg-slate-800 text-white/80 p-2 sm:px-4 sm:py-2.5 rounded-xl text-sm shadow-xl transition-all hover:bg-slate-700 active:scale-95"><i class="fas fa-expand"></i></button>
