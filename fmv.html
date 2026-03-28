@@ -1,0 +1,323 @@
+<!-- 
+================================================================================
+PROJECT CONTEXT: Professional FMV Report Module
+Version: v1.1.0 (NEGOTIATION LEVERAGE & ON-SITE AUDIT)
+Architecture: Standalone Receiver Module (Query-Param Driven)
+================================================================================
+DESCRIPTION:
+Professional-grade 3-page solar valuation document. Designed to be defensible
+ against TPO remote appraisals by highlighting on-site verification.
+================================================================================
+-->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Professional Solar Valuation Report v1.1.0</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
+        body { font-family: 'Inter', sans-serif; background-color: #f1f5f9; }
+        
+        .page {
+            width: 8.5in;
+            min-height: 11in;
+            padding: 1in;
+            margin: 20px auto;
+            background: white;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+            position: relative;
+            display: flex;
+            flex-direction: column;
+        }
+
+        @media print {
+            body { background: white !important; padding: 0 !important; }
+            .page { margin: 0 !important; box-shadow: none !important; page-break-after: always; border: none !important; }
+            .no-print { display: none !important; }
+        }
+
+        .section-header { border-left: 5px solid #0f172a; padding-left: 1.25rem; margin-bottom: 2rem; }
+        .data-table td, .data-table th { border-bottom: 1px solid #f1f5f9; padding: 0.75rem 0.5rem; }
+    </style>
+</head>
+<body class="text-slate-900">
+
+    <!-- TOOLBAR -->
+    <div class="max-w-[8.5in] mx-auto mb-4 flex justify-between items-center no-print bg-white p-4 rounded-2xl shadow-sm border border-slate-200 mt-6">
+        <div class="flex items-center gap-3">
+            <div class="bg-slate-900 p-2 rounded-lg text-white">
+                <i class="fas fa-balance-scale"></i>
+            </div>
+            <div>
+                <h1 class="text-sm font-bold text-slate-900">Professional FMV Report</h1>
+                <p class="text-[9px] text-slate-500 uppercase tracking-widest font-black">Negotiation Defense v1.1.0</p>
+            </div>
+        </div>
+        <div class="flex gap-2">
+            <button onclick="window.print()" class="bg-blue-600 text-white px-5 py-2 rounded-lg text-xs font-black uppercase tracking-widest hover:bg-blue-500 transition-all flex items-center gap-2">
+                <i class="fas fa-file-pdf"></i> Generate PDF
+            </button>
+            <button onclick="window.close()" class="bg-slate-100 text-slate-600 px-5 py-2 rounded-lg text-xs font-black uppercase tracking-widest hover:bg-slate-200 transition-all">
+                Close
+            </button>
+        </div>
+    </div>
+
+    <!-- PAGE 1: EXECUTIVE SUMMARY -->
+    <div class="page border-t-[12px] border-slate-900">
+        <div class="flex justify-between items-start border-b-2 border-slate-900 pb-8 mb-12">
+            <div>
+                <h1 class="text-3xl font-black italic tracking-tighter uppercase text-slate-900">Valuation Conclusion</h1>
+                <p class="text-xs font-bold text-slate-500 uppercase tracking-widest mt-1">Solar Asset Appraisal Report</p>
+            </div>
+            <div class="text-right">
+                <p id="display-date" class="text-sm font-black text-slate-400">--</p>
+                <div id="audit-badge" class="mt-2 bg-emerald-500 text-white px-3 py-1.5 rounded-lg inline-flex items-center gap-2 border-2 border-emerald-400 shadow-sm">
+                    <i class="fas fa-user-check text-xs"></i>
+                    <span class="text-[10px] font-black uppercase tracking-widest">Verified On-Site Audit</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="bg-slate-900 text-white p-12 rounded-[2.5rem] mb-12 relative overflow-hidden shadow-xl border-b-[8px] border-blue-600">
+            <div class="relative z-10">
+                <p class="text-blue-400 text-[10px] font-black uppercase tracking-[0.4em] mb-3 opacity-80">Opinion of Fair Market Value (FMV)</p>
+                <h2 id="display-fmv" class="text-7xl font-black tracking-tighter italic leading-none">$0</h2>
+                <div class="mt-8 pt-8 border-t border-white/10 flex justify-between items-center">
+                    <div>
+                        <p class="text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-1">Valuation Approach</p>
+                        <p id="display-method" class="text-sm font-black text-white italic">--</p>
+                    </div>
+                    <div class="text-right">
+                        <p class="text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-1">Effective Date</p>
+                        <p id="display-effective" class="text-sm font-black text-white italic">--</p>
+                    </div>
+                </div>
+            </div>
+            <div class="absolute right-[-10%] top-[-20%] text-[240px] text-white/5 rotate-12"><i class="fas fa-shield-halved"></i></div>
+        </div>
+
+        <div class="grid grid-cols-2 gap-12 mb-12">
+            <div class="space-y-6">
+                <div class="section-header"><h3 class="text-xs font-black uppercase tracking-widest italic">Subject Property</h3></div>
+                <p id="display-address" class="text-xl font-black text-slate-900 leading-tight">--</p>
+                <div class="bg-slate-50 p-6 rounded-2xl border border-slate-100">
+                    <p class="text-[10px] font-black text-slate-400 uppercase mb-4 tracking-widest italic">Analyst Note (Plain English)</p>
+                    <p class="text-xs font-medium text-slate-700 leading-relaxed">
+                        This valuation represents the true market worth of the solar system as it sits on the roof today. It is not the sum of remaining lease payments, nor is it the original retail price. It is what a knowledgeable buyer would pay for the future energy harvest this specific equipment will generate.
+                    </p>
+                </div>
+            </div>
+            <div class="space-y-6">
+                <div class="section-header"><h3 class="text-xs font-black uppercase tracking-widest italic">Identification & Condition</h3></div>
+                <table class="w-full text-xs data-table">
+                    <tr><td class="font-bold text-slate-400">Generator:</td><td id="display-pC" class="text-right font-black">-- Panels</td></tr>
+                    <tr><td class="font-bold text-slate-400">Modules:</td><td id="display-pBrand" class="text-right font-black">--</td></tr>
+                    <tr><td class="font-bold text-slate-400">Inverter:</td><td id="display-iBrand" class="text-right font-black">--</td></tr>
+                    <tr><td class="font-bold text-slate-400">System Size:</td><td id="display-size" class="text-right font-black">-- kW DC</td></tr>
+                    <tr><td class="font-bold text-slate-400">System Age:</td><td id="display-age" class="text-right font-black">-- Yrs</td></tr>
+                </table>
+            </div>
+        </div>
+
+        <div class="mt-auto pt-8 border-t border-slate-100 text-[10px] text-slate-400 font-bold uppercase tracking-widest italic flex justify-between">
+            <span>SolarCheck Pro v1.1.0</span>
+            <span id="ref-id-1">REF: --</span>
+        </div>
+    </div>
+
+    <!-- PAGE 2: TECHNICAL AUDIT -->
+    <div class="page border-t-[8px] border-slate-900">
+        <div class="section-header mb-8"><h3 class="text-base font-black uppercase tracking-widest italic">On-Site Performance Analysis</h3></div>
+        <p class="text-xs text-slate-600 mb-8 leading-relaxed">
+            Unlike "remote desktop" appraisals based on satellite imagery, this audit incorporates actual metered production data and physical hardware inspection. The following performance ratios define the asset's current health.
+        </p>
+
+        <div class="grid grid-cols-3 gap-6 mb-12">
+            <div class="p-6 bg-slate-50 rounded-2xl border-2 border-slate-100 text-center">
+                <p class="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Lifetime Production</p>
+                <p id="display-act" class="text-2xl font-black text-slate-900 tracking-tighter">-- MWh</p>
+            </div>
+            <div class="p-6 bg-slate-50 rounded-2xl border-2 border-slate-100 text-center">
+                <p class="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Physical Benchmark</p>
+                <p id="display-bench" class="text-2xl font-black text-slate-900 tracking-tighter">-- MWh</p>
+            </div>
+            <div class="p-6 bg-slate-50 rounded-2xl border-2 border-slate-100 text-center">
+                <p class="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Performance Ratio</p>
+                <p id="display-pr" class="text-2xl font-black text-blue-600 tracking-tighter">--%</p>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-2 gap-12 mb-12">
+            <div class="space-y-6">
+                <div class="section-header"><h3 class="text-xs font-black uppercase tracking-widest italic">Observed On-Site Deducts</h3></div>
+                <ul class="space-y-4 text-[11px] font-bold text-slate-700">
+                    <li class="flex items-center gap-3"><i class="fas fa-check-circle text-emerald-500"></i> Hardware Registry Verification</li>
+                    <li class="flex items-center gap-3"><i class="fas fa-check-circle text-emerald-500"></i> Racking & Roof Integrity Check</li>
+                    <li class="flex items-center gap-3"><i class="fas fa-check-circle text-emerald-500"></i> Monitoring Connectivity Audit</li>
+                    <li class="flex items-center gap-3"><i id="shortfall-icon" class="fas fa-circle-info text-blue-400"></i> Shortfall Adjustment: <span id="display-shortfall" class="font-black text-slate-900">-- kWh</span></li>
+                </ul>
+            </div>
+            <div class="bg-indigo-50 p-8 rounded-3xl border border-indigo-100">
+                <h4 class="text-[10px] font-black text-indigo-800 uppercase tracking-widest mb-3">Technological Obsolescence Note</h4>
+                <p class="text-[11px] text-indigo-900/70 leading-relaxed italic">
+                    The subject system utilizes legacy PV technology. Contemporary solar modules are approximately 25% more efficient and carry significantly lower per-watt installation costs. This market reality puts a "Value Ceiling" on used equipment that remote TPO appraisals often fail to account for by using original contract prices.
+                </p>
+            </div>
+        </div>
+
+        <div class="section-header mb-6 mt-12"><h3 class="text-xs font-black uppercase tracking-widest italic">Technical Assumptions</h3></div>
+        <div class="grid grid-cols-4 gap-4">
+            <div class="p-4 border border-slate-100 rounded-xl">
+                <p class="text-[8px] font-black text-slate-400 uppercase mb-1">Discount Rate</p>
+                <p id="display-dr" class="text-sm font-black text-slate-800">--%</p>
+            </div>
+            <div class="p-4 border border-slate-100 rounded-xl">
+                <p class="text-[8px] font-black text-slate-400 uppercase mb-1">Utility Esc.</p>
+                <p id="display-esc" class="text-sm font-black text-slate-800">--%</p>
+            </div>
+            <div class="p-4 border border-slate-100 rounded-xl">
+                <p class="text-[8px] font-black text-slate-400 uppercase mb-1">Useful Life</p>
+                <p id="display-life" class="text-sm font-black text-slate-800">-- Yrs</p>
+            </div>
+            <div class="p-4 border border-slate-100 rounded-xl">
+                <p class="text-[8px] font-black text-slate-400 uppercase mb-1">NEM Factor</p>
+                <p id="display-nem" class="text-sm font-black text-slate-800">--</p>
+            </div>
+        </div>
+
+        <div class="mt-auto pt-8 border-t border-slate-100 text-[10px] text-slate-400 font-bold uppercase tracking-widest italic flex justify-between">
+            <span>SolarCheck Pro v1.1.0</span>
+            <span id="ref-id-2">REF: --</span>
+        </div>
+    </div>
+
+    <!-- PAGE 3: NEGOTIATION LEVERAGE -->
+    <div class="page border-t-[8px] border-slate-900">
+        <div class="section-header mb-8"><h3 class="text-base font-black uppercase tracking-widest italic">Strategic Leverage Analysis</h3></div>
+        <p class="text-xs text-slate-600 mb-10 leading-relaxed italic">
+            Valuation for the purpose of a contract buyout must weigh the Fair Market Value (FMV) against the contractual obligations of both the Homeowner and the TPO Provider.
+        </p>
+
+        <div class="grid grid-cols-1 gap-10">
+            <div class="flex items-stretch gap-8">
+                <div class="bg-red-50 p-8 rounded-[2rem] border-2 border-red-100 flex-1 relative overflow-hidden">
+                    <h4 class="text-xs font-black text-red-800 uppercase tracking-widest mb-2">The Negotiation Ceiling</h4>
+                    <p id="display-ceiling" class="text-5xl font-black text-red-900 tracking-tighter italic leading-none">$0</p>
+                    <p class="text-[10px] text-red-700 font-bold uppercase mt-4">Total Remaining Payments</p>
+                    <p class="text-[11px] text-red-900/60 mt-2 leading-snug">The TPO often treats this as the "buyout price." However, this number represents 100% of their future profit and carries zero risk-adjustment for hardware failure or policy change.</p>
+                </div>
+                <div class="flex items-center justify-center text-slate-300 text-3xl"><i class="fas fa-arrows-left-right"></i></div>
+                <div class="bg-blue-900 p-8 rounded-[2rem] flex-1 text-white shadow-xl relative overflow-hidden">
+                    <h4 class="text-xs font-black text-blue-300 uppercase tracking-widest mb-2">Conclusion of Market Value</h4>
+                    <p id="display-fmv-final" class="text-5xl font-black tracking-tighter italic leading-none">$0</p>
+                    <p class="text-[10px] text-blue-400 font-bold uppercase mt-4 italic">Fair Market Value (Blended)</p>
+                    <p class="text-[11px] text-blue-100/60 mt-2 leading-snug">The FMV represents the actual market worth of the energy generation. Any price paid above this level is a "convenience premium" to the TPO.</p>
+                    <div class="absolute right-[-10%] bottom-[-10%] text-9xl text-white/5 rotate-12"><i class="fas fa-handshake"></i></div>
+                </div>
+            </div>
+
+            <div class="bg-slate-900 text-white p-10 rounded-[2.5rem] flex items-center justify-between border-b-8 border-orange-500 shadow-2xl">
+                <div class="max-w-md">
+                    <h4 class="text-xs font-black text-orange-400 uppercase tracking-widest mb-3 flex items-center gap-2"><i class="fas fa-triangle-exclamation"></i> TPO Exit Liability (The Strategic Floor)</h4>
+                    <p class="text-xs text-slate-400 leading-relaxed font-medium italic">
+                        Per standard Lease/PPA agreements, should the homeowner decline the buyout, the TPO retains the liability for system removal and roof restoration at the end of the term. This cost represents a direct financial debit from their "Book Value."
+                    </p>
+                </div>
+                <div class="text-right">
+                    <p id="display-floor" class="text-5xl font-black text-white italic tracking-tighter leading-none">$0</p>
+                    <p class="text-[10px] text-orange-400 font-bold uppercase tracking-widest mt-2">Est. Cost to Remove</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="mt-12 space-y-8">
+            <div class="section-header"><h3 class="text-xs font-black uppercase tracking-widest italic">Appraiser Certification</h3></div>
+            <p class="text-[10px] text-slate-500 leading-relaxed italic">
+                I certify that, to the best of my knowledge and belief: The statements of fact contained in this report are true and correct. The reported analyses, opinions, and conclusions are limited only by the reported assumptions and limiting conditions and are my personal, impartial, and unbiased professional analyses, opinions, and conclusions. I have no present or prospective interest in the property that is the subject of this report and no personal interest with respect to the parties involved.
+            </p>
+            <div class="flex justify-between items-end">
+                <div class="w-64">
+                    <div class="h-0.5 bg-slate-900 w-full mb-2"></div>
+                    <p class="text-sm font-black italic tracking-tighter uppercase">Authorized Signature</p>
+                    <p id="display-analyst-co" class="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">--</p>
+                </div>
+                <div class="text-right">
+                    <p id="ref-id-3" class="text-[10px] font-mono text-slate-400">REF: --</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="mt-auto pt-8 border-t border-slate-100 text-[10px] text-slate-400 font-bold uppercase tracking-widest italic flex justify-between">
+            <span>SolarCheck Pro v1.1.0</span>
+            <span>Page 3 of 3</span>
+        </div>
+    </div>
+
+    <script>
+        const cur = (v) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(v || 0);
+
+        function init() {
+            const params = new URLSearchParams(window.location.search);
+            
+            // Header & General
+            document.getElementById('display-address').innerText = params.get('a') || 'Subject Property';
+            document.getElementById('display-date').innerText = new Date().toLocaleDateString();
+            document.getElementById('display-effective').innerText = new Date().toLocaleDateString();
+            
+            // Valuation
+            const fmvVal = params.get('fmv');
+            document.getElementById('display-fmv').innerText = cur(fmvVal);
+            document.getElementById('display-fmv-final').innerText = cur(fmvVal);
+            
+            const w = params.get('w');
+            document.getElementById('display-method').innerText = w == 100 ? 'Income Capitalization (Primary)' : w == 0 ? 'Replacement Cost (Primary)' : `Blended (${w}% Income Approach)`;
+
+            // Hardware Identification
+            document.getElementById('display-pC').innerText = params.get('pC') || '--';
+            document.getElementById('display-pBrand').innerText = `${params.get('pC')} x ${params.get('pW')}W ${params.get('pBrand')}`;
+            document.getElementById('display-iBrand').innerText = params.get('iBrand');
+            document.getElementById('display-size').innerText = params.get('sz') || '0.00';
+            document.getElementById('display-age').innerText = params.get('age') || '0.0';
+
+            // Performance Analysis
+            const act = parseFloat(params.get('act')) || 0;
+            const bench = parseFloat(params.get('bench')) || 1;
+            const pr = (act / bench) * 100;
+            document.getElementById('display-act').innerText = act.toFixed(1) + ' MWh';
+            document.getElementById('display-bench').innerText = bench.toFixed(1) + ' MWh';
+            document.getElementById('display-pr').innerText = pr.toFixed(1) + '%';
+            
+            const shortfall = parseFloat(params.get('shortfall')) || 0;
+            document.getElementById('display-shortfall').innerText = shortfall.toLocaleString() + ' kWh';
+            if (shortfall > 0) {
+                document.getElementById('shortfall-icon').classList.replace('text-blue-400', 'text-amber-500');
+            }
+
+            // Assumptions
+            document.getElementById('display-dr').innerText = (params.get('dr') || '0.0') + '%';
+            document.getElementById('display-esc').innerText = (params.get('e') || '0.0') + '%';
+            document.getElementById('display-life').innerText = params.get('l') || '25';
+            
+            const nem = parseFloat(params.get('ne')) || 0;
+            document.getElementById('display-nem').innerText = nem >= 1.0 ? 'Full NEM' : nem >= 0.8 ? 'Partial' : 'Avoided Cost';
+
+            // Leverage
+            document.getElementById('display-ceiling').innerText = cur(params.get('ceiling'));
+            document.getElementById('display-floor').innerText = cur(params.get('floor'));
+            document.getElementById('display-analyst-co').innerText = params.get('tpo') || 'SolarCheck Certified Analyst';
+
+            // Reference IDs
+            const ref = 'REF-' + Math.random().toString(36).substr(2, 9).toUpperCase();
+            document.getElementById('ref-id-1').innerText = ref;
+            document.getElementById('ref-id-2').innerText = ref;
+            document.getElementById('ref-id-3').innerText = ref;
+        }
+
+        window.onload = init;
+    </script>
+</body>
+</html>
