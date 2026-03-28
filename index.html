@@ -1,7 +1,7 @@
 <!-- 
 ================================================================================
 PROJECT CONTEXT: SolarCheck Professional
-Current Version: v7.282 (BATTERY RUNTIME & RESILIENCY ANCHOR)
+Current Version: v7.285 (LIFESPAN ALIGNMENT & SMART DEFAULTS)
 Date: March 2026
 Architecture: Modular Single-File HTML5 (Sub-Renderer Pattern)
 ================================================================================
@@ -36,7 +36,7 @@ Architecture: Modular Single-File HTML5 (Sub-Renderer Pattern)
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SolarCheck Professional v7.282</title>
+    <title>SolarCheck Professional v7.285</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
@@ -116,7 +116,7 @@ Architecture: Modular Single-File HTML5 (Sub-Renderer Pattern)
             dr: { l: "Discount Rate (%)", d: "Target return or cost of capital (Standard: 6-10%).", p: "7.88" },
             e: { l: "Utility Escalation (%)", d: "Assumed annual utility rate inflation.", p: "7.0" },
             rC: { l: "Replacement Cost ($/W)", d: "Current cost per watt to build a similar new system.", p: "3.50" },
-            l: { l: "Useful Life (Years)", d: "Estimated total life of equipment (Standard: 30y)." , p: "30" },
+            l: { l: "Useful Life (Years)", d: "Estimated total life of equipment (Standard: 25y)." , p: "25" },
             ne: { l: "NEM Policy", d: "Tariff adjustment for net metering value.", p: "" },
             c: { l: "Asset Condition (0-1)", d: "Physical health multiplier (1.0 = Perfect).", p: "0.9" },
             srec: { l: "Include SRECs / Incentives?", d: "Toggle for secondary solar revenue streams.", p: "" },
@@ -320,9 +320,8 @@ Architecture: Modular Single-File HTML5 (Sub-Renderer Pattern)
             const dailyGenAvg = (s * 4.5); 
             const batteryBoost = (usableB / (dailyGenAvg || 1)) * 40; 
             const finalSCR = Math.min(98, (parseFloat(scr) || 0) + (usableB > 0 ? batteryBoost : 0));
-            const blendedUtility = (finalSCR/100 * (rU || 0.35)) + ((1 - finalSCR/100) * (eU || 0.05));
             
-            // FIXED TYPO: changed 'steeped' to 'steep' to match select value
+            const blendedUtility = (finalSCR/100 * (rU || 0.35)) + ((1 - finalSCR/100) * (eU || 0.05));
             const YF = { south: 1550, mix: 1500, east_west: 1450, north: 1200 }[or] * { none: 1, some: 0.85, alot: 0.7 }[sh] * { standard: 1, flat: 0.89, steep: 0.96 }[pi];
             
             const th = s * YF;
@@ -342,8 +341,23 @@ Architecture: Modular Single-File HTML5 (Sub-Renderer Pattern)
             const shortfallkWh = Math.max(0, (gtd * 1) - (nAC * 1000));
             const trueUpRefund = isTPO ? (shortfallkWh * ntR) : 0;
             const arbDelta = blendedUtility - rYC_sol, arbDiscount = Math.max(0, (arbDelta / (blendedUtility || 1)) * 100);
-            let fSa = 0; const calcTerm = (o === 'owned') ? 25 : nTe; const rM = Math.max(0, calcTerm - age);
-            for (let i = 0; i < Math.ceil(rM); i++) { fSa += th * (1-((age+i)*DEG_RATE)) * blendedUtility * Math.pow(1 + (parseFloat(e||0)/100), i); }
+            
+            // FUTURE SAVINGS LOOP (ACCOUNTING FOR NEM 20Y CLIFF & DYNAMIC LIFE)
+            let fSa = 0; 
+            const calcTerm = parseFloat(l) || 25; 
+            const rM = Math.max(0, calcTerm - age);
+            const retailBase = rU || 0.35;
+            const exportBase = eU || 0.05;
+            const utilityEscFactor = 1 + (parseFloat(e || 0) / 100);
+
+            for (let i = 0; i < Math.ceil(rM); i++) { 
+                const yr = age + i;
+                const currentExportBase = (yr <= 20) ? exportBase : 0.05;
+                const currentBlendedBase = (finalSCR/100 * retailBase) + ((1 - finalSCR/100) * currentExportBase);
+                const currentBlendedEscalated = currentBlendedBase * Math.pow(utilityEscFactor, i);
+                fSa += th * (1-((age+i)*DEG_RATE)) * currentBlendedEscalated; 
+            }
+
             let tCt = 0, remCost = 0;
             let currentPay_sol = solY1 * 12;
             let currentPay_bat = batY1 * 12;
@@ -354,6 +368,7 @@ Architecture: Modular Single-File HTML5 (Sub-Renderer Pattern)
                 currentPay_sol *= (1 + (ntEs/100));
                 currentPay_bat *= (1 + (ntEs/100));
             }
+
             window.state.r = { 
                 age, sz: s, act: nAC, potSav: cP*blendedUtility, 
                 actSav: cP * blendedUtility * (nAC*1000/(ptd||1)), 
@@ -365,17 +380,24 @@ Architecture: Modular Single-File HTML5 (Sub-Renderer Pattern)
                 blendedUtility, effSCR: finalSCR, arbDelta, arbDiscount, estDay: cP/365, estN12: cP, usableB, remCost, ptd,
                 shortfallkWh, trueUpRefund
             };
+
             const sC = s * 1000 * parseFloat(rC||0); 
-            const rL = Math.max(0, (parseFloat(l)||30) - age); 
+            const rL = Math.max(0, (parseFloat(l)||25) - age); 
             const depCost = l > 0 ? (rL / l) * c : 0; const cV = sC * depCost;
-            let dcfContract = 0, dcfResidual = 0; let uRC = blendedUtility, lCA_sol = solYC * 12, lCA_bat = batYC * 12, pC_ = cP;
+            
+            let dcfContract = 0, dcfResidual = 0; 
+            let lCA_sol = solYC * 12, lCA_bat = batYC * 12, pC_ = cP;
+            
             for (let y = 1; y <= Math.ceil(rL); y++) { 
+                const yr = age + y;
+                const currentExportBase = (yr <= 20) ? exportBase : 0.05;
+                const currentBlendedBase = (finalSCR/100 * retailBase) + ((1 - finalSCR/100) * currentExportBase);
+                const currentBlendedEscalated = currentBlendedBase * Math.pow(utilityEscFactor, y);
                 const srev = (srec && srecP) ? (pC_ / 1000) * srecP : 0;
                 const yearlyLiab = (isTPO && !isPrepaid && (age+y)<=nTe) ? (lCA_sol + lCA_bat) : 0;
-                const net = (pC_ * uRC) + srev - yearlyLiab; 
+                const net = (pC_ * currentBlendedEscalated) + srev - yearlyLiab; 
                 const discounted = net / Math.pow(1 + (dr / 100), y);
                 if (isTPO && (age+y) <= nTe) dcfContract += discounted; else dcfResidual += discounted;
-                uRC *= (1 + (parseFloat(e||0) / 100)); 
                 lCA_sol *= (1 + (ntEs / 100)); 
                 lCA_bat *= (1 + (ntEs / 100));
                 pC_ *= 0.995;
@@ -388,7 +410,7 @@ Architecture: Modular Single-File HTML5 (Sub-Renderer Pattern)
         // --- STATE & UTILITIES ---
         window.state = {
             activeTab: "inputs", activeModal: null, a: "", iDt: "", pDt: new Date().toISOString().split('T')[0],
-            o: "lease", tpoName: "", pC: "", pW: "", sz: 0, or: "mix", pi: "standard", sh: "some", ac: "", b: "", br: "", scr: 60, it: "string", invBrand: "SolarEdge", invCount: "", invAge: "", panelBrand: "", batteryBrand: "", batteryMode: "both", cellMon: "none", ut: "nem2", rU: 0.48, eU: 0.45, te: "", tE: "", tG: "", tEs: "", pa: "", paB: "", tR: "", rR: 0.20, rC: 3.50, ne: 0.8, c: 0.9, aC: true, l: 30, om: 20, dr: 7.88, rp: 0, tx: false, e: 7.0, w: 100, srec: false, srecP: 25, r: null, aR: null, company: localStorage.getItem('solarCheck_company') || 'rsr'
+            o: "lease", tpoName: "", pC: "", pW: "", sz: 0, or: "mix", pi: "standard", sh: "some", ac: "", b: "", br: "", scr: 50, it: "string", invBrand: "SolarEdge", invCount: "", invAge: "", panelBrand: "", batteryBrand: "", batteryMode: "both", cellMon: "none", ut: "nem2", rU: 0.48, eU: 0.45, te: "", tE: "", tG: "", tEs: "", pa: "", paB: "", tR: "", rR: 0.20, rC: 3.50, ne: 0.8, c: 0.9, aC: true, l: 25, om: 20, dr: 7.88, rp: 0, tx: false, e: 7.0, w: 100, srec: false, srecP: 25, r: null, aR: null, company: localStorage.getItem('solarCheck_company') || 'rsr'
         };
 
         const COMPANIES = {
@@ -398,9 +420,27 @@ Architecture: Modular Single-File HTML5 (Sub-Renderer Pattern)
         };
 
         window.closeReport = () => { document.getElementById('report-view').classList.add('hidden'); document.getElementById('root').classList.remove('hidden'); window.scrollTo(0, 0); window.render(); };
-        window.printReport = () => { const c = document.getElementById('report-content').innerHTML; const win = window.open('', '_blank'); win.document.write(`<html><head><script src="https://cdn.tailwindcss.com"><\/script><style>@media print { .page-break { page-break-before: always; } .no-print { display: none !important; } .report-card { border: 2px solid #0f172a !important; box-shadow: none !important; } }</style></head><body onload="window.print()"><div class="p-10 max-w-[850px] mx-auto">${c}</div></body></html>`); win.document.close(); };
+        window.printReport = () => { const c = document.getElementById('report-content').innerHTML; const win = window.open('', '_blank'); win.document.write(`<html><head><script src="https://cdn.tailwindcss.com"><\/script><style>@media print { .page-break { page-break-before: always; } .no-print { display: none !important; } .report-card { border: 2px solid #0f172a !important; box-shadow: none !important; } }</style></head><body onload=\"window.print()\"><div class=\"p-10 max-w-[850px] mx-auto\">${c}</div></body></html>`); win.document.close(); };
         window.updateState = function(k, v) { window.state[k] = v; window.calculate(); window.render(); };
-        window.handleInputChange = function(e, k) { let v = e.target.value; if (e.target.type === 'number') v = v === "" ? "" : parseFloat(v); window.state[k] = v; window.calculate(); window.render(); };
+        
+        window.handleInputChange = function(e, k) { 
+            let v = e.target.value; 
+            if (e.target.type === 'number') v = v === "" ? "" : parseFloat(v); 
+            window.state[k] = v; 
+
+            // SMART DEFAULTS FOR USEFUL LIFE (l)
+            if (k === 'o') {
+                if (v === 'owned') window.state.l = 25;
+                else if (window.state.te) window.state.l = window.state.te;
+            }
+            if (k === 'te' && window.state.o !== 'owned') {
+                window.state.l = v;
+            }
+
+            window.calculate(); 
+            window.render(); 
+        };
+
         window.handleCompanyChange = function(e) { window.state.company = e.target.value; localStorage.setItem('solarCheck_company', e.target.value); window.render(); };
         window.handleProductionChange = function(e) { const val = parseFloat(e.target.value); window.state.tE = isNaN(val) ? "" : val; const tR = parseFloat(window.state.tR); if (!isNaN(val) && !isNaN(tR) && val > 0) { window.state.pa = parseFloat(((tR * val) / 12).toFixed(2)); } window.calculate(); window.render(); };
         window.handleRateChange = function(e) { const val = parseFloat(e.target.value); window.state.tR = isNaN(val) ? "" : val; const tE = parseFloat(window.state.tE); if (!isNaN(val) && !isNaN(tE) && tE > 0) { window.state.pa = parseFloat(((val * tE) / 12).toFixed(2)); } window.calculate(); window.render(); };
@@ -428,9 +468,8 @@ Architecture: Modular Single-File HTML5 (Sub-Renderer Pattern)
             const isTPO = ['lease', 'ppa', 'prepaid_lease', 'prepaid_ppa'].includes(o);
             const isPrepaid = o && o.includes('prepaid');
             const labels = window.UI_TEXT;
-            const remAssetYears = isTPO ? Math.max(0, te - r.age).toFixed(1) : Math.max(0, 25 - r.age).toFixed(1);
+            const remAssetYears = isTPO ? Math.max(0, te - r.age).toFixed(1) : Math.max(0, window.state.l - r.age).toFixed(1);
             
-            // Extract Year from iDt for cleaner PTO display
             const ptoYear = iDt ? new Date(iDt + 'T00:00:00').getFullYear() : 'N/A';
 
             const ownershipMap = {
@@ -453,12 +492,10 @@ Architecture: Modular Single-File HTML5 (Sub-Renderer Pattern)
                 both: "Hybrid Resiliency & Savings"
             }[batteryMode] || "Not Specified";
 
-            // Calculate Backup Duration based on a standard "Essential Load" (0.35kW Continuous)
             const capacity = parseFloat(b) || 0;
             const runtimeHours = capacity / 0.35;
             const runtimeLabel = runtimeHours >= 24 ? (runtimeHours / 24).toFixed(1) + " Days" : Math.floor(runtimeHours) + " Hours";
 
-            // PAGE 2 DYNAMIC SPECIFICS CONTENT
             let page2SpecificsHTML = '';
             if (o === 'owned') {
                 page2SpecificsHTML = `
@@ -500,7 +537,7 @@ Architecture: Modular Single-File HTML5 (Sub-Renderer Pattern)
 
             const content = `
             <div id="report-content" class="bg-slate-300 py-10 print:py-0 min-h-screen font-sans space-y-10 print:space-y-0">
-                <!-- PAGE 1: HOME OVERVIEW -->
+                <!-- PAGE 1 -->
                 <div class="p-12 max-w-4xl mx-auto min-h-[1056px] relative border-t-[16px] border-slate-900 shadow-2xl report-card bg-white flex flex-col page-break">
                     <div class="flex justify-between items-start mb-10 border-b-4 border-slate-900 pb-8">
                         <div><h2 class="text-3xl font-black text-slate-900 tracking-tighter italic uppercase">${co.name}</h2><p class="text-[10px] font-black text-slate-500 uppercase tracking-[0.3em] mt-1">${co.license}</p></div>
@@ -548,11 +585,11 @@ Architecture: Modular Single-File HTML5 (Sub-Renderer Pattern)
                             <div class="space-y-4">
                                 <div class="grid grid-cols-2 gap-4 border-b border-slate-200 pb-4">
                                     <div><p class="text-xl font-black text-slate-900">${ptoYear}</p><p class="text-[9px] font-bold text-slate-500 uppercase tracking-widest">Install Year (PTO)</p></div>
-                                    <div><p class="text-xl font-black text-slate-900">${te || 0} Years</p><p class="text-[9px] font-bold text-slate-500 uppercase tracking-widest">Total Term</p></div>
+                                    <div><p class="text-xl font-black text-slate-900">${isTPO ? te : window.state.l} Years</p><p class="text-[9px] font-bold text-slate-500 uppercase tracking-widest">Calculated Life</p></div>
                                 </div>
                                 <div class="grid grid-cols-2 gap-4">
                                     <div><p class="text-xl font-black text-slate-900">${r.age.toFixed(1)} Yrs</p><p class="text-[9px] font-bold text-slate-500 uppercase tracking-widest">System Age</p></div>
-                                    <div><p class="text-xl font-black text-blue-600">${remAssetYears} Yrs</p><p class="text-[9px] font-bold text-slate-500 uppercase tracking-widest">Remaining Term</p></div>
+                                    <div><p class="text-xl font-black text-blue-600">${remAssetYears} Yrs</p><p class="text-[9px] font-bold text-slate-500 uppercase tracking-widest">Remaining Value</p></div>
                                 </div>
                             </div>
                         </div>
@@ -603,11 +640,11 @@ Architecture: Modular Single-File HTML5 (Sub-Renderer Pattern)
 
                     <div class="mt-auto flex justify-between items-end border-t-2 pt-6">
                         <div><p class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Audit Status</p><p class="text-sm font-bold text-slate-800 uppercase tracking-tighter">${isUnderperforming ? 'Inspection Complete: Shortfall Detected' : 'Verified Operational'}</p></div>
-                        <div class="text-right text-[10px] text-slate-400 font-bold uppercase tracking-widest italic">SolarCheck Pro v7.282</div>
+                        <div class="text-right text-[10px] text-slate-400 font-bold uppercase tracking-widest italic">SolarCheck Pro v7.285</div>
                     </div>
                 </div>
 
-                <!-- PAGE 2: AGREEMENT DETAILS & MAINTENANCE -->
+                <!-- PAGE 2 -->
                 <div class="p-12 max-w-4xl mx-auto min-h-[1056px] relative border-t-8 border-slate-900 shadow-2xl report-card bg-white flex flex-col page-break">
                     <div class="mb-10">
                         <h3 class="text-xl font-black text-slate-900 uppercase tracking-widest italic mb-6 border-b-4 border-slate-900 pb-4">Understanding Your Solar Agreement</h3>
@@ -645,7 +682,7 @@ Architecture: Modular Single-File HTML5 (Sub-Renderer Pattern)
                                         <span class="text-2xl font-black text-emerald-400 italic tracking-tighter leading-none">$${r.blendedUtility.toFixed(2)} <span class="text-[10px] uppercase font-bold tracking-normal">/ kWh</span></span>
                                     </div>
                                     <div class="flex flex-col">
-                                        <span class="text-[9px] text-slate-400 font-black uppercase tracking-widest mb-1">TPO Solar Rate</span>
+                                        <span class="text-[9px] text-slate-400 font-black uppercase tracking-widest mb-1">Solar Unit Rate</span>
                                         <span class="text-2xl font-black text-red-400 italic tracking-tighter leading-none">$${r.rYC_sol.toFixed(3)} <span class="text-[10px] uppercase font-bold tracking-normal">/ kWh</span></span>
                                     </div>
                                 </div>
@@ -679,7 +716,7 @@ Architecture: Modular Single-File HTML5 (Sub-Renderer Pattern)
                     </div>
                 </div>
 
-                <!-- PAGE 3: NARRATIVE SUMMARY -->
+                <!-- PAGE 3 -->
                 <div class="p-16 max-w-4xl mx-auto min-h-[1056px] relative border-t-8 border-blue-600 shadow-2xl report-card bg-white flex flex-col page-break">
                     <div class="flex justify-between items-center mb-12 border-b-4 border-slate-900 pb-8">
                         <h2 class="text-2xl font-black text-slate-900 uppercase tracking-widest italic">${labels.narrativeHeader.l}</h2>
@@ -703,12 +740,12 @@ Architecture: Modular Single-File HTML5 (Sub-Renderer Pattern)
 
                         <div class="space-y-4">
                             <h4 class="text-sm font-black text-slate-900 uppercase tracking-[0.3em] flex items-center gap-4"><span class="w-16 h-1 bg-blue-600"></span> ${labels.narrLabelCash.l}</h4>
-                            <p class="text-base text-slate-600">${isNegativeCashFlow ? 'Currently, the monthly solar payment is higher than the calculated utility savings. This results in a net monthly cost of about <strong>' + window.cur(Math.abs(r.actSavNet / 12)) + '</strong>. Homeowners in this position often rely on future utility inflation to reach a "break-even" point where the solar becomes cheaper than the grid.' : 'The math is simple: the solar bill is lower than the utility savings. Every month, this system creates approximately <strong>' + window.cur(r.actSavNet / 12) + '</strong> in net profit for the home. It is a "cash-flow positive" asset.'}</p>
+                            <p class="text-base text-slate-600">${isNegativeCashFlow ? 'Currently, the monthly solar payment is higher than the calculated utility savings. This results in a net monthly cost of about <strong>' + window.cur(Math.abs(r.actSavNet / 12)) + '</strong>. Homeowners in this position often rely on future utility inflation to reach a \"break-even\" point where the solar becomes cheaper than the grid.' : 'The math is simple: the solar bill is lower than the utility savings. Every month, this system creates approximately <strong>' + window.cur(r.actSavNet / 12) + '</strong> in net profit for the home. It is a \"cash-flow positive\" asset.'}</p>
                         </div>
 
                         <div class="space-y-4">
                             <h4 class="text-sm font-black text-slate-900 uppercase tracking-[0.3em] flex items-center gap-4"><span class="w-16 h-1 bg-blue-600"></span> ${labels.narrLabelTerm.l}</h4>
-                            <p class="text-base text-slate-600">With <strong>${remAssetYears} years</strong> left on the agreement, ${isNegativeTerm ? 'the total remaining cost of the solar agreement is projected to exceed the utility savings by ' + window.cur(Math.abs(r.futSavNet)) + '. This system is currently acting as a utility hedge rather than a direct savings vehicle.' : 'the total projected net benefit is over <strong>' + window.cur(r.futSavNet) + '</strong>. This represents a significant long-term reduction in the home\'s total cost of ownership.'}</p>
+                            <p class="text-base text-slate-600">With <strong>${remAssetYears} years</strong> left of calculated value, ${isNegativeTerm ? 'the total remaining cost of the solar agreement is projected to exceed the utility savings by ' + window.cur(Math.abs(r.futSavNet)) + '. This system is currently acting as a utility hedge rather than a direct savings vehicle.' : 'the total projected net benefit is over <strong>' + window.cur(r.futSavNet) + '</strong>. This represents a significant long-term reduction in the home\'s total cost of ownership.'}</p>
                         </div>
 
                         <div class="space-y-4">
@@ -752,7 +789,7 @@ Architecture: Modular Single-File HTML5 (Sub-Renderer Pattern)
                     <div class="bg-slate-900 text-white px-4 sm:px-6 py-3 sm:py-4 sticky top-0 z-50 flex justify-between items-center shadow-lg border-b border-white/5 gap-2">
                         <div class="flex items-center gap-2 sm:gap-4 min-w-0">
                             <span class="text-2xl sm:text-3xl flex-shrink-0"><i class="fas fa-sun text-yellow-400"></i></span>
-                            <div class="min-w-0 truncate"><h1 class="font-bold text-lg sm:text-2xl tracking-tighter italic truncate">SolarCheck Pro</h1><p class="text-[7px] sm:text-[9px] opacity-60 font-black uppercase tracking-[0.4em]">v7.282</p></div>
+                            <div class="min-w-0 truncate"><h1 class="font-bold text-lg sm:text-2xl tracking-tighter italic truncate">SolarCheck Pro</h1><p class="text-[7px] sm:text-[9px] opacity-60 font-black uppercase tracking-[0.4em]">v7.285</p></div>
                         </div>
                         <div class="flex items-center gap-2 flex-shrink-0">
                             <button onclick="window.open(window.location.href, '_blank')" class="header-btn bg-slate-800 text-white/80 p-2 sm:px-4 sm:py-2.5 rounded-xl text-sm shadow-xl transition-all hover:bg-slate-700 active:scale-95"><i class="fas fa-expand"></i></button>
@@ -760,7 +797,7 @@ Architecture: Modular Single-File HTML5 (Sub-Renderer Pattern)
                         </div>
                     </div>
                     <div class="bg-white/90 backdrop-blur-md border-b sticky top-[56px] sm:top-[72px] z-40 px-2 sm:px-4 flex gap-1 pt-1 no-print overflow-x-auto shadow-sm no-scrollbar">
-                        ${['inputs','contract','summary','valuation'].map(t => `<button onclick="updateState('activeTab', '${t}')" class="flex-1 py-3 sm:py-5 border-b-4 font-black transition-all ${activeTab === t ? 'border-blue-600 text-blue-600' : 'border-transparent text-slate-400'} uppercase text-[8px] sm:text-[10px] tracking-widest sm:tracking-[0.2em] whitespace-nowrap flex flex-col items-center justify-center gap-1 sm:gap-2"><i class="fas ${t === 'inputs' ? 'fa-edit' : t === 'contract' ? 'fa-file-signature' : t === 'summary' ? 'fa-list-check' : t === 'valuation' ? 'fa-scale-balanced' : 'fa-question'} text-base sm:text-xl"></i>${t}</button>`).join('')}
+                        ${['inputs','contract','summary','valuation'].map(t => `<button onclick=\"updateState('activeTab', '${t}')\" class=\"flex-1 py-3 sm:py-5 border-b-4 font-black transition-all ${activeTab === t ? 'border-blue-600 text-blue-600' : 'border-transparent text-slate-400'} uppercase text-[8px] sm:text-[10px] tracking-widest sm:tracking-[0.2em] whitespace-nowrap flex flex-col items-center justify-center gap-1 sm:gap-2\"><i class=\"fas ${t === 'inputs' ? 'fa-edit' : t === 'contract' ? 'fa-file-signature' : t === 'summary' ? 'fa-list-check' : t === 'valuation' ? 'fa-scale-balanced' : 'fa-question'} text-base sm:text-xl\"></i>${t}</button>`).join('')}
                     </div>
                     <div class="max-w-5xl mx-auto p-4 sm:p-8">${tabContent}</div>
                     <dialog id="print-modal" class="modal p-0 rounded-[32px] shadow-2xl border-0 overflow-hidden bg-white">
