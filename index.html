@@ -1,7 +1,7 @@
 <!-- 
 ================================================================================
 PROJECT CONTEXT: SolarCheck Professional
-Current Version: v7.285 (LIFESPAN ALIGNMENT & SMART DEFAULTS)
+Current Version: v7.287 (FMV STRATEGIC HANDOFF)
 Date: March 2026
 Architecture: Modular Single-File HTML5 (Sub-Renderer Pattern)
 ================================================================================
@@ -36,7 +36,7 @@ Architecture: Modular Single-File HTML5 (Sub-Renderer Pattern)
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SolarCheck Professional v7.285</title>
+    <title>SolarCheck Professional v7.287</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
@@ -458,6 +458,57 @@ Architecture: Modular Single-File HTML5 (Sub-Renderer Pattern)
             window.open(`buyback.html?${params.toString()}`, '_blank');
         };
 
+        window.handleFMVExport = function() {
+            if (!window.state.r || !window.state.aR) return;
+            const { a, o, sz, dr, e, rC, l, ne, c, w, srec, srecP, pC, pW, panelBrand, invBrand, it } = window.state;
+            const { age, estN12, act, guarTD, estTD, physTD, shortfallkWh, trueUpRefund, remCost } = window.state.r;
+            const { val, cost, inc, incContract, incResidual } = window.state.aR;
+            
+            // Strategic Floor: TPO Removal Liability
+            const removalCost = (parseFloat(pC) || 0) * 175;
+
+            // Benchmark Identification Logic
+            const isTPO = ['lease', 'ppa', 'prepaid_lease', 'prepaid_ppa'].includes(o);
+            const benchmark = guarTD > 0 ? guarTD : (isTPO ? estTD : physTD);
+
+            const params = new URLSearchParams({
+                a: a || "Subject Property",
+                o,
+                sz: sz.toFixed(2),
+                age: age.toFixed(2),
+                prod: estN12.toFixed(0),
+                dr,
+                e,
+                rC,
+                l,
+                ne,
+                c,
+                w,
+                srec: srec ? '1' : '0',
+                srecP,
+                fmv: val.toFixed(0),
+                costBasis: cost.toFixed(0),
+                incBasis: inc.toFixed(0),
+                incContract: incContract.toFixed(0),
+                incResidual: incResidual.toFixed(0),
+                // Strategic Handoff Data (v7.287)
+                pC: pC || 0,
+                pW: pW || 0,
+                pBrand: panelBrand || 'Tier 1',
+                iBrand: invBrand || 'Central Inverter',
+                iType: it || 'string',
+                act: act.toFixed(1),
+                bench: benchmark.toFixed(1),
+                shortfall: shortfallkWh.toFixed(0),
+                trueUp: trueUpRefund.toFixed(0),
+                ceiling: remCost.toFixed(0),
+                floor: removalCost.toFixed(0)
+            });
+            
+            // Destination FMV Report Link
+            window.open(`fmv.html?${params.toString()}`, '_blank');
+        };
+
         window.handleGenerateReport = function(type) {
             const { r, aR, company, a, sz, o, tpoName, te, iDt, pa, paB, tEs, pC, it, invBrand, panelBrand, batteryBrand, b, e, batteryMode, br } = window.state;
             if (!r || !aR) return;
@@ -640,7 +691,7 @@ Architecture: Modular Single-File HTML5 (Sub-Renderer Pattern)
 
                     <div class="mt-auto flex justify-between items-end border-t-2 pt-6">
                         <div><p class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Audit Status</p><p class="text-sm font-bold text-slate-800 uppercase tracking-tighter">${isUnderperforming ? 'Inspection Complete: Shortfall Detected' : 'Verified Operational'}</p></div>
-                        <div class="text-right text-[10px] text-slate-400 font-bold uppercase tracking-widest italic">SolarCheck Pro v7.285</div>
+                        <div class="text-right text-[10px] text-slate-400 font-bold uppercase tracking-widest italic">SolarCheck Pro v7.287</div>
                     </div>
                 </div>
 
@@ -789,7 +840,7 @@ Architecture: Modular Single-File HTML5 (Sub-Renderer Pattern)
                     <div class="bg-slate-900 text-white px-4 sm:px-6 py-3 sm:py-4 sticky top-0 z-50 flex justify-between items-center shadow-lg border-b border-white/5 gap-2">
                         <div class="flex items-center gap-2 sm:gap-4 min-w-0">
                             <span class="text-2xl sm:text-3xl flex-shrink-0"><i class="fas fa-sun text-yellow-400"></i></span>
-                            <div class="min-w-0 truncate"><h1 class="font-bold text-lg sm:text-2xl tracking-tighter italic truncate">SolarCheck Pro</h1><p class="text-[7px] sm:text-[9px] opacity-60 font-black uppercase tracking-[0.4em]">v7.285</p></div>
+                            <div class="min-w-0 truncate"><h1 class="font-bold text-lg sm:text-2xl tracking-tighter italic truncate">SolarCheck Pro</h1><p class="text-[7px] sm:text-[9px] opacity-60 font-black uppercase tracking-[0.4em]">v7.287</p></div>
                         </div>
                         <div class="flex items-center gap-2 flex-shrink-0">
                             <button onclick="window.open(window.location.href, '_blank')" class="header-btn bg-slate-800 text-white/80 p-2 sm:px-4 sm:py-2.5 rounded-xl text-sm shadow-xl transition-all hover:bg-slate-700 active:scale-95"><i class="fas fa-expand"></i></button>
@@ -808,6 +859,11 @@ Architecture: Modular Single-File HTML5 (Sub-Renderer Pattern)
                                 <button onclick="handleGenerateReport('realtor')" class="w-full text-left p-5 sm:p-6 border-2 border-slate-50 rounded-2xl hover:bg-blue-50 hover:border-blue-200 transition-all group flex items-center justify-between">
                                     <div><p class="font-black uppercase text-xs tracking-widest text-slate-800">Branded Advisory Report</p><p class="text-[9px] sm:text-[10px] font-bold text-slate-500 mt-1">Plain English homeowner audit.</p></div>
                                     <i class="fas fa-chevron-right text-slate-300 group-hover:text-blue-400"></i>
+                                </button>
+
+                                <button onclick="handleFMVExport()" class="w-full text-left p-5 sm:p-6 border-2 border-indigo-50 bg-indigo-50/30 rounded-2xl hover:bg-indigo-100 hover:border-indigo-300 transition-all group flex items-center justify-between">
+                                    <div><p class="font-black uppercase text-xs tracking-widest text-indigo-800">Professional FMV Report</p><p class="text-[9px] sm:text-[10px] font-bold text-indigo-600 mt-1">Generate complete USPAP-compliant document.</p></div>
+                                    <i class="fas fa-external-link-alt text-indigo-300 group-hover:text-indigo-500"></i>
                                 </button>
                                 
                                 <button onclick="handleBuybackExport()" class="w-full text-left p-5 sm:p-6 border-2 border-amber-50 bg-amber-50/30 rounded-2xl hover:bg-amber-100 hover:border-amber-300 transition-all group flex items-center justify-between">
