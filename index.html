@@ -1,7 +1,7 @@
 <!-- 
 ================================================================================
 PROJECT CONTEXT: SolarCheck Professional
-Current Version: v7.310 (PRECISION VALUATION MODULE)
+Current Version: v7.312 (PRECISION VALUATION MODULE)
 Date: March 2026
 Architecture: Modular Single-File HTML5 (Sub-Renderer Pattern)
 ================================================================================
@@ -37,7 +37,7 @@ Architecture: Modular Single-File HTML5 (Sub-Renderer Pattern)
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SolarCheck Professional v7.310</title>
+    <title>SolarCheck Professional v7.312</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
@@ -314,8 +314,8 @@ Architecture: Modular Single-File HTML5 (Sub-Renderer Pattern)
             const ntEs = parseFloat(tEs) || 0;
             const ntR = parseFloat(tR) || 0;
 
-            let etd = 0, gtd = 0, fTe = 0, fTg = 0;
             const nTe = parseFloat(te) || 0, ntE = parseFloat(tE) || 0, ntG = parseFloat(tG) || 0;
+            let etd = 0, gtd = 0, fTe = 0, fTg = 0;
             for (let i = 0; i < nTe; i++) {
                 const deg = 1 - (i * DEG_RATE);
                 const curE = ntE * deg, curG = ntG * deg;
@@ -324,18 +324,47 @@ Architecture: Modular Single-File HTML5 (Sub-Renderer Pattern)
             }
             etd += ntE * (1 - (iC * DEG_RATE)) * (age % 1); gtd += ntG * (1 - (iC * DEG_RATE)) * (age % 1);
 
-            // Determine PPA Performance Ratio to scale variable billing dynamically
-            const ppaRatio = (o === 'ppa' && etd > 0 && nAC > 0) ? ((nAC * 1000) / etd) : 1;
-            const effective_nPa = nPa * ppaRatio;
+            // 1. Calculate physical benchmarks
+            const YF = { south: 1550, mix: 1500, east_west: 1450, north: 1200 }[or] * { none: 1, some: 0.85, alot: 0.7 }[sh] * { standard: 1, flat: 0.89, steep: 0.96 }[pi];
+            const th = s * YF;
+            let ptd = 0; for (let i = 0; i < iC; i++) { ptd += th * (1 - (i * DEG_RATE)); }
+            ptd += th * (1 - (iC * DEG_RATE)) * (age % 1);
+            const cP = th * Math.max(0, 1 - (age * DEG_RATE));
 
-            const solY1 = effective_nPa, batY1 = nPaB;
-            const solYC = parseFloat((effective_nPa * Math.pow(1 + (ntEs/100), iC)).toFixed(2));
+            // 2. NEW: Real World Performance Ratio
+            // We use this multiplier to project true future yield based on historical actuals
+            const realRatio = (ptd > 0 && nAC > 0) ? ((nAC * 1000) / ptd) : 1;
+            const cP_real = cP * realRatio; // Actual instantaneous annual pace
+
+            // 3. TPO Payments Refactor (Self-Policing PPA support)
+            const ppaRateY1 = ntR;
+            const ppaRateYC = ntR * Math.pow(1 + (ntEs/100), iC);
+            const ppaRateYL = ntR * Math.pow(1 + (ntEs/100), iL);
+
+            const realProdY1 = th * realRatio;
+            const realProdYC = th * Math.max(0, 1 - (iC * DEG_RATE)) * realRatio;
+            const realProdYL = th * Math.max(0, 1 - (iL * DEG_RATE)) * realRatio;
+
+            let solY1, solYC, solYL;
+            if (o === 'ppa') {
+                solY1 = (realProdY1 * ppaRateY1) / 12;
+                solYC = parseFloat(((realProdYC * ppaRateYC) / 12).toFixed(2));
+                solYL = parseFloat(((realProdYL * ppaRateYL) / 12).toFixed(2));
+            } else {
+                solY1 = nPa;
+                solYC = parseFloat((nPa * Math.pow(1 + (ntEs/100), iC)).toFixed(2));
+                solYL = parseFloat((nPa * Math.pow(1 + (ntEs/100), iL)).toFixed(2));
+            }
+
+            const batY1 = nPaB;
             const batYC = parseFloat((nPaB * Math.pow(1 + (ntEs/100), iC)).toFixed(2));
-            const solYL = parseFloat((effective_nPa * Math.pow(1 + (ntEs/100), iL)).toFixed(2));
             const batYL = parseFloat((nPaB * Math.pow(1 + (ntEs/100), iL)).toFixed(2));
+
             const pY1 = isPrepaid ? 0 : (solY1 + batY1);
             const pYC = isPrepaid ? 0 : (solYC + batYC);
             const pYL = isPrepaid ? 0 : (solYL + batYL);
+
+            // Battery and Utility Blending
             const totalB = parseFloat(b) || 0;
             const usableB = totalB * (1 - (parseFloat(br) || 0) / 100);
             const dailyGenAvg = (s * 4.5); 
@@ -343,18 +372,8 @@ Architecture: Modular Single-File HTML5 (Sub-Renderer Pattern)
             const finalSCR = Math.min(98, (parseFloat(scr) || 0) + (usableB > 0 ? batteryBoost : 0));
             
             const blendedUtility = (finalSCR/100 * (rU || 0.35)) + ((1 - finalSCR/100) * (eU || 0.05));
-            const YF = { south: 1550, mix: 1500, east_west: 1450, north: 1200 }[or] * { none: 1, some: 0.85, alot: 0.7 }[sh] * { standard: 1, flat: 0.89, steep: 0.96 }[pi];
             
-            const th = s * YF;
-            let ptd = 0; for (let i = 0; i < iC; i++) { ptd += th * (1 - (i * DEG_RATE)); }
-            ptd += th * (1 - (iC * DEG_RATE)) * (age % 1);
-            const cP = th * Math.max(0, 1 - (age * DEG_RATE));
-            
-            const rYC_sol = (ntE * (1-(iC*DEG_RATE)) * ppaRatio) > 0 ? (solYC * 12) / (ntE*(1-(iC*DEG_RATE)) * ppaRatio) : 0;
-            const shortfallkWh = Math.max(0, (gtd * 1) - (nAC * 1000));
-            const trueUpRefund = isTPO ? (shortfallkWh * ntR) : 0;
-            const arbDelta = blendedUtility - rYC_sol, arbDiscount = Math.max(0, (arbDelta / (blendedUtility || 1)) * 100);
-            
+            // 4. Savings Loops (Projecting based on real ratio)
             let fSa = 0; 
             const calcTerm = parseFloat(l) || 25; 
             const rM = Math.max(0, calcTerm - age);
@@ -367,52 +386,95 @@ Architecture: Modular Single-File HTML5 (Sub-Renderer Pattern)
                 const currentExportBase = (yr <= 20) ? exportBase : 0.05;
                 const currentBlendedBase = (finalSCR/100 * retailBase) + ((1 - finalSCR/100) * currentExportBase);
                 const currentBlendedEscalated = currentBlendedBase * Math.pow(utilityEscFactor, i);
-                fSa += th * (1-((age+i)*DEG_RATE)) * currentBlendedEscalated; 
+                
+                // Use real-world projected production
+                const yrRealProd = th * Math.max(0, 1 - (yr * DEG_RATE)) * realRatio;
+                fSa += yrRealProd * currentBlendedEscalated; 
             }
 
+            // 5. Cost Loops (Real liability simulation)
             let tCt = 0, remCost = 0;
-            let currentPay_sol = solY1 * 12;
-            let currentPay_bat = batY1 * 12;
+            let current_tR = ntR; 
+            let currentPay_sol = nPa * 12; 
+            let currentPay_bat = nPaB * 12;
+
             for (let i = 0; i < nTe; i++) {
-                const totalYearly = currentPay_sol + currentPay_bat;
+                const yrRealProd = th * Math.max(0, 1 - (i * DEG_RATE)) * realRatio;
+                
+                let yearlySolCost = 0;
+                if (o === 'ppa') {
+                    yearlySolCost = yrRealProd * current_tR;
+                    current_tR *= (1 + (ntEs/100)); 
+                } else {
+                    yearlySolCost = currentPay_sol;
+                    currentPay_sol *= (1 + (ntEs/100)); 
+                }
+                
+                const totalYearly = yearlySolCost + currentPay_bat;
                 tCt += totalYearly;
                 if (i >= iC) remCost += totalYearly;
-                currentPay_sol *= (1 + (ntEs/100));
+                
                 currentPay_bat *= (1 + (ntEs/100));
             }
+            
+            if (isPrepaid) remCost = 0; // Prepaid agreements have no remaining payment liability
+
+            // 6. Final Dashboard Snapshots
+            const rYC_sol = realProdYC > 0 ? (solYC * 12) / realProdYC : 0;
+            const shortfallkWh = Math.max(0, (gtd * 1) - (nAC * 1000));
+            const trueUpRefund = isTPO ? (shortfallkWh * ntR) : 0;
+            const arbDelta = blendedUtility - rYC_sol, arbDiscount = Math.max(0, (arbDelta / (blendedUtility || 1)) * 100);
+            
+            const actSav = cP_real * blendedUtility;
+            const actSavNet = isTPO && !isPrepaid ? (actSav - (pYC * 12)) : actSav;
+            const futSavNet = isTPO && !isPrepaid ? (fSa - remCost) : fSa;
+            const totSav = fSa + (nAC * 1000 * blendedUtility);
+            const totSavNet = isTPO && !isPrepaid ? (totSav - tCt) : totSav;
 
             window.state.r = { 
-                age, sz: s, act: nAC, potSav: cP*blendedUtility, 
-                actSav: cP * blendedUtility * (nAC*1000/(ptd||1)), 
-                actSavNet: isTPO && !isPrepaid ? ((cP * blendedUtility * (nAC*1000/(ptd||1))) - (pYC * 12)) : (cP * blendedUtility), 
-                futSav: fSa, futSavNet: isTPO ? (fSa - remCost) : fSa, 
-                totSav: fSa + (nAC*1000*blendedUtility), totSavNet: isTPO && !isPrepaid ? (fSa + (nAC*1000*blendedUtility) - tCt) : (fSa + (nAC*1000*blendedUtility)), 
+                age, sz: s, act: nAC, potSav: cP_real * blendedUtility, 
+                actSav, actSavNet, futSav: fSa, futSavNet, totSav, totSavNet, 
                 tCost: tCt, pY1, solY1, batY1, solYC, batYC, pYC, solYL, batYL, pYL, rYC_sol, 
                 physTD: ptd/1000, estTD: etd/1000, guarTD: gtd/1000, fTe: fTe/1000, fTg: fTg/1000, 
-                blendedUtility, effSCR: finalSCR, arbDelta, arbDiscount, estDay: cP/365, estN12: cP, usableB, remCost, ptd,
+                blendedUtility, effSCR: finalSCR, arbDelta, arbDiscount, estDay: cP_real/365, estN12: cP_real, usableB, remCost, ptd,
                 shortfallkWh, trueUpRefund
             };
 
+            // 7. Precision Valuation DCF Model
             const sC = s * 1000 * parseFloat(rC||0); 
             const rL = Math.max(0, (parseFloat(l)||25) - age); 
             const depCost = l > 0 ? (rL / l) : 0; const cV = sC * depCost;
             
             let dcfContract = 0, dcfResidual = 0; 
-            let lCA_sol = solYC * 12, lCA_bat = batYC * 12, pC_ = cP;
+            let lCA_sol_rate = ppaRateYC;
+            let lCA_sol_lease = solYC * 12;
+            let lCA_bat_val = batYC * 12;
             
             for (let y = 1; y <= Math.ceil(rL); y++) { 
                 const yr = age + y;
                 const currentExportBase = (yr <= 20) ? exportBase : 0.05;
                 const currentBlendedBase = (finalSCR/100 * retailBase) + ((1 - finalSCR/100) * currentExportBase);
                 const currentBlendedEscalated = currentBlendedBase * Math.pow(utilityEscFactor, y);
-                const srev = (srec && srecP) ? (pC_ / 1000) * srecP : 0;
-                const yearlyLiab = (isTPO && !isPrepaid && (age+y)<=nTe) ? (lCA_sol + lCA_bat) : 0;
-                const net = (pC_ * currentBlendedEscalated) + srev - yearlyLiab; 
+                
+                const yrRealProd = th * Math.max(0, 1 - (yr * DEG_RATE)) * realRatio;
+                const srev = (srec && srecP) ? (yrRealProd / 1000) * srecP : 0;
+                
+                let yearlyLiab = 0;
+                if (isTPO && !isPrepaid && yr <= nTe) { // Check liability boundary against term
+                    let solLiab = (o === 'ppa') ? (yrRealProd * lCA_sol_rate) : lCA_sol_lease;
+                    yearlyLiab = solLiab + lCA_bat_val;
+                }
+                
+                const net = (yrRealProd * currentBlendedEscalated) + srev - yearlyLiab; 
                 const discounted = net / Math.pow(1 + (dr / 100), y);
-                if (isTPO && (age+y) <= nTe) dcfContract += discounted; else dcfResidual += discounted;
-                lCA_sol *= (1 + (ntEs / 100)); 
-                lCA_bat *= (1 + (ntEs / 100));
-                pC_ *= 0.995;
+                if (isTPO && yr <= nTe) dcfContract += discounted; else dcfResidual += discounted;
+                
+                if (o === 'ppa') {
+                    lCA_sol_rate *= (1 + (ntEs / 100));
+                } else {
+                    lCA_sol_lease *= (1 + (ntEs / 100)); 
+                }
+                lCA_bat_val *= (1 + (ntEs / 100));
             }
             const totalDCF = dcfContract + dcfResidual;
             const valInput = (isTPO && w === 100) ? dcfContract : totalDCF;
@@ -683,7 +745,7 @@ Architecture: Modular Single-File HTML5 (Sub-Renderer Pattern)
                         </div>
                     </div>
                     <div class="text-right">
-                        <p class="text-[10px] text-slate-400 font-black uppercase tracking-[0.2em] italic mb-4">SolarCheck Pro v7.310</p>
+                        <p class="text-[10px] text-slate-400 font-black uppercase tracking-[0.2em] italic mb-4">SolarCheck Pro v7.312</p>
                         <div class="no-print flex gap-3 justify-end">
                             <button onclick="window.printReport()" class="bg-blue-600 text-white px-8 py-3 rounded-2xl font-black uppercase text-[10px] tracking-widest shadow-xl transition-all hover:bg-blue-500 active:scale-95 border-b-4 border-blue-800"><i class="fas fa-print mr-2"></i> Print</button>
                             <button onclick="window.closeReport()" class="bg-slate-100 text-slate-700 px-8 py-3 rounded-2xl font-black uppercase text-[10px] tracking-widest transition-all hover:bg-slate-200 border-b-4 border-slate-300">Back</button>
@@ -714,7 +776,7 @@ Architecture: Modular Single-File HTML5 (Sub-Renderer Pattern)
                     <div class="bg-slate-900 text-white px-4 sm:px-6 py-3 sm:py-4 sticky top-0 z-50 flex justify-between items-center shadow-lg border-b border-white/5 gap-2">
                         <div class="flex items-center gap-2 sm:gap-4 min-w-0">
                             <span class="text-2xl sm:text-3xl flex-shrink-0"><i class="fas fa-sun text-yellow-400"></i></span>
-                            <div class="min-w-0 truncate"><h1 class="font-bold text-lg sm:text-2xl tracking-tighter italic truncate">SolarCheck Pro</h1><p class="text-[7px] sm:text-[9px] opacity-60 font-black uppercase tracking-[0.4em]">v7.310</p></div>
+                            <div class="min-w-0 truncate"><h1 class="font-bold text-lg sm:text-2xl tracking-tighter italic truncate">SolarCheck Pro</h1><p class="text-[7px] sm:text-[9px] opacity-60 font-black uppercase tracking-[0.4em]">v7.312</p></div>
                         </div>
                         <div class="flex items-center gap-2 flex-shrink-0">
                             <button onclick="window.open(window.location.href, '_blank')" class="header-btn bg-slate-800 text-white/80 p-2 sm:px-4 sm:py-2.5 rounded-xl text-sm shadow-xl transition-all hover:bg-slate-700 active:scale-95"><i class="fas fa-expand"></i></button>
