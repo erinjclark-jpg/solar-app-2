@@ -1,7 +1,7 @@
 <!-- 
 ================================================================================
 PROJECT CONTEXT: SolarCheck Professional
-Current Version: v7.295 (PRECISION VALUATION MODULE)
+Current Version: v7.303 (PRECISION VALUATION MODULE)
 Date: March 2026
 Architecture: Modular Single-File HTML5 (Sub-Renderer Pattern)
 ================================================================================
@@ -36,7 +36,7 @@ Architecture: Modular Single-File HTML5 (Sub-Renderer Pattern)
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SolarCheck Professional v7.295</title>
+    <title>SolarCheck Professional v7.303</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
@@ -313,7 +313,6 @@ Architecture: Modular Single-File HTML5 (Sub-Renderer Pattern)
             const ntEs = parseFloat(tEs) || 0;
             const ntR = parseFloat(tR) || 0;
 
-            // Shift ETD loop UP to calculate PPA performance ratio before payment schedules
             let etd = 0, gtd = 0, fTe = 0, fTg = 0;
             const nTe = parseFloat(te) || 0, ntE = parseFloat(tE) || 0, ntG = parseFloat(tG) || 0;
             for (let i = 0; i < nTe; i++) {
@@ -355,7 +354,6 @@ Architecture: Modular Single-File HTML5 (Sub-Renderer Pattern)
             const trueUpRefund = isTPO ? (shortfallkWh * ntR) : 0;
             const arbDelta = blendedUtility - rYC_sol, arbDiscount = Math.max(0, (arbDelta / (blendedUtility || 1)) * 100);
             
-            // FUTURE SAVINGS LOOP (ACCOUNTING FOR NEM 20Y CLIFF & DYNAMIC LIFE)
             let fSa = 0; 
             const calcTerm = parseFloat(l) || 25; 
             const rM = Math.max(0, calcTerm - age);
@@ -440,7 +438,7 @@ Architecture: Modular Single-File HTML5 (Sub-Renderer Pattern)
         };
 
         window.closeReport = () => { document.getElementById('report-view').classList.add('hidden'); document.getElementById('root').classList.remove('hidden'); window.scrollTo(0, 0); window.render(); };
-        window.printReport = () => { const c = document.getElementById('report-content').innerHTML; const win = window.open('', '_blank'); win.document.write(`<html><head><script src="https://cdn.tailwindcss.com"><\/script><style>@media print { .page-break { page-break-before: always; } .no-print { display: none !important; } .report-card { border: 2px solid #0f172a !important; box-shadow: none !important; } }</style></head><body onload=\"window.print()\"><div class=\"p-10 max-w-[850px] mx-auto\">${c}</div></body></html>`); win.document.close(); };
+        window.printReport = () => { const c = document.getElementById('report-content').innerHTML; const win = window.open('', '_blank'); win.document.write(`<html><head><script src="https://cdn.tailwindcss.com"><\/script><style>@media print { body { background: white !important; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; } .page-break { page-break-before: always; } .no-print { display: none !important; } .report-card { border: 2px solid #0f172a !important; box-shadow: none !important; margin-bottom: 0 !important; } }</style></head><body onload="window.print()"><div class="p-10 max-w-[850px] mx-auto">${c}</div></body></html>`); win.document.close(); };
         window.updateState = function(k, v) { window.state[k] = v; window.calculate(); window.render(); };
         
         window.handleInputChange = function(e, k) { 
@@ -515,7 +513,7 @@ Architecture: Modular Single-File HTML5 (Sub-Renderer Pattern)
                 incBasis: inc.toFixed(0),
                 incContract: incContract.toFixed(0),
                 incResidual: incResidual.toFixed(0),
-                // Strategic Handoff Data (v7.295)
+                // Strategic Handoff Data (v7.300)
                 pC: pC || 0,
                 pW: pW || 0,
                 pBrand: panelBrand || 'Tier 1',
@@ -528,7 +526,7 @@ Architecture: Modular Single-File HTML5 (Sub-Renderer Pattern)
                 ceiling: strategicCeiling.toFixed(0),
                 floor: removalCost.toFixed(0),
                 co: COMPANIES[company].name,
-                // Deferred Maintenance (v7.295)
+                // Deferred Maintenance
                 repair: rp || 0
             });
             
@@ -537,19 +535,16 @@ Architecture: Modular Single-File HTML5 (Sub-Renderer Pattern)
         };
 
         window.handleGenerateReport = function(type) {
-            const { r, aR, company, a, sz, o, tpoName, te, iDt, pa, paB, tEs, pC, it, invBrand, panelBrand, batteryBrand, b, e, batteryMode, br } = window.state;
+            const { r, aR, company, a, sz, o, tpoName, te, iDt, pa, paB, tEs, e } = window.state;
             if (!r || !aR) return;
             const co = COMPANIES[company];
             const reportView = document.getElementById('report-view');
             const root = document.getElementById('root');
-            const reportId = Math.random().toString(36).substr(2, 9).toUpperCase();
+            
             const isTPO = ['lease', 'ppa', 'prepaid_lease', 'prepaid_ppa'].includes(o);
             const isPrepaid = o && o.includes('prepaid');
-            const labels = window.UI_TEXT;
             const remAssetYears = isTPO ? Math.max(0, te - r.age).toFixed(1) : Math.max(0, window.state.l - r.age).toFixed(1);
             
-            const ptoYear = iDt ? new Date(iDt + 'T00:00:00').getFullYear() : 'N/A';
-
             const ownershipMap = {
                 owned: "Homeowner Owned",
                 lease: "Lease (Fixed Payment)",
@@ -564,286 +559,137 @@ Architecture: Modular Single-File HTML5 (Sub-Renderer Pattern)
             const isNegativeCashFlow = r.actSavNet < 0;
             const isNegativeTerm = r.futSavNet < 0;
 
-            const batteryModeLabel = {
-                backup: "Emergency Backup",
-                arbitrage: "Savings Optimization (Arbitrage)",
-                both: "Hybrid Resiliency & Savings"
-            }[batteryMode] || "Not Specified";
-
-            const capacity = parseFloat(b) || 0;
-            const runtimeHours = capacity / 0.35;
-            const runtimeLabel = runtimeHours >= 24 ? (runtimeHours / 24).toFixed(1) + " Days" : Math.floor(runtimeHours) + " Hours";
-
-            let page2SpecificsHTML = '';
-            if (o === 'owned') {
-                page2SpecificsHTML = `
-                <div class="bg-emerald-50 p-8 rounded-3xl border-2 border-emerald-200">
-                    <h4 class="text-sm font-black text-emerald-900 uppercase mb-4 tracking-widest flex items-center gap-3"><i class="fas fa-house-chimney-user text-emerald-500"></i> Specifics of your Solar Asset</h4>
-                    <p class="text-sm text-emerald-800 font-medium leading-relaxed mb-4">The solar equipment is a permanent improvement to the real estate. With a total capacity of <strong>${sz.toFixed(2)} kW</strong>, this system was designed to offset the home's grid reliance. As the owner, you retain 100% of the production value, and the system represents a direct increase in the property's total equity and resale value.</p>
-                    <ul class="grid grid-cols-2 gap-4 text-xs font-bold text-emerald-900 uppercase italic">
-                        <li class="flex gap-2"><i class="fas fa-check"></i> Direct Equity Growth</li>
-                        <li class="flex gap-2"><i class="fas fa-check"></i> $0 Monthly Liability</li>
-                        <li class="flex gap-2"><i class="fas fa-check"></i> Manufacturer Warranties</li>
-                        <li class="flex gap-2"><i class="fas fa-check"></i> Max Utility Hedge</li>
-                    </ul>
-                </div>`;
-            } else if (isPrepaid) {
-                page2SpecificsHTML = `
-                <div class="bg-blue-50 p-8 rounded-3xl border-2 border-blue-200">
-                    <h4 class="text-sm font-black text-blue-900 uppercase mb-4 tracking-widest flex items-center gap-3"><i class="fas fa-building text-blue-500"></i> Specifics of your Prepaid Agreement</h4>
-                    <p class="text-sm text-blue-800 font-medium leading-relaxed mb-4">This system is owned and operated by <strong>${tpoName || 'the provider'}</strong> under a prepaid ${subOwnershipText} agreement. Because the energy usage was paid for upfront, there are no ongoing monthly solar payments for the remaining <strong>${remAssetYears} years</strong>. The provider remains responsible for hardware health and production guarantees throughout the term.</p>
-                    <ul class="grid grid-cols-2 gap-4 text-xs font-bold text-blue-900 uppercase italic">
-                        <li class="flex gap-2"><i class="fas fa-check"></i> $0 Ongoing Cost</li>
-                        <li class="flex gap-2"><i class="fas fa-check"></i> Active Monitoring</li>
-                        <li class="flex gap-2"><i class="fas fa-check"></i> Full Repair Coverage</li>
-                        <li class="flex gap-2"><i class="fas fa-check"></i> Guaranteed Output</li>
-                    </ul>
-                </div>`;
-            } else {
-                page2SpecificsHTML = `
-                <div class="bg-blue-50 p-8 rounded-3xl border-2 border-blue-200">
-                    <h4 class="text-sm font-black text-blue-900 uppercase mb-4 tracking-widest flex items-center gap-3"><i class="fas fa-building text-blue-500"></i> Specifics of your ${subOwnershipText}</h4>
-                    <p class="text-sm text-blue-800 font-medium leading-relaxed mb-4">This <strong>${sz.toFixed(2)} kW</strong> system is owned and maintained by <strong>${tpoName || 'the provider'}</strong>. Your current monthly payment of <strong>${window.cur(pa + (parseFloat(paB)||0))}</strong> includes automated monitoring and full hardware coverage. The agreement carries a <strong>${tEs}% escalator</strong>, which is structurally designed to stay below the average grid inflation of <strong>${e}%</strong>.</p>
-                    <ul class="grid grid-cols-2 gap-4 text-xs font-bold text-blue-900 uppercase italic">
-                        <li class="flex gap-2"><i class="fas fa-check"></i> Fixed Inflation Hedge</li>
-                        <li class="flex gap-2"><i class="fas fa-check"></i> No Repair Expense</li>
-                        <li class="flex gap-2"><i class="fas fa-check"></i> Output Compliance</li>
-                        <li class="flex gap-2"><i class="fas fa-check"></i> Secure Transferability</li>
-                    </ul>
-                </div>`;
-            }
+            const maxRate = Math.max(r.blendedUtility, r.rYC_sol) || 1;
+            const utilPercent = (r.blendedUtility / maxRate) * 100;
+            const solPercent = (r.rYC_sol / maxRate) * 100;
 
             const content = `
-            <div id="report-content" class="bg-slate-300 py-10 print:py-0 min-h-screen font-sans space-y-10 print:space-y-0">
-                <!-- PAGE 1 -->
-                <div class="p-12 max-w-4xl mx-auto min-h-[1056px] relative border-t-[16px] border-slate-900 shadow-2xl report-card bg-white flex flex-col page-break">
-                    <div class="flex justify-between items-start mb-10 border-b-4 border-slate-900 pb-8">
-                        <div><h2 class="text-3xl font-black text-slate-900 tracking-tighter italic uppercase">${co.name}</h2><p class="text-[10px] font-black text-slate-500 uppercase tracking-[0.3em] mt-1">${co.license}</p></div>
-                        <div class="text-right">
-                             <p class="text-xs font-black text-slate-400 uppercase tracking-widest mb-1">Site Address</p>
-                             <h1 class="text-2xl font-black text-blue-600 uppercase italic leading-none">${a || 'Subject Property Address'}</h1>
+            <div id="report-content" class="bg-slate-300 py-10 print:py-0 min-h-screen font-sans">
+              <div class="p-12 max-w-4xl mx-auto border-t-[16px] border-slate-900 shadow-2xl bg-white flex flex-col print:shadow-none print:border-t-0 print:p-8 relative">
+
+                 <!-- Header -->
+                 <div class="flex justify-between items-start border-b-4 border-slate-900 pb-6 mb-8">
+                    <div>
+                       <h1 class="text-4xl font-black text-slate-900 uppercase tracking-tighter italic">Solar Financial Analysis</h1>
+                       <p class="text-xl font-bold text-blue-600 mt-2 uppercase">${a || 'Subject Property Address'}</p>
+                       <p class="text-sm font-semibold text-slate-600 mt-1 uppercase">${mainOwnershipText}${subOwnershipText ? ' (' + subOwnershipText + ')' : ''}${isTPO && tpoName ? ' | Provider: ' + tpoName : ''}</p>
+                    </div>
+                    <div class="text-right">
+                       <div class="font-black uppercase tracking-widest text-sm text-slate-500 mt-2">
+                          Verified Results
+                       </div>
+                    </div>
+                 </div>
+
+                 <!-- Top Metrics Row -->
+                 <div class="grid grid-cols-3 gap-6 mb-10">
+                    <div class="bg-slate-50 p-6 rounded-2xl border-2 border-slate-200 text-center shadow-inner">
+                       <i class="fas fa-solar-panel text-2xl text-blue-400 mb-3"></i>
+                       <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">System Size</p>
+                       <p class="text-3xl font-black text-blue-800 tracking-tighter">${sz.toFixed(2)} <span class="text-sm">kW</span></p>
+                    </div>
+                    <div class="bg-slate-50 p-6 rounded-2xl border-2 border-slate-200 text-center shadow-inner">
+                       <i class="fas fa-bolt text-2xl text-amber-400 mb-3"></i>
+                       <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Lifetime Production to Date</p>
+                       <p class="text-3xl font-black text-blue-800 tracking-tighter">${window.num(r.act)} <span class="text-sm">MWh</span></p>
+                    </div>
+                    <div class="bg-slate-50 p-6 rounded-2xl border-2 border-slate-200 text-center shadow-inner">
+                       <i class="fas fa-calendar-check text-2xl text-emerald-400 mb-3"></i>
+                       <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Contract Remaining Years</p>
+                       <p class="text-3xl font-black text-blue-800 tracking-tighter">${remAssetYears} <span class="text-sm">Yrs</span></p>
+                    </div>
+                 </div>
+
+                 <!-- Monthly Cash Flow Block -->
+                 <div class="mb-10 border-4 border-slate-900 rounded-[32px] overflow-hidden shadow-xl">
+                     <div class="bg-slate-900 text-white px-8 py-4">
+                         <h2 class="text-lg font-black uppercase tracking-widest flex items-center gap-3"><i class="fas fa-money-bill-trend-up text-emerald-400"></i> ${isNegativeCashFlow ? 'Monthly Cash Flow Shortfall' : 'Monthly Cash Flow Positive'}</h2>
+                     </div>
+                     <div class="p-8 bg-slate-50 grid grid-cols-2 gap-8 items-center">
+                         <div class="space-y-6 border-r-2 border-slate-200 pr-8">
+                             <div class="flex justify-between items-center"><span class="text-lg font-bold text-slate-600 uppercase">Avoided Monthly Utility Cost</span><span class="text-2xl font-black text-slate-800">${window.cur(r.actSav / 12)}</span></div>
+                             <div class="flex justify-between items-center border-b-2 border-slate-200 pb-6"><span class="text-lg font-bold text-slate-600 uppercase">${isTPO ? 'Monthly Solar Payment' : 'Monthly Solar Cost'}</span><span class="text-2xl font-black text-red-600">- ${window.cur(r.pYC)}</span></div>
+                         </div>
+                         <div class="text-center">
+                             <p class="text-xs font-black text-slate-400 uppercase tracking-widest mb-2">${isNegativeCashFlow ? 'MONTHLY NET OUT-OF-POCKET' : 'MONTHLY NET PROFIT'}</p>
+                             <p class="text-6xl font-black ${isNegativeCashFlow ? 'text-red-600' : 'text-emerald-600'} italic tracking-tighter leading-none">${window.cur(Math.abs(r.actSavNet / 12))}</p>
+                             <p class="text-xs font-bold text-slate-500 uppercase tracking-widest mt-3">In ${isNegativeCashFlow ? 'extra cost' : 'savings'} per month</p>
+                         </div>
+                     </div>
+                 </div>
+
+                 <!-- Long Term Advantage & Hedge -->
+                 <div class="grid grid-cols-2 gap-10 mb-10">
+                    <!-- Cumulative Narrative -->
+                    <div class="bg-slate-900 text-white p-8 rounded-[32px] shadow-xl flex flex-col justify-center relative overflow-hidden">
+                        <div class="relative z-10">
+                            <p class="text-[10px] font-black text-blue-400 uppercase tracking-[0.2em] mb-4">${isNegativeTerm ? 'CUMULATIVE FINANCIAL COST' : 'Future Solar Savings'}</p>
+                            <p class="text-5xl font-black italic tracking-tighter ${isNegativeTerm ? 'text-red-400' : 'text-emerald-400'} mb-4">${window.cur(Math.abs(r.futSavNet))}</p>
+                            <p class="text-xs text-slate-300 font-medium leading-relaxed italic">Projected net ${isNegativeTerm ? 'cost' : 'savings'} over the remaining ${remAssetYears} year term. ${isNegativeTerm ? 'This system is currently acting as a utility hedge, with total future costs projected to exceed avoided grid bills.' : 'This system is a "cash-flow positive" asset effectively shielding the owner from rising utility costs.'}</p>
                         </div>
+                        <div class="absolute right-[-10%] bottom-[-10%] text-9xl text-white/5 rotate-12"><i class="fas fa-chart-line"></i></div>
                     </div>
 
-                    <div class="bg-slate-900 text-white p-10 rounded-[40px] mb-8 relative overflow-hidden shadow-2xl border-b-8 border-blue-600">
-                        <div class="relative z-10 mb-8 border-b border-white/10 pb-6">
-                            <h3 class="text-4xl font-black tracking-tighter italic uppercase text-blue-400">Solar Advisory Report</h3>
-                            <div class="w-24 h-1.5 bg-blue-600 mt-2 rounded-full"></div>
-                        </div>
-                        <div class="relative z-10 flex justify-between items-center">
+                    <!-- The Inflation Hedge Tables -->
+                    <div class="space-y-6">
+                        <div class="bg-white border-2 border-slate-200 rounded-2xl p-5 shadow-sm">
+                            <h3 class="text-[10px] font-black text-slate-800 uppercase tracking-widest mb-4 border-b pb-2">Energy Cost Comparison</h3>
+                            <div class="mb-4">
+                                <div class="flex justify-between items-end mb-1">
+                                    <span class="text-xs font-bold text-slate-600 uppercase">Current Utility Rate</span>
+                                    <span class="text-lg font-black text-slate-800">$${r.blendedUtility.toFixed(3)} <span class="text-[9px] text-slate-400 uppercase font-bold">/ kWh</span></span>
+                                </div>
+                                <div class="w-full bg-slate-200 rounded-full h-2.5 shadow-inner overflow-hidden">
+                                    <div class="bg-slate-800 h-full rounded-full transition-all" style="width: ${utilPercent}%"></div>
+                                </div>
+                            </div>
                             <div>
-                                <p class="text-blue-400 text-[10px] font-black uppercase tracking-[0.3em] mb-2">System Inspection Status</p>
-                                <div class="${isUnderperforming ? 'bg-amber-500' : 'bg-emerald-500'} px-7 py-4 rounded-2xl flex items-center gap-3 border-4 border-white/30 shadow-2xl">
-                                    <i class="fas ${isUnderperforming ? 'fa-triangle-exclamation' : 'fa-check-circle'} text-white text-3xl"></i>
-                                    <span class="text-3xl font-black text-white italic tracking-tighter uppercase">Verified</span>
+                                <div class="flex justify-between items-end mb-1">
+                                    <span class="text-xs font-bold text-slate-600 uppercase">Solar Rate</span>
+                                    <span class="text-lg font-black text-blue-600">$${r.rYC_sol.toFixed(3)} <span class="text-[9px] text-slate-400 uppercase font-bold">/ kWh</span></span>
                                 </div>
-                            </div>
-                            <div class="text-right">
-                                <p class="text-xs font-black text-slate-400 uppercase mb-1">Ownership Type</p>
-                                <p class="text-2xl font-black text-white uppercase tracking-tight">${mainOwnershipText}</p>
-                                ${subOwnershipText ? `<p class="text-xs font-bold text-blue-400 uppercase tracking-widest mt-1">${subOwnershipText}</p>` : ''}
-                                ${isTPO && tpoName ? `<p class="text-[11px] font-black text-slate-400 uppercase tracking-widest mt-2 border-t border-white/10 pt-1">Provider: ${tpoName}</p>` : ''}
-                            </div>
-                        </div>
-                        <div class="absolute right-[-5%] top-[-10%] text-[200px] text-white/5 rotate-12"><i class="fas fa-solar-panel"></i></div>
-                    </div>
-
-                    <div class="grid grid-cols-2 gap-8 mb-10">
-                        <div class="bg-slate-50 p-8 rounded-3xl border-2 border-slate-200">
-                            <h4 class="text-xs font-black text-slate-400 uppercase tracking-widest mb-4">Equipment Summary</h4>
-                            <ul class="space-y-3 text-sm font-bold text-slate-700">
-                                <li class="flex justify-between border-b pb-2"><span>PV Modules:</span> <span class="text-blue-700">${pC || 0} x ${panelBrand || 'Tier 1'}</span></li>
-                                <li class="flex justify-between border-b pb-2"><span>Inverter:</span> <span class="text-blue-700">${it === 'micro' ? 'Microinverters' : 'String Inverter'} (${invBrand})</span></li>
-                                <li class="flex justify-between border-b pb-2"><span>Battery:</span> <span class="text-blue-700">${b > 0 ? (b + ' kWh ' + (batteryBrand || 'Battery')) : 'None'}</span></li>
-                                <li class="flex justify-between pt-2"><span>System Power:</span> <span class="text-blue-700 font-black">${sz.toFixed(2)} kW</span></li>
-                            </ul>
-                        </div>
-                        <div class="bg-slate-50 p-8 rounded-3xl border-2 border-slate-200">
-                            <h4 class="text-xs font-black text-slate-400 uppercase tracking-widest mb-4">Agreement Term</h4>
-                            <div class="space-y-4">
-                                <div class="grid grid-cols-2 gap-4 border-b border-slate-200 pb-4">
-                                    <div><p class="text-xl font-black text-slate-900">${ptoYear}</p><p class="text-[9px] font-bold text-slate-500 uppercase tracking-widest">Install Year (PTO)</p></div>
-                                    <div><p class="text-xl font-black text-slate-900">${isTPO ? te : window.state.l} Years</p><p class="text-[9px] font-bold text-slate-500 uppercase tracking-widest">Calculated Life</p></div>
-                                </div>
-                                <div class="grid grid-cols-2 gap-4">
-                                    <div><p class="text-xl font-black text-slate-900">${r.age.toFixed(1)} Yrs</p><p class="text-[9px] font-bold text-slate-500 uppercase tracking-widest">System Age</p></div>
-                                    <div><p class="text-xl font-black text-blue-600">${remAssetYears} Yrs</p><p class="text-[9px] font-bold text-slate-500 uppercase tracking-widest">Remaining Value</p></div>
+                                <div class="w-full bg-blue-100 rounded-full h-2.5 shadow-inner overflow-hidden">
+                                    <div class="bg-blue-600 h-full rounded-full transition-all" style="width: ${solPercent}%"></div>
                                 </div>
                             </div>
                         </div>
-                    </div>
 
-                    <div class="bg-white rounded-[40px] border-4 border-slate-900 shadow-2xl overflow-hidden mb-10">
-                        <div class="bg-slate-900 text-white px-8 py-5 flex items-center justify-between"><div class="flex items-center gap-3"><i class="fas fa-hand-holding-dollar text-blue-400 text-xl"></i><h4 class="text-base font-black uppercase tracking-widest italic">${labels.cashFlowAudit.l}</h4></div></div>
-                        <div class="p-10 bg-slate-50">
-                            <div class="grid grid-cols-2 gap-10">
-                                <div class="space-y-6">
-                                    <div class="flex justify-between items-center"><span class="text-lg font-bold text-slate-500 uppercase tracking-tight">Grid Savings</span><span class="text-2xl font-black text-slate-800 tracking-tighter">${window.cur(r.actSav / 12)}</span></div>
-                                    <div class="flex justify-between items-center border-b-2 border-slate-200 pb-6"><span class="text-lg font-bold text-slate-500 uppercase tracking-tight">Solar Cost</span><span class="text-2xl font-black text-red-600 tracking-tighter">- ${window.cur(r.pYC)}</span></div>
-                                    <div class="text-center pt-2">
-                                         <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">${isNegativeCashFlow ? 'Current Monthly Cost' : 'Your Net Profit'}</p>
-                                         <p class="text-6xl font-black ${isNegativeCashFlow ? 'text-red-600' : 'text-emerald-600'} italic tracking-tighter leading-none">${window.cur(Math.abs(r.actSavNet / 12))}</p>
-                                         <p class="text-[10px] font-bold text-slate-500 uppercase mt-2">Per Month ${isNegativeCashFlow ? 'Net Out-of-Pocket' : 'in Savings'}</p>
-                                    </div>
-                                </div>
-                                <div class="bg-slate-100 p-7 rounded-[32px] border-2 border-slate-200 flex flex-col justify-center">
-                                     ${b > 0 ? `
-                                        <h5 class="text-[10px] font-black text-blue-800 uppercase tracking-widest mb-4 flex items-center gap-2"><i class="fas fa-shield-heart"></i> System Resiliency Profile</h5>
-                                        <div class="space-y-4">
-                                            <div class="flex justify-between items-end border-b border-slate-200 pb-2">
-                                                <div><p class="text-[8px] font-bold text-slate-400 uppercase tracking-widest">Storage Purpose</p><p class="text-xs font-black text-slate-800">${batteryModeLabel}</p></div>
-                                                <div class="text-right"><p class="text-[8px] font-bold text-slate-400 uppercase tracking-widest">Hardware</p><p class="text-xs font-black text-slate-800">${b}kWh ${batteryBrand}</p></div>
-                                            </div>
-                                            <div class="flex justify-between items-center">
-                                                <p class="text-[11px] font-bold text-slate-600">${batteryMode === 'arbitrage' ? 'Financial Optimization' : 'Est. Emergency Duration'}</p>
-                                                <span class="text-lg font-black text-blue-600 italic uppercase">${batteryMode === 'arbitrage' ? 'Max Savings' : runtimeLabel}</span>
-                                            </div>
-                                            <p class="text-[10px] text-slate-500 font-medium leading-relaxed italic border-t pt-3">
-                                                ${isNegativeCashFlow ? 
-                                                    (batteryMode === 'arbitrage' ? 
-                                                        "This hardware is configured to maximize financial savings. While current utility rates result in a monthly net cost, the system acts as a shield against future grid inflation." : 
-                                                        "This system provides home security that remains operational even when the grid fails. The monthly cost represents a 'resiliency premium' for maintaining critical power for your family.") :
-                                                    "This system provides both immediate financial savings and energy security, effectively paying for its own backup capabilities through avoided utility costs."
-                                                }
-                                            </p>
-                                        </div>
-                                     ` : `
-                                        <h5 class="text-xs font-black text-slate-900 uppercase tracking-widest mb-3 italic">Benefit Note:</h5>
-                                        <p class="text-xs text-slate-600 font-medium leading-relaxed italic">${isNegativeCashFlow ? "Currently, the solar payment exceeds the value of electricity being saved. This is often due to recent utility rate structures or system underperformance. Financial value in this scenario relies on future utility rate increases." : "This system is currently generating more value in avoided electricity costs than the monthly solar payment. This results in an immediate reduction in the home's total operating expenses."}</p>
-                                     `}
-                                </div>
+                        <div class="bg-blue-50 border-2 border-blue-100 rounded-2xl p-5 shadow-sm">
+                            <h3 class="text-[10px] font-black text-blue-900 uppercase tracking-widest mb-4 border-b border-blue-200 pb-2">Inflation Protection</h3>
+                            <div class="flex justify-between items-center mb-3">
+                                <span class="text-xs font-bold text-blue-700 uppercase">Utility Inflation (Avg)</span>
+                                <span class="text-base font-black text-blue-900">${e}%</span>
+                            </div>
+                            <div class="flex justify-between items-center mb-4">
+                                <span class="text-xs font-bold text-blue-700 uppercase">Fixed Solar Escalator</span>
+                                <span class="text-base font-black text-blue-900">${tEs}%</span>
+                            </div>
+                            <div class="bg-white rounded-xl p-3 border border-blue-100 flex justify-between items-center">
+                                <span class="text-xs font-black text-slate-700 uppercase">Hedge Spread</span>
+                                <span class="text-sm font-black text-emerald-600">+ ${(e - tEs).toFixed(1)}% Advantage</span>
                             </div>
                         </div>
                     </div>
+                 </div>
 
-                    <div class="mt-auto flex justify-between items-end border-t-2 pt-6">
-                        <div><p class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Audit Status</p><p class="text-sm font-bold text-slate-800 uppercase tracking-tighter">${isUnderperforming ? 'Inspection Complete: Shortfall Detected' : 'Verified Operational'}</p></div>
-                        <div class="text-right text-[10px] text-slate-400 font-bold uppercase tracking-widest italic">SolarCheck Pro v7.295</div>
-                    </div>
-                </div>
-
-                <!-- PAGE 2 -->
-                <div class="p-12 max-w-4xl mx-auto min-h-[1056px] relative border-t-8 border-slate-900 shadow-2xl report-card bg-white flex flex-col page-break">
-                    <div class="mb-10">
-                        <h3 class="text-xl font-black text-slate-900 uppercase tracking-widest italic mb-6 border-b-4 border-slate-900 pb-4">Understanding Your Solar Agreement</h3>
-                        <div class="grid grid-cols-1 gap-8">
-                            ${page2SpecificsHTML}
+                 <!-- Footer -->
+                 <div class="mt-auto border-t-4 border-slate-900 pt-6 flex justify-between items-end">
+                    <div>
+                        <p class="text-sm font-bold text-slate-800 uppercase tracking-tight mb-2"><i class="fas fa-screwdriver-wrench text-blue-600 mr-2"></i> ${isTPO || isPrepaid ? 'Service & maintenance covered under agreement.' : 'Homeowner responsible for service & maintenance.'}</p>
+                        <div class="mt-4">
+                            <p class="text-lg font-black italic text-slate-900 tracking-tighter uppercase">${co.name}</p>
+                            <p class="text-[10px] font-bold text-slate-500 tracking-widest uppercase">${co.license}</p>
                         </div>
                     </div>
-
-                    <div class="grid grid-cols-2 gap-10 mb-10">
-                        <div class="bg-white p-8 rounded-3xl border-4 border-slate-200 shadow-xl">
-                            <h4 class="text-xs font-black text-slate-800 uppercase tracking-widest mb-6 flex items-center gap-2"><i class="fas fa-screwdriver-wrench text-blue-600"></i> ${labels.maintMatrix.l}</h4>
-                            <ul class="space-y-6 text-xs font-bold text-slate-700 leading-snug">
-                                <li class="flex gap-4 border-b border-slate-100 pb-4"><i class="fas fa-check-double text-emerald-500 mt-0.5"></i> <span>Hardware & Parts: <p class="font-medium text-slate-500 mt-1">Provider or manufacturer covers hardware defects for the full warranty term.</p></span></li>
-                                <li class="flex gap-4 border-b border-slate-100 pb-4"><i class="fas fa-check-double text-emerald-500 mt-0.5"></i> <span>Service & Labor: <p class="font-medium text-slate-500 mt-1">Labor coverage is active under current agreement status.</p></span></li>
-                                <li class="flex gap-4"><i class="fas fa-check-double text-emerald-500 mt-0.5"></i> <span>Monitoring: <p class="font-medium text-slate-500 mt-1">System is remotely tracked for health and production issues.</p></span></li>
-                            </ul>
-                        </div>
-                        <div class="bg-white p-8 rounded-3xl border-4 border-slate-200 shadow-xl">
-                            <h4 class="text-xs font-black text-slate-800 uppercase tracking-widest mb-6 flex items-center gap-2"><i class="fas fa-handshake-angle text-blue-600"></i> ${labels.transTimeline.l}</h4>
-                            <ul class="space-y-6 text-xs font-bold text-slate-700 leading-snug">
-                                <li class="flex gap-4 border-b border-slate-100 pb-4"><i class="fas fa-file-contract text-blue-400 mt-0.5"></i> <span>Qualification: <p class="font-medium text-slate-500 mt-1">Buyer assumes the payment plan at closing.</p></span></li>
-                                <li class="flex gap-4 border-b border-slate-100 pb-4"><i class="fas fa-id-card text-blue-400 mt-0.5"></i> <span>Credit Check: <p class="font-medium text-slate-500 mt-1">Standard simple check required by the solar company.</p></span></li>
-                                <li class="flex gap-4"><i class="fas fa-clock text-blue-400 mt-0.5"></i> <span>Timeline: <p class="font-medium text-slate-500 mt-1">Usually takes about 1-2 weeks to finalize.</p></span></li>
-                            </ul>
+                    <div class="text-right">
+                        <p class="text-[10px] text-slate-400 font-black uppercase tracking-[0.2em] italic mb-4">SolarCheck Pro v7.303</p>
+                        <div class="no-print flex gap-3 justify-end">
+                            <button onclick="window.printReport()" class="bg-blue-600 text-white px-8 py-3 rounded-2xl font-black uppercase text-[10px] tracking-widest shadow-xl transition-all hover:bg-blue-500 active:scale-95 border-b-4 border-blue-800"><i class="fas fa-print mr-2"></i> Print</button>
+                            <button onclick="window.closeReport()" class="bg-slate-100 text-slate-700 px-8 py-3 rounded-2xl font-black uppercase text-[10px] tracking-widest transition-all hover:bg-slate-200 border-b-4 border-slate-300">Back</button>
                         </div>
                     </div>
-
-                    <div class="bg-slate-900 p-12 rounded-[40px] text-white relative overflow-hidden mt-auto mb-10 shadow-2xl">
-                        <div class="relative z-10 grid grid-cols-2 gap-12">
-                            <div class="space-y-5">
-                                <p class="text-blue-400 text-[10px] font-black uppercase tracking-[0.4em] italic mb-1">Long-Term Value Forecast</p>
-                                <div class="grid grid-cols-1 gap-4 mb-4">
-                                    <div class="flex flex-col border-b border-white/5 pb-2">
-                                        <span class="text-[9px] text-slate-400 font-black uppercase tracking-widest mb-1">Solar Power Value</span>
-                                        <span class="text-2xl font-black text-emerald-400 italic tracking-tighter leading-none">$${r.blendedUtility.toFixed(2)} <span class="text-[10px] uppercase font-bold tracking-normal">/ kWh</span></span>
-                                    </div>
-                                    <div class="flex flex-col">
-                                        <span class="text-[9px] text-slate-400 font-black uppercase tracking-widest mb-1">Solar Unit Rate</span>
-                                        <span class="text-2xl font-black text-red-400 italic tracking-tighter leading-none">$${r.rYC_sol.toFixed(3)} <span class="text-[10px] uppercase font-bold tracking-normal">/ kWh</span></span>
-                                    </div>
-                                </div>
-                                <div class="flex justify-between items-end border-b-2 border-slate-700 pb-4"><span class="text-[11px] font-black text-slate-400 uppercase tracking-widest">Net Savings Over Term</span></div>
-                                <div class="pt-6 flex flex-col">
-                                    <span class="text-7xl font-black italic tracking-tighter ${isNegativeTerm ? 'text-red-400' : 'text-emerald-400'} leading-none">${window.cur(Math.abs(r.futSavNet))}</span>
-                                    <p class="text-xs font-bold text-slate-400 mt-2 uppercase tracking-widest italic">${isNegativeTerm ? 'Cumulative Financial Cost' : 'Cumulative Financial Advantage'}</p>
-                                    <p class="text-[9px] text-slate-500 font-medium leading-tight mt-3 max-w-[280px] italic">This represents the total net profit projected through the end of the term, comparing the cost of all remaining solar payments against the utility bills you would have paid without solar.</p>
-                                </div>
-                            </div>
-                            <div class="flex flex-col justify-center border-l-4 border-slate-800 pl-16 space-y-8">
-                                <div>
-                                    <p class="text-[10px] font-black text-slate-400 uppercase mb-1 tracking-widest">Utility Inflation</p>
-                                    <p class="text-3xl font-black text-slate-100 italic">${e}%</p>
-                                    <p class="text-[9px] text-slate-500 font-bold uppercase">Avg. Annual Increase</p>
-                                </div>
-                                <div>
-                                    <p class="text-[10px] font-black text-slate-400 uppercase mb-1 tracking-widest">Solar Escalator</p>
-                                    <p class="text-3xl font-black text-blue-400 italic">${tEs}%</p>
-                                    <p class="text-[9px] text-slate-500 font-bold uppercase">Fixed Annual Increase</p>
-                                </div>
-                                <div class="pt-4 border-t border-slate-800">
-                                    <div class="bg-emerald-500/10 border border-emerald-500/20 px-3 py-2 rounded-xl inline-block">
-                                        <p class="text-[9px] font-black text-emerald-400 uppercase tracking-widest mb-1">Inflation Hedge Spread</p>
-                                        <p class="text-2xl font-black text-emerald-400 italic leading-none">+ ${(e - tEs).toFixed(1)}%</p>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="absolute right-[-2%] bottom-[-5%] text-9xl text-white/5"><i class="fas fa-sack-dollar"></i></div>
-                    </div>
-                </div>
-
-                <!-- PAGE 3 -->
-                <div class="p-16 max-w-4xl mx-auto min-h-[1056px] relative border-t-8 border-blue-600 shadow-2xl report-card bg-white flex flex-col page-break">
-                    <div class="flex justify-between items-center mb-12 border-b-4 border-slate-900 pb-8">
-                        <h2 class="text-2xl font-black text-slate-900 uppercase tracking-widest italic">${labels.narrativeHeader.l}</h2>
-                        <span class="text-[10px] font-black text-slate-400 uppercase tracking-widest italic">Reference ID: ${reportId}</span>
-                    </div>
-
-                    <div class="space-y-10 text-slate-700 leading-relaxed max-w-3xl">
-                        <p class="text-xl font-bold text-slate-900 border-l-[12px] ${isUnderperforming ? 'border-amber-500' : 'border-blue-600'} pl-8 py-4 bg-slate-50 rounded-r-3xl">
-                            The solar energy system at <strong>${a || 'this property'}</strong> has been thoroughly reviewed. ${isUnderperforming ? 'Our audit indicates that the system is currently underperforming relative to its technical design.' : 'It is performing as intended and is providing immediate financial benefits by reducing the monthly cost of power.'}
-                        </p>
-                        
-                        <div class="space-y-4">
-                            <h4 class="text-sm font-black text-slate-900 uppercase tracking-[0.3em] flex items-center gap-4"><span class="w-16 h-1 bg-blue-600"></span> ${labels.narrLabelEquip.l}</h4>
-                            <p class="text-base text-slate-600">The hardware—including panels and inverters—was inspected for integrity. ${isUnderperforming ? 'While the equipment is operational, the metered energy harvest is lower than expected for a system of this size and age. This could be due to excessive shading, hardware degradation, or communication gaps in the monitoring software.' : 'The system matches the legal agreement on file and is verified as functional and professionally installed. The panels observed are clean and generating power efficiently.'}</p>
-                        </div>
-
-                        <div class="space-y-4">
-                            <h4 class="text-sm font-black text-slate-900 uppercase tracking-[0.3em] flex items-center gap-4"><span class="w-16 h-1 bg-blue-600"></span> ${labels.narrLabelProd.l}</h4>
-                            <p class="text-base text-slate-600">This ${sz.toFixed(2)} kW system generated approximately <strong>${window.num(r.act)} MWh</strong> of energy since installation. ${isUnderperforming ? 'This production level represents a shortfall against our physical benchmark. We recommend a technical onsite diagnostic to ensure the inverter string logic or microinverter reporting is synchronized correctly.' : 'The system is meeting or exceeding the estimated energy output benchmark, effectively shielding the owner from rising utility costs.'}</p>
-                        </div>
-
-                        <div class="space-y-4">
-                            <h4 class="text-sm font-black text-slate-900 uppercase tracking-[0.3em] flex items-center gap-4"><span class="w-16 h-1 bg-blue-600"></span> ${labels.narrLabelCash.l}</h4>
-                            <p class="text-base text-slate-600">${isNegativeCashFlow ? 'Currently, the monthly solar payment is higher than the calculated utility savings. This results in a net monthly cost of about <strong>' + window.cur(Math.abs(r.actSavNet / 12)) + '</strong>. Homeowners in this position often rely on future utility inflation to reach a \"break-even\" point where the solar becomes cheaper than the grid.' : 'The math is simple: the solar bill is lower than the utility savings. Every month, this system creates approximately <strong>' + window.cur(r.actSavNet / 12) + '</strong> in net profit for the home. It is a \"cash-flow positive\" asset.'}</p>
-                        </div>
-
-                        <div class="space-y-4">
-                            <h4 class="text-sm font-black text-slate-900 uppercase tracking-[0.3em] flex items-center gap-4"><span class="w-16 h-1 bg-blue-600"></span> ${labels.narrLabelTerm.l}</h4>
-                            <p class="text-base text-slate-600">With <strong>${remAssetYears} years</strong> left of calculated value, ${isNegativeTerm ? 'the total remaining cost of the solar agreement is projected to exceed the utility savings by ' + window.cur(Math.abs(r.futSavNet)) + '. This system is currently acting as a utility hedge rather than a direct savings vehicle.' : 'the total projected net benefit is over <strong>' + window.cur(r.futSavNet) + '</strong>. This represents a significant long-term reduction in the home\'s total cost of ownership.'}</p>
-                        </div>
-
-                        <div class="space-y-4">
-                            <h4 class="text-sm font-black text-slate-900 uppercase tracking-[0.3em] flex items-center gap-4"><span class="w-16 h-1 bg-blue-600"></span> ${labels.narrLabelMaint.l}</h4>
-                            <p class="text-base text-slate-600">Regardless of production performance, service and monitoring are handled under the current agreement structure, ensuring that major repairs do not become an unexpected out-of-pocket expense for the homeowner.</p>
-                        </div>
-                    </div>
-
-                    <div class="mt-auto pt-10 border-t-8 border-slate-900 flex justify-between items-end">
-                        <div class="text-left">
-                            <p class="text-[11px] font-black text-slate-400 uppercase tracking-[0.4em] mb-2 italic">Certified Inspector</p>
-                            <p class="text-3xl font-black italic text-slate-900 tracking-tighter uppercase">${co.name}</p>
-                            <p class="text-xs font-bold text-slate-500">${co.license} <span class="mx-3 text-slate-300">|</span> ${new Date().toLocaleDateString()}</p>
-                        </div>
-                        <div class="no-print pb-2 flex gap-4">
-                            <button onclick="window.printReport()" class="bg-blue-600 text-white px-12 py-5 rounded-3xl font-black uppercase text-xs tracking-widest shadow-2xl transition-all hover:bg-blue-500 active:scale-95 border-b-4 border-blue-800">Print Report</button>
-                            <button onclick="window.closeReport()" class="bg-slate-100 text-slate-700 px-12 py-5 rounded-3xl font-black uppercase text-xs tracking-widest transition-all hover:bg-slate-200 border-b-4 border-slate-300">Back</button>
-                        </div>
-                    </div>
-                </div>
+                 </div>
+              </div>
             </div>`;
             reportView.innerHTML = content;
             reportView.classList.remove('hidden');
@@ -867,7 +713,7 @@ Architecture: Modular Single-File HTML5 (Sub-Renderer Pattern)
                     <div class="bg-slate-900 text-white px-4 sm:px-6 py-3 sm:py-4 sticky top-0 z-50 flex justify-between items-center shadow-lg border-b border-white/5 gap-2">
                         <div class="flex items-center gap-2 sm:gap-4 min-w-0">
                             <span class="text-2xl sm:text-3xl flex-shrink-0"><i class="fas fa-sun text-yellow-400"></i></span>
-                            <div class="min-w-0 truncate"><h1 class="font-bold text-lg sm:text-2xl tracking-tighter italic truncate">SolarCheck Pro</h1><p class="text-[7px] sm:text-[9px] opacity-60 font-black uppercase tracking-[0.4em]">v7.295</p></div>
+                            <div class="min-w-0 truncate"><h1 class="font-bold text-lg sm:text-2xl tracking-tighter italic truncate">SolarCheck Pro</h1><p class="text-[7px] sm:text-[9px] opacity-60 font-black uppercase tracking-[0.4em]">v7.303</p></div>
                         </div>
                         <div class="flex items-center gap-2 flex-shrink-0">
                             <button onclick="window.open(window.location.href, '_blank')" class="header-btn bg-slate-800 text-white/80 p-2 sm:px-4 sm:py-2.5 rounded-xl text-sm shadow-xl transition-all hover:bg-slate-700 active:scale-95"><i class="fas fa-expand"></i></button>
@@ -875,7 +721,7 @@ Architecture: Modular Single-File HTML5 (Sub-Renderer Pattern)
                         </div>
                     </div>
                     <div class="bg-white/90 backdrop-blur-md border-b sticky top-[56px] sm:top-[72px] z-40 px-2 sm:px-4 flex gap-1 pt-1 no-print overflow-x-auto shadow-sm no-scrollbar">
-                        ${['inputs','contract','summary','valuation'].map(t => `<button onclick=\"updateState('activeTab', '${t}')\" class=\"flex-1 py-3 sm:py-5 border-b-4 font-black transition-all ${activeTab === t ? 'border-blue-600 text-blue-600' : 'border-transparent text-slate-400'} uppercase text-[8px] sm:text-[10px] tracking-widest sm:tracking-[0.2em] whitespace-nowrap flex flex-col items-center justify-center gap-1 sm:gap-2\"><i class=\"fas ${t === 'inputs' ? 'fa-edit' : t === 'contract' ? 'fa-file-signature' : t === 'summary' ? 'fa-list-check' : t === 'valuation' ? 'fa-scale-balanced' : 'fa-scale-balanced'} text-base sm:text-xl\"></i>${t}</button>`).join('')}
+                        ${['inputs','contract','summary','valuation'].map(t => `<button onclick="updateState('activeTab', '${t}')" class="flex-1 py-3 sm:py-5 border-b-4 font-black transition-all ${activeTab === t ? 'border-blue-600 text-blue-600' : 'border-transparent text-slate-400'} uppercase text-[8px] sm:text-[10px] tracking-widest sm:tracking-[0.2em] whitespace-nowrap flex flex-col items-center justify-center gap-1 sm:gap-2"><i class="fas ${t === 'inputs' ? 'fa-edit' : t === 'contract' ? 'fa-file-signature' : t === 'summary' ? 'fa-list-check' : t === 'valuation' ? 'fa-scale-balanced' : 'fa-scale-balanced'} text-base sm:text-xl"></i>${t}</button>`).join('')}
                     </div>
                     <div class="max-w-5xl mx-auto p-4 sm:p-8">${tabContent}</div>
                     <dialog id="print-modal" class="modal p-0 rounded-[32px] shadow-2xl border-0 overflow-hidden bg-white">
@@ -884,7 +730,7 @@ Architecture: Modular Single-File HTML5 (Sub-Renderer Pattern)
                             <h3 class="font-black mb-6 uppercase text-[9px] tracking-[0.4em] border-b border-slate-100 pb-5 text-slate-400">Generate Audit</h3>
                             <div class="space-y-3">
                                 <button onclick="handleGenerateReport('realtor')" class="w-full text-left p-5 sm:p-6 border-2 border-slate-50 rounded-2xl hover:bg-blue-50 hover:border-blue-200 transition-all group flex items-center justify-between">
-                                    <div><p class="font-black uppercase text-xs tracking-widest text-slate-800">Branded Advisory Report</p><p class="text-[9px] sm:text-[10px] font-bold text-slate-500 mt-1">Plain English homeowner audit.</p></div>
+                                    <div><p class="font-black uppercase text-xs tracking-widest text-slate-800">1-Page Financial Analysis</p><p class="text-[9px] sm:text-[10px] font-bold text-slate-500 mt-1">High-impact visual summary for homeowners.</p></div>
                                     <i class="fas fa-chevron-right text-slate-300 group-hover:text-blue-400"></i>
                                 </button>
 
@@ -904,13 +750,12 @@ Architecture: Modular Single-File HTML5 (Sub-Renderer Pattern)
         };
 
         // --- INITIALIZATION ---
-        let app, db, auth;
         const init = async () => {
             try {
                 const firebaseConfig = JSON.parse(__firebase_config);
-                app = initializeApp(firebaseConfig);
-                db = getFirestore(app);
-                auth = getAuth(app);
+                const app = initializeApp(firebaseConfig);
+                const db = getFirestore(app);
+                const auth = getAuth(app);
                 if (typeof __initial_auth_token !== 'undefined') await signInWithCustomToken(auth, __initial_auth_token); 
                 else await signInAnonymously(auth); 
                 window.calculate();
