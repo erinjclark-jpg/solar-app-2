@@ -1,8 +1,8 @@
 <!-- 
 ================================================================================
 PROJECT CONTEXT: SolarCheck Professional - FMV REPORT MODULE
-Current Version: v1.05 (STRATEGIC HANDOFF RECEIVER)
-Date: March 2026
+Current Version: v1.06 (STRATEGIC HANDOFF RECEIVER)
+Date: July 2026
 Architecture: Standalone HTML5 / URL-Parameter Data Handoff
 ================================================================================
 
@@ -34,7 +34,7 @@ Architecture: Standalone HTML5 / URL-Parameter Data Handoff
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Professional Solar Valuation Report v1.05</title>
+    <title>Professional Solar Valuation Report v1.06</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
@@ -42,9 +42,9 @@ Architecture: Standalone HTML5 / URL-Parameter Data Handoff
         body { font-family: 'Inter', sans-serif; background-color: #f1f5f9; }
         .report-page { background: white; width: 8.5in; min-height: 11in; padding: 0.75in; margin: 2rem auto; box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1); position: relative; overflow: hidden; }
         @media print {
-            body { background: white; }
+            body { background: white; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
             .report-page { margin: 0; box-shadow: none; width: 100%; height: 100%; page-break-after: always; }
-            .no-print { display: none; }
+            .no-print { display: none !important; }
         }
         .text-justify { text-align: justify; }
         .border-heavy { border-width: 3px; }
@@ -52,7 +52,7 @@ Architecture: Standalone HTML5 / URL-Parameter Data Handoff
 </head>
 <body class="text-slate-800 antialiased">
 
-    <div class="no-print fixed top-5 right-5 z-50 flex gap-3">
+    <div class="no-print fixed top-5 right-5 z-50 flex gap-3 print:hidden">
         <button onclick="window.print()" class="bg-blue-600 text-white px-6 py-2.5 rounded-full font-bold shadow-lg hover:bg-blue-700 transition-all flex items-center gap-2">
             <i class="fas fa-print"></i> Print to PDF
         </button>
@@ -149,7 +149,7 @@ Architecture: Standalone HTML5 / URL-Parameter Data Handoff
                 <i class="fas fa-info-circle text-blue-600"></i> Appraiser Note on Valuation
             </h4>
             <p class="text-sm text-slate-600 leading-relaxed text-justify">
-                The conclusion of value above represents the **Fair Market Value** (FMV) as defined by standard appraisal practices. While the service provider may present a "payoff" figure based on the full value of a 20-year revenue stream, the market reality of used solar equipment attached to real property is governed by actual avoided utility costs and current replacement costs, adjusted for physical and functional depreciation observed onsite.
+                The conclusion of value above represents the **Fair Market Value** (FMV) as defined by standard appraisal practices. While the service provider may present a "payoff" figure based on the full value of a 20-year revenue stream, the market reality of used solar equipment attached to real property is governed by actual avoided utility costs and current replacement costs, adjusted for physical and functional depreciation observed onsite. <strong>Furthermore, the Cost Approach explicitly excludes unavailable tax incentives (such as the Federal ITC), and the Income Approach accounts for expected future capital expenditures, including string inverter replacements and battery degradation.</strong>
             </p>
         </div>
 
@@ -158,7 +158,7 @@ Architecture: Standalone HTML5 / URL-Parameter Data Handoff
                 <p class="text-[9px] font-black text-slate-400 uppercase tracking-widest">Document Integrity</p>
                 <p class="text-[10px] font-bold text-slate-700">Audit Ref: <span id="display-ref"></span></p>
             </div>
-            <p class="text-[9px] text-slate-400 font-bold uppercase tracking-widest">SolarCheck Pro | Report v1.05</p>
+            <p class="text-[9px] text-slate-400 font-bold uppercase tracking-widest">SolarCheck Pro | Report v1.06</p>
         </div>
     </div>
 
@@ -301,9 +301,9 @@ Architecture: Standalone HTML5 / URL-Parameter Data Handoff
             document.getElementById('audit-sz').innerText = (data.sz || '0') + ' kW DC';
             
             document.getElementById('audit-age').innerText = (data.age || '0') + ' Years';
-            document.getElementById('audit-rem').innerText = (data.l - data.age).toFixed(1) + ' Years';
+            document.getElementById('audit-rem').innerText = ((parseFloat(data.l) || 25) - (parseFloat(data.age) || 0)).toFixed(1) + ' Years';
             document.getElementById('audit-dr').innerText = (data.dr || '0') + '%';
-            document.getElementById('audit-cond').innerText = (data.c * 100).toFixed(0) + '% Onsite Metric';
+            document.getElementById('audit-cond').innerText = 'Verified Onsite';
 
             // Production
             document.getElementById('audit-act').innerText = num(data.act) + ' MWh';
