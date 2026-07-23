@@ -1,7 +1,7 @@
 <!-- 
 ================================================================================
 PROJECT CONTEXT: SolarCheck Professional
-Current Version: v7.316 (PRECISION VALUATION MODULE)
+Current Version: v7.317 (PRECISION VALUATION MODULE - BULLETPROOF APPRAISAL UPGRADE)
 Date: July 2026
 Architecture: Modular Single-File HTML5 (Sub-Renderer Pattern)
 ================================================================================
@@ -37,7 +37,7 @@ Architecture: Modular Single-File HTML5 (Sub-Renderer Pattern)
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SolarCheck Professional v7.316</title>
+    <title>SolarCheck Professional v7.317</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
@@ -170,8 +170,8 @@ Architecture: Modular Single-File HTML5 (Sub-Renderer Pattern)
             arbitrage_intro: "This audit verifies if the solar energy is cheaper than the electricity bought from the utility. A positive delta means the system is creating financial value.",
             perf_ratio_intro: "This is the health score of the system. 100% means the system is performing exactly as designed. If a legal guarantee exists, we compare actual production to that floor. Otherwise, we compare to the original estimate.",
             valuation_cost_footer: "Value based on building a new system today minus depreciation.",
-            valuation_inc_footer: "Value based on the net energy savings the system provides over its life.",
-            valuation_tpo_split: "For 3rd party agreements, Fair Market Value is weighted toward the immediate savings provided during the remaining contract term."
+            valuation_inc_footer: "Value based on the net energy cash flows the system provides over its life.",
+            valuation_tpo_split: "For 3rd party agreements, Fair Market Value is weighted toward the immediate cash flows provided during the remaining contract term."
         };
 
         // --- GLOBAL HELPERS ---
@@ -306,8 +306,8 @@ Architecture: Modular Single-File HTML5 (Sub-Renderer Pattern)
                     ${st.srec ? `<div class="mt-4">${window.Idark("SREC Value ($/MWh)", st.srecP, "srecP")}</div>` : ''}
                     <div class="mt-8 pt-8 border-t border-slate-600 text-center"><label class="block text-blue-200 text-[9px] font-black uppercase mb-4 tracking-widest">Methodology</label><div class="flex bg-slate-800 p-1 rounded-2xl border border-slate-600 shadow-inner max-w-sm mx-auto"><button onclick="updateState('w', 100)" class="flex-1 py-3 rounded-xl text-[9px] font-black transition-all ${st.w === 100 ? 'bg-blue-600 text-white shadow-lg' : 'text-slate-500'} uppercase">Income</button><button onclick="updateState('w', 0)" class="flex-1 py-3 rounded-xl text-[9px] font-black ${st.w === 0 ? 'bg-blue-600 text-white shadow-lg' : 'text-slate-500'} uppercase">Cost</button></div></div>
                 </div>
-                ${isTPO ? `<div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-md"><h4 class="text-xs font-bold text-slate-800 uppercase tracking-widest mb-4">Income Basis Breakdown (TPO Model)</h4><div class="space-y-3">${window.R("Contract Savings", window.cur(aR.incContract), "", "Discounted value of net energy savings during remaining lease term.")}${window.R("Residual Value", window.cur(aR.incResidual), "", "Discounted value of energy savings after contract expiration.")}<div class="bg-indigo-50 p-3 rounded-xl border border-indigo-100 mt-4 text-[13px] font-semibold text-indigo-900 leading-relaxed">${window.UI_NARRATIVES.valuation_tpo_split}</div></div></div>` : ''}
-                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">${window.C("Cost Basis", "Physical value.", `<p class="text-2xl sm:text-4xl font-black italic text-slate-700">${window.cur(aR.cost)}</p><p class="text-[12px] text-slate-800 font-bold mt-2">${window.UI_NARRATIVES.valuation_cost_footer}</p>`, 'text-slate-700')}${window.C("Income Basis", "Discounted savings.", `<p class="text-2xl sm:text-4xl font-black italic text-green-700">${window.cur(aR.inc)}</p><p class="text-[12px] text-slate-800 font-bold mt-2">${window.UI_NARRATIVES.valuation_inc_footer}</p>`, 'text-green-700')}</div>
+                ${isTPO ? `<div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-md"><h4 class="text-xs font-bold text-slate-800 uppercase tracking-widest mb-4">Income Basis Breakdown (TPO Model)</h4><div class="space-y-3">${window.R("Term Cash Flows", window.cur(aR.incContract), "", "Discounted present value of active PPA/Lease payments.")}${window.R("Residual Value", window.cur(aR.incResidual), "", "Discounted present value of wholesale residual energy.")}<div class="bg-indigo-50 p-3 rounded-xl border border-indigo-100 mt-4 text-[13px] font-semibold text-indigo-900 leading-relaxed">${window.UI_NARRATIVES.valuation_tpo_split}</div></div></div>` : ''}
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">${window.C("Cost Basis", "Physical value.", `<p class="text-2xl sm:text-4xl font-black italic text-slate-700">${window.cur(aR.cost)}</p><p class="text-[12px] text-slate-800 font-bold mt-2">${window.UI_NARRATIVES.valuation_cost_footer}</p>`, 'text-slate-700')}${window.C("Income Basis", "Discounted cash flows.", `<p class="text-2xl sm:text-4xl font-black italic text-green-700">${window.cur(aR.inc)}</p><p class="text-[12px] text-slate-800 font-bold mt-2">${window.UI_NARRATIVES.valuation_inc_footer}</p>`, 'text-green-700')}</div>
             </div>`;
         };
 
@@ -345,12 +345,11 @@ Architecture: Modular Single-File HTML5 (Sub-Renderer Pattern)
             ptd += th * (1 - (iC * DEG_RATE)) * (age % 1);
             const cP = th * Math.max(0, 1 - (age * DEG_RATE));
 
-            // 2. NEW: Real World Performance Ratio
-            // We use this multiplier to project true future yield based on historical actuals
+            // 2. Real World Performance Ratio
             const realRatio = (ptd > 0 && nAC > 0) ? ((nAC * 1000) / ptd) : 1;
-            const cP_real = cP * realRatio; // Actual instantaneous annual pace
+            const cP_real = cP * realRatio; 
 
-            // 3. TPO Payments Refactor (Self-Policing PPA support)
+            // 3. TPO Payments Refactor
             const ppaRateY1 = ntR;
             const ppaRateYC = ntR * Math.pow(1 + (ntEs/100), iC);
             const ppaRateYL = ntR * Math.pow(1 + (ntEs/100), iL);
@@ -387,7 +386,7 @@ Architecture: Modular Single-File HTML5 (Sub-Renderer Pattern)
             
             const blendedUtility = (finalSCR/100 * (rU || 0.35)) + ((1 - finalSCR/100) * (eU || 0.05));
             
-            // 4. Savings Loops (Projecting based on real ratio)
+            // 4. Savings Loops
             let fSa = 0; 
             const calcTerm = parseFloat(l) || 25; 
             const rM = Math.max(0, calcTerm - age);
@@ -401,16 +400,14 @@ Architecture: Modular Single-File HTML5 (Sub-Renderer Pattern)
                 const yr = age + i;
                 const currentExportBase = (yr <= 20) ? exportBase : 0.05;
                 
-                // Battery Degradation Simulation dynamically adjusting SCR
                 const currentUsableB = usableB * Math.pow(bDegRate, yr);
                 const currentBatteryBoost = (currentUsableB / (dailyGenAvg || 1)) * 40;
                 const currentSCR = Math.min(98, (parseFloat(scr) || 0) + (currentUsableB > 0 ? currentBatteryBoost : 0));
                 
                 const currentBlendedBase = (currentSCR/100 * retailBase) + ((1 - currentSCR/100) * currentExportBase);
-                const cappedEscYear = Math.min(i, eCap); // Cap extreme utility escalation
+                const cappedEscYear = Math.min(i, eCap);
                 const currentBlendedEscalated = currentBlendedBase * Math.pow(utilityEscFactor, cappedEscYear);
                 
-                // Use real-world projected production
                 const yrRealProd = th * Math.max(0, 1 - (yr * DEG_RATE)) * realRatio;
                 fSa += yrRealProd * currentBlendedEscalated; 
             }
@@ -440,7 +437,7 @@ Architecture: Modular Single-File HTML5 (Sub-Renderer Pattern)
                 currentPay_bat *= (1 + (ntEs/100));
             }
             
-            if (isPrepaid) remCost = 0; // Prepaid agreements have no remaining payment liability
+            if (isPrepaid) remCost = 0; 
 
             // 6. Final Dashboard Snapshots
             const rYC_sol = realProdYC > 0 ? (solYC * 12) / realProdYC : 0;
@@ -463,12 +460,12 @@ Architecture: Modular Single-File HTML5 (Sub-Renderer Pattern)
                 shortfallkWh, trueUpRefund
             };
 
-            // 7. Precision Valuation DCF Model
+            // 7. PRECISION VALUATION DCF MODEL (BULLETPROOF UPGRADE v7.317)
             const sC = s * 1000 * parseFloat(rC||0); 
             const rL = Math.max(0, (parseFloat(l)||25) - age); 
             const depCost = l > 0 ? (rL / l) : 0; 
             const itcMultiplier = 1 - ((parseFloat(itc) || 0) / 100);
-            const cV = sC * depCost * itcMultiplier; 
+            let cV = sC * depCost * itcMultiplier; 
             
             let dcfContract = 0, dcfResidual = 0; 
             let lCA_sol_rate = ppaRateYC;
@@ -480,26 +477,34 @@ Architecture: Modular Single-File HTML5 (Sub-Renderer Pattern)
 
             for (let y = 1; y <= Math.ceil(rL); y++) { 
                 const yr = age + y;
-                const currentExportBase = (yr <= 20) ? exportBase : 0.05;
-                
-                // Battery Degradation Simulation dynamically adjusting SCR
-                const currentUsableB = usableB * Math.pow(bDegRate, yr);
-                const currentBatteryBoost = (currentUsableB / (dailyGenAvg || 1)) * 40;
-                const currentSCR = Math.min(98, (parseFloat(scr) || 0) + (currentUsableB > 0 ? currentBatteryBoost : 0));
-
-                const currentBlendedBase = (currentSCR/100 * retailBase) + ((1 - currentSCR/100) * currentExportBase);
-                const cappedEscYear = Math.min(y, eCap); // Cap extreme utility escalation
-                const currentBlendedEscalated = currentBlendedBase * Math.pow(utilityEscFactor, cappedEscYear);
-                
                 const yrRealProd = th * Math.max(0, 1 - (yr * DEG_RATE)) * realRatio;
                 
                 // Strict 10-year expiration limit applied to SREC revenue projection
                 const srev = (srec && srecP && yr <= 10) ? (yrRealProd / 1000) * srecP : 0;
                 
-                let yearlyLiab = 0;
-                if (isTPO && !isPrepaid && yr <= nTe) { // Check liability boundary against term
-                    let solLiab = (o === 'ppa') ? (yrRealProd * lCA_sol_rate) : lCA_sol_lease;
-                    yearlyLiab = solLiab + lCA_bat_val;
+                // --- STRATEGIC REWRITE OF INCOME APPROACH ---
+                // We value the energy based on what the OWNER of the asset can legally sell it for.
+                let energy_revenue = 0;
+                if (isTPO) {
+                    if (yr <= nTe && !isPrepaid) {
+                        // During contract: Value is bounded by the lease/PPA terms (this is the TPO's actual revenue)
+                        let solIncome = (o === 'ppa') ? (yrRealProd * lCA_sol_rate) : lCA_sol_lease;
+                        energy_revenue = solIncome + lCA_bat_val;
+                    } else {
+                        // Residual Value: Wholesale/Export rate only
+                        const currentExportBase = (yr <= 20) ? exportBase : 0.05;
+                        energy_revenue = (yrRealProd * currentExportBase);
+                    }
+                } else {
+                    // Owned system: Value is actual avoided utility cost
+                    const currentExportBase = (yr <= 20) ? exportBase : 0.05;
+                    const currentUsableB = usableB * Math.pow(bDegRate, yr);
+                    const currentBatteryBoost = (currentUsableB / (dailyGenAvg || 1)) * 40;
+                    const currentSCR = Math.min(98, (parseFloat(scr) || 0) + (currentUsableB > 0 ? currentBatteryBoost : 0));
+                    const currentBlendedBase = (currentSCR/100 * retailBase) + ((1 - currentSCR/100) * currentExportBase);
+                    const cappedEscYear = Math.min(y, eCap);
+                    const currentBlendedEscalated = currentBlendedBase * Math.pow(utilityEscFactor, cappedEscYear);
+                    energy_revenue = (yrRealProd * currentBlendedEscalated);
                 }
                 
                 // Future CapEx replacement event for String Inverters hitting end of lifecycle
@@ -508,26 +513,59 @@ Architecture: Modular Single-File HTML5 (Sub-Renderer Pattern)
                     capEx = repCost;
                 }
                 
-                const net = (yrRealProd * currentBlendedEscalated) + srev - yearlyLiab - capEx; 
+                const net = energy_revenue + srev - capEx; 
                 const discounted = net / Math.pow(1 + (dr / 100), y);
-                if (isTPO && yr <= nTe) dcfContract += discounted; else dcfResidual += discounted;
                 
-                if (o === 'ppa') {
-                    lCA_sol_rate *= (1 + (ntEs / 100));
+                if (isTPO && yr <= nTe) {
+                    dcfContract += discounted;
                 } else {
-                    lCA_sol_lease *= (1 + (ntEs / 100)); 
+                    dcfResidual += discounted;
                 }
+                
+                if (o === 'ppa') lCA_sol_rate *= (1 + (ntEs / 100));
+                else lCA_sol_lease *= (1 + (ntEs / 100)); 
                 lCA_bat_val *= (1 + (ntEs / 100));
             }
-            const totalDCF = dcfContract + dcfResidual;
-            const valInput = (isTPO && w === 100) ? dcfContract : totalDCF;
+            
+            let totalDCF = dcfContract + dcfResidual;
+            let valInput = totalDCF;
+            
+            // ==========================================
+            // THE EMERGENCY BRAKE (STRATEGIC CEILING)
+            // ==========================================
+            const hardwareResidualFee = (s * 1000 * parseFloat(rC||0)) * 0.15;
+            const strategicCeiling = isTPO ? (remCost + hardwareResidualFee) : Infinity;
+            
+            let cappedDCFContract = dcfContract;
+            let cappedDCFResidual = dcfResidual;
+            let cappedTotalDCF = totalDCF;
+            let cappedCostBasis = cV;
+            
+            // Failsafe: Never let the calculated FMV mathematically exceed the TPO's Payoff Burden
+            if (isTPO && totalDCF > strategicCeiling) {
+                const scale = strategicCeiling / (totalDCF || 1);
+                cappedDCFContract *= scale;
+                cappedDCFResidual *= scale;
+                cappedTotalDCF = strategicCeiling;
+                valInput = cappedTotalDCF;
+            }
+            if (isTPO && cappedCostBasis > strategicCeiling) {
+                cappedCostBasis = strategicCeiling;
+            }
+            
+            const rawBlendedFMV = (valInput * (w / 100)) + (cappedCostBasis * (1 - (w / 100)));
+            
+            // Hard Physical Deductions (Maintenance Liabilities AND True-Up Penalty)
             const nRP = parseFloat(rp) || 0;
+            const finalFMV = Math.max(0, rawBlendedFMV - nRP - trueUpRefund);
+
             window.state.aR = { 
-                cost: cV - nRP, 
-                inc: totalDCF - nRP, 
-                incContract: dcfContract, 
-                incResidual: dcfResidual, 
-                val: Math.max(0, (valInput * (w / 100)) + (cV * (1 - (w / 100))) - nRP) 
+                cost: cappedCostBasis, 
+                inc: cappedTotalDCF, 
+                incContract: cappedDCFContract, 
+                incResidual: cappedDCFResidual, 
+                val: finalFMV,
+                strategicCeiling: isTPO ? strategicCeiling : 0
             };
         };
 
@@ -586,16 +624,13 @@ Architecture: Modular Single-File HTML5 (Sub-Renderer Pattern)
             if (!window.state.r || !window.state.aR) return;
             const { a, o, sz, dr, e, rC, l, rp, w, srec, srecP, pC, pW, panelBrand, invBrand, it, company, itc, escCap, batDeg, invRepCost, invRepYear } = window.state;
             const { age, estN12, act, guarTD, estTD, physTD, shortfallkWh, trueUpRefund, remCost } = window.state.r;
-            const { val, cost, inc, incContract, incResidual } = window.state.aR;
+            const { val, cost, inc, incContract, incResidual, strategicCeiling } = window.state.aR;
             
             // Strategic Floor: TPO Removal Liability
             const removalCost = (parseFloat(pC) || 0) * 175;
 
-            // Estimated TPO Hardware Residual Fee (They often ask for ~15% of new system cost)
-            const hardwareResidualFee = (sz * 1000 * rC) * 0.15;
-            
-            // Strategic Ceiling: Remaining Payments + Hardware Purchase Price
-            const strategicCeiling = remCost + hardwareResidualFee;
+            // Safe extract of the exact ceiling the failsafe calculated
+            const ceilingOut = strategicCeiling > 0 ? strategicCeiling : (remCost + ((sz * 1000 * rC) * 0.15));
 
             // Benchmark Identification Logic
             const isTPO = ['lease', 'ppa', 'prepaid_lease', 'prepaid_ppa'].includes(o);
@@ -619,7 +654,7 @@ Architecture: Modular Single-File HTML5 (Sub-Renderer Pattern)
                 incBasis: inc.toFixed(0),
                 incContract: incContract.toFixed(0),
                 incResidual: incResidual.toFixed(0),
-                // Strategic Handoff Data (v7.300)
+                // Strategic Handoff Data
                 pC: pC || 0,
                 pW: pW || 0,
                 pBrand: panelBrand || 'Tier 1',
@@ -629,12 +664,12 @@ Architecture: Modular Single-File HTML5 (Sub-Renderer Pattern)
                 bench: benchmark.toFixed(1),
                 shortfall: shortfallkWh.toFixed(0),
                 trueUp: trueUpRefund.toFixed(0),
-                ceiling: strategicCeiling.toFixed(0),
+                ceiling: ceilingOut.toFixed(0),
                 floor: removalCost.toFixed(0),
                 co: COMPANIES[company].name,
                 // Deferred Maintenance
                 repair: rp || 0,
-                // NEW: Underwriting Assumptions Handoff (v7.315)
+                // Underwriting Assumptions Handoff
                 itc: itc || 30,
                 escCap: escCap || 10,
                 batDeg: batDeg || 2,
@@ -800,7 +835,7 @@ Architecture: Modular Single-File HTML5 (Sub-Renderer Pattern)
                         </div>
                     </div>
                     <div class="text-right">
-                        <p class="text-[10px] text-slate-400 font-black uppercase tracking-[0.2em] italic mb-4">SolarCheck Pro v7.316</p>
+                        <p class="text-[10px] text-slate-400 font-black uppercase tracking-[0.2em] italic mb-4">SolarCheck Pro v7.317</p>
                         <div class="no-print flex gap-3 justify-end">
                             <button onclick="window.printReport()" class="bg-blue-600 text-white px-8 py-3 rounded-2xl font-black uppercase text-[10px] tracking-widest shadow-xl transition-all hover:bg-blue-500 active:scale-95 border-b-4 border-blue-800"><i class="fas fa-print mr-2"></i> Print</button>
                             <button onclick="window.closeReport()" class="bg-slate-100 text-slate-700 px-8 py-3 rounded-2xl font-black uppercase text-[10px] tracking-widest transition-all hover:bg-slate-200 border-b-4 border-slate-300">Back</button>
@@ -831,7 +866,7 @@ Architecture: Modular Single-File HTML5 (Sub-Renderer Pattern)
                     <div class="bg-slate-900 text-white px-4 sm:px-6 py-3 sm:py-4 sticky top-0 z-50 flex justify-between items-center shadow-lg border-b border-white/5 gap-2">
                         <div class="flex items-center gap-2 sm:gap-4 min-w-0">
                             <span class="text-2xl sm:text-3xl flex-shrink-0"><i class="fas fa-sun text-yellow-400"></i></span>
-                            <div class="min-w-0 truncate"><h1 class="font-bold text-lg sm:text-2xl tracking-tighter italic truncate">SolarCheck Pro</h1><p class="text-[7px] sm:text-[9px] opacity-60 font-black uppercase tracking-[0.4em]">v7.316</p></div>
+                            <div class="min-w-0 truncate"><h1 class="font-bold text-lg sm:text-2xl tracking-tighter italic truncate">SolarCheck Pro</h1><p class="text-[7px] sm:text-[9px] opacity-60 font-black uppercase tracking-[0.4em]">v7.317</p></div>
                         </div>
                         <div class="flex items-center gap-2 flex-shrink-0">
                             <button onclick="window.open(window.location.href, '_blank')" class="header-btn bg-slate-800 text-white/80 p-2 sm:px-4 sm:py-2.5 rounded-xl text-sm shadow-xl transition-all hover:bg-slate-700 active:scale-95"><i class="fas fa-expand"></i></button>
@@ -870,7 +905,7 @@ Architecture: Modular Single-File HTML5 (Sub-Renderer Pattern)
         // --- INITIALIZATION ---
         const init = async () => {
             try {
-                const firebaseConfig = JSON.parse(__firebase_config);
+                const firebaseConfig = JSON.parse(typeof __firebase_config !== 'undefined' ? __firebase_config : '{}');
                 const app = initializeApp(firebaseConfig);
                 const db = getFirestore(app);
                 const auth = getAuth(app);
