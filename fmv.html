@@ -1,15 +1,15 @@
 <!-- 
 ================================================================================
 PROJECT CONTEXT: SolarCheck Professional - FMV REPORT MODULE
-Current Version: v1.08 (STRATEGIC HANDOFF RECEIVER)
+Current Version: v1.11 (STRATEGIC HANDOFF RECEIVER - RESPONSIVE & PRINT OPTIMIZED)
 Date: July 2026
 Architecture: Standalone HTML5 / URL-Parameter Data Handoff
 ================================================================================
 
 1. OVERVIEW
-   This is the professional, TPO-facing appraisal document. 
+   This is the professional, TPO-facing technical audit document. 
    It receives data from the main SolarCheck Pro (index.html) via URL parameters.
-   It is designed to frame valuations in professional USPAP-compliant language.
+   It is designed to frame valuations based on empirical technical verification.
 
 2. AI SESSION PROTOCOL (STRICT ADHERENCE REQUIRED - DO NOT REMOVE)
    A. CARRY FORWARD: This header and the param parsing logic must be included 
@@ -34,18 +34,59 @@ Architecture: Standalone HTML5 / URL-Parameter Data Handoff
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Professional Solar Valuation Report v1.08</title>
+    <title>Professional Solar Valuation Report v1.11</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
-        body { font-family: 'Inter', sans-serif; background-color: #f1f5f9; }
-        .report-page { background: white; width: 8.5in; min-height: 11in; padding: 0.75in; margin: 2rem auto; box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1); position: relative; overflow: hidden; }
+        
+        /* STRICT PRINT PAGINATION RULES */
+        @page {
+            size: letter portrait;
+            margin: 0; /* Strips browser default margins, headers, and footers */
+        }
+
+        body { 
+            font-family: 'Inter', sans-serif; 
+            background-color: #f1f5f9; 
+            margin: 0; 
+            padding: 0; 
+        }
+
+        .report-page { 
+            background: white; 
+            width: 8.5in; 
+            min-height: 11in; /* Allows screen view to expand if needed so nothing cuts off */
+            padding: 0.4in 0.6in; /* Tightened padding to maximize printable area */
+            margin: 2rem auto; 
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1); 
+            position: relative; 
+            display: flex; /* Flexbox structure allows mt-auto to anchor footers perfectly */
+            flex-direction: column;
+            box-sizing: border-box; 
+        }
+
         @media print {
-            body { background: white; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
-            .report-page { margin: 0; box-shadow: none; width: 100%; height: 100%; page-break-after: always; }
+            body { 
+                background: white; 
+                -webkit-print-color-adjust: exact !important; 
+                print-color-adjust: exact !important; 
+            }
+            .report-page { 
+                margin: 0 auto; 
+                box-shadow: none; 
+                height: 11in !important; /* Strictly locks to physical paper size */
+                max-height: 11in !important;
+                overflow: hidden !important; /* Prevents tiny pixel spillover to blank 3rd page */
+                page-break-after: always; 
+                page-break-inside: avoid;
+            }
+            .report-page:last-of-type {
+                page-break-after: auto;
+            }
             .no-print { display: none !important; }
         }
+        
         .text-justify { text-align: justify; }
         .border-heavy { border-width: 3px; }
     </style>
@@ -63,10 +104,10 @@ Architecture: Standalone HTML5 / URL-Parameter Data Handoff
 
     <!-- PAGE 1: EXECUTIVE SUMMARY -->
     <div class="report-page border-t-[12px] border-slate-900">
-        <div class="flex justify-between items-start mb-10 border-b-2 border-slate-100 pb-8">
+        <div class="flex justify-between items-start mb-5 border-b-2 border-slate-100 pb-3">
             <div>
                 <h1 class="text-3xl font-black tracking-tighter text-slate-900 italic uppercase">Solar Asset Valuation</h1>
-                <p class="text-[10px] font-bold text-slate-500 uppercase tracking-[0.3em] mt-1">Fair Market Value (FMV) Audit Report</p>
+                <p class="text-[10px] font-bold text-slate-500 uppercase tracking-[0.3em] mt-1">Independent Technical Asset Audit</p>
             </div>
             <div class="text-right">
                 <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Inspection Date</p>
@@ -74,144 +115,145 @@ Architecture: Standalone HTML5 / URL-Parameter Data Handoff
             </div>
         </div>
 
-        <div class="bg-slate-50 p-8 rounded-3xl mb-10 border border-slate-200">
+        <div class="bg-slate-50 p-5 rounded-3xl mb-5 border border-slate-200">
             <div class="grid grid-cols-2 gap-8">
                 <div>
-                    <h4 class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Subject Property Address</h4>
+                    <h4 class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Subject Property Address</h4>
                     <p id="display-address" class="text-xl font-bold text-slate-900 leading-tight"></p>
                 </div>
                 <div class="text-right">
-                    <h4 class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Agreement Structure</h4>
+                    <h4 class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Agreement Structure</h4>
                     <p id="display-ownership" class="text-xl font-bold text-blue-700 leading-tight"></p>
                 </div>
             </div>
         </div>
 
         <!-- THE CONCLUSION HUB -->
-        <div class="grid grid-cols-1 gap-6 mb-10">
-            <div class="bg-slate-900 text-white p-10 rounded-[40px] shadow-xl relative overflow-hidden text-center">
+        <div class="grid grid-cols-1 gap-5 mb-5">
+            <div class="bg-slate-900 text-white p-6 rounded-[32px] shadow-xl relative overflow-hidden text-center">
                 <div class="relative z-10">
-                    <h3 class="text-[11px] font-black text-blue-400 uppercase tracking-[0.4em] mb-4">Conclusion of Market Value</h3>
+                    <h3 class="text-[11px] font-black text-blue-400 uppercase tracking-[0.4em] mb-3">Conclusion of Market Value</h3>
                     <div class="flex items-baseline justify-center gap-4">
-                        <span id="display-fmv" class="text-7xl font-black tracking-tighter italic"></span>
+                        <span id="display-fmv" class="text-6xl font-black tracking-tighter italic"></span>
                         <span class="text-blue-400 font-bold uppercase text-xs tracking-widest">USD</span>
                     </div>
-                    <div class="mt-6 pt-6 border-t border-white/10 flex justify-between items-center">
+                    <div class="mt-4 pt-4 border-t border-white/10 flex justify-between items-center">
                         <div class="flex items-center gap-2">
                             <div class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></div>
                             <span id="display-methodology" class="text-[10px] font-bold uppercase tracking-widest text-slate-400"></span>
                         </div>
-                        <span class="text-[9px] text-slate-500 font-bold uppercase">USPAP Compliant Blended Appraisal</span>
+                        <span class="text-[9px] text-slate-500 font-bold uppercase">Independent Technical Audit</span>
                     </div>
                 </div>
-                <div class="absolute right-[-5%] top-[-10%] text-[180px] text-white/5 rotate-12">
+                <div class="absolute right-[-5%] top-[-10%] text-[150px] text-white/5 rotate-12">
                     <i class="fas fa-balance-scale"></i>
                 </div>
             </div>
         </div>
 
         <!-- THE RANGE (Strategic Pincer) -->
-        <div class="grid grid-cols-2 gap-6 mb-10">
-            <div class="p-8 rounded-3xl border-2 border-slate-100 bg-white shadow-sm">
-                <h4 class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4">Agreement Payoff Burden</h4>
+        <div class="grid grid-cols-2 gap-5 mb-5">
+            <div class="p-5 rounded-3xl border-2 border-slate-100 bg-white shadow-sm">
+                <h4 class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">Agreement Payoff Burden</h4>
                 <p id="display-ceiling" class="text-3xl font-black text-slate-400 line-through decoration-red-500/50"></p>
-                <p class="text-[10px] text-slate-500 font-medium leading-relaxed mt-2 italic text-justify">
+                <p class="text-[10px] text-slate-500 font-medium leading-relaxed mt-1 italic text-justify">
                     Represents the theoretical sum of remaining payments plus hardware purchase fees. This figure excludes time-value of money and real-world asset condition.
                 </p>
             </div>
-            <div class="p-8 rounded-3xl border-2 border-slate-100 bg-white shadow-sm">
-                <h4 class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4">Liquidation Cost Liability</h4>
+            <div class="p-5 rounded-3xl border-2 border-slate-100 bg-white shadow-sm">
+                <h4 class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">Liquidation Cost Liability</h4>
                 <p id="display-floor" class="text-3xl font-black text-slate-800"></p>
-                <p class="text-[10px] text-slate-500 font-medium leading-relaxed mt-2 italic text-justify">
+                <p class="text-[10px] text-slate-500 font-medium leading-relaxed mt-1 italic text-justify">
                     Represents the estimated cost to the provider for decommissioning and removal in the event of an agreement default or non-purchase scenario.
                 </p>
             </div>
         </div>
 
         <!-- DEFERRED MAINTENANCE (STRATEGIC BLOCK) -->
-        <div id="maintenance-block" class="hidden bg-amber-50 p-8 rounded-3xl mb-10 border-2 border-amber-200">
+        <div id="maintenance-block" class="hidden bg-amber-50 p-5 rounded-3xl mb-5 border-2 border-amber-200">
              <div class="flex justify-between items-start">
                  <div>
-                    <h4 class="text-[10px] font-black text-amber-800 uppercase tracking-widest mb-2 flex items-center gap-2"><i class="fas fa-tools"></i> Deferred Maintenance Liability</h4>
-                    <p class="text-sm text-amber-900 font-medium leading-relaxed max-w-lg">
+                    <h4 class="text-[10px] font-black text-amber-800 uppercase tracking-widest mb-1 flex items-center gap-2"><i class="fas fa-tools"></i> Deferred Maintenance Liability</h4>
+                    <p class="text-xs text-amber-900 font-medium leading-relaxed max-w-lg">
                         Onsite inspection identified physical hardware or roof-related deficiencies requiring immediate corrective maintenance. This cost represents a direct deduction from the market value.
                     </p>
                  </div>
                  <div class="text-right">
-                    <p id="display-repair" class="text-3xl font-black text-amber-700 tracking-tighter"></p>
+                    <p id="display-repair" class="text-2xl font-black text-amber-700 tracking-tighter"></p>
                     <p class="text-[9px] font-bold text-amber-600 uppercase tracking-widest">Required Repairs</p>
                  </div>
              </div>
         </div>
 
-        <div class="space-y-6">
-            <h4 class="text-xs font-black text-slate-900 uppercase tracking-widest border-b-2 border-slate-900 pb-2 flex items-center gap-2">
-                <i class="fas fa-info-circle text-blue-600"></i> Appraiser Note on Valuation
+        <div class="space-y-2">
+            <h4 class="text-xs font-black text-slate-900 uppercase tracking-widest border-b-2 border-slate-900 pb-1 flex items-center gap-2">
+                <i class="fas fa-info-circle text-blue-600"></i> Auditor's Note on Technical Valuation
             </h4>
-            <p class="text-sm text-slate-600 leading-relaxed text-justify">
-                The conclusion of value above represents the **Fair Market Value** (FMV) as defined by standard appraisal practices. While the service provider may present a "payoff" figure based on the full value of a 20-year revenue stream, the market reality of used solar equipment attached to real property is governed by actual avoided utility costs and current replacement costs, adjusted for physical and functional depreciation observed onsite. <strong>Furthermore, the Cost Approach explicitly excludes unavailable tax incentives (such as the Federal ITC), and the Income Approach accounts for expected future capital expenditures, including string inverter replacements and battery degradation.</strong>
+            <p class="text-[13px] text-slate-600 leading-relaxed text-justify">
+                The conclusion of value above represents an estimated **Fair Market Value** (FMV) derived from empirical technical asset evaluation standards. While the service provider may present a "payoff" figure based on the full value of a theoretical 20-year revenue stream, the market reality of used solar equipment attached to real property is governed by actual avoided utility costs and current replacement costs, adjusted for physical and functional depreciation observed onsite. <strong>Furthermore, the Cost Approach explicitly excludes unavailable tax incentives (such as the Federal ITC), and the Income Approach accounts for expected future capital expenditures verified during the technical audit.</strong>
             </p>
         </div>
 
-        <div class="mt-auto pt-10 border-t border-slate-100 flex justify-between items-end">
+        <!-- mt-auto anchors this footer exactly to the bottom of the flex container (the 11in page) -->
+        <div class="mt-auto pt-4 border-t border-slate-100 flex justify-between items-end">
             <div>
                 <p class="text-[9px] font-black text-slate-400 uppercase tracking-widest">Document Integrity</p>
                 <p class="text-[10px] font-bold text-slate-700">Audit Ref: <span id="display-ref"></span></p>
             </div>
-            <p class="text-[9px] text-slate-400 font-bold uppercase tracking-widest">SolarCheck Pro | Report v1.08</p>
+            <p class="text-[9px] text-slate-400 font-bold uppercase tracking-widest">SolarCheck Pro | Report v1.11</p>
         </div>
     </div>
 
     <!-- PAGE 2: DATA & AUDIT PROOF -->
-    <div class="report-page">
-        <h3 class="text-xl font-black text-slate-900 uppercase tracking-widest italic mb-6 border-b-4 border-slate-900 pb-4">Identification & Audit Summary</h3>
+    <div class="report-page border-t-[12px] border-slate-900">
+        <h3 class="text-lg font-black text-slate-900 uppercase tracking-widest italic mb-3 border-b-2 border-slate-900 pb-2">Identification & Audit Summary</h3>
         
-        <div class="grid grid-cols-2 gap-8 mb-8">
-            <div class="space-y-6">
+        <div class="grid grid-cols-2 gap-5 mb-4">
+            <div class="space-y-3">
                 <div>
-                    <h4 class="text-xs font-black text-blue-800 uppercase tracking-widest mb-4">Hardware Inventory</h4>
-                    <ul class="space-y-3 text-[11px] font-bold text-slate-700">
-                        <li class="flex justify-between border-b pb-1"><span>PV Modules:</span> <span id="audit-pBrand" class="text-slate-900"></span></li>
-                        <li class="flex justify-between border-b pb-1"><span>Module Count:</span> <span id="audit-pC" class="text-slate-900"></span></li>
-                        <li class="flex justify-between border-b pb-1"><span>Module Watts:</span> <span id="audit-pW" class="text-slate-900"></span></li>
-                        <li class="flex justify-between border-b pb-1"><span>Inverter System:</span> <span id="audit-iBrand" class="text-slate-900"></span></li>
-                        <li class="flex justify-between border-b pb-1"><span>Inverter Type:</span> <span id="audit-iType" class="text-slate-900 uppercase"></span></li>
-                        <li class="flex justify-between pt-1"><span>Total Capacity:</span> <span id="audit-sz" class="text-blue-700 font-black"></span></li>
+                    <h4 class="text-[10px] font-black text-blue-800 uppercase tracking-widest mb-1.5">Hardware Inventory</h4>
+                    <ul class="space-y-1 text-[10px] font-bold text-slate-700">
+                        <li class="flex justify-between border-b pb-0.5"><span>PV Modules:</span> <span id="audit-pBrand" class="text-slate-900"></span></li>
+                        <li class="flex justify-between border-b pb-0.5"><span>Module Count:</span> <span id="audit-pC" class="text-slate-900"></span></li>
+                        <li class="flex justify-between border-b pb-0.5"><span>Module Watts:</span> <span id="audit-pW" class="text-slate-900"></span></li>
+                        <li class="flex justify-between border-b pb-0.5"><span>Inverter System:</span> <span id="audit-iBrand" class="text-slate-900"></span></li>
+                        <li class="flex justify-between border-b pb-0.5"><span>Inverter Type:</span> <span id="audit-iType" class="text-slate-900 uppercase"></span></li>
+                        <li class="flex justify-between pt-0.5"><span>Total Capacity:</span> <span id="audit-sz" class="text-blue-700 font-black"></span></li>
                     </ul>
                 </div>
                 <div>
-                    <h4 class="text-xs font-black text-blue-800 uppercase tracking-widest mb-4">Agreement Context</h4>
-                    <ul class="space-y-3 text-[11px] font-bold text-slate-700">
-                        <li class="flex justify-between border-b pb-1"><span>System Age:</span> <span id="audit-age" class="text-slate-900"></span></li>
-                        <li class="flex justify-between border-b pb-1"><span>Useful Life Remaining:</span> <span id="audit-rem" class="text-slate-900"></span></li>
-                        <li class="flex justify-between border-b pb-1"><span>Discount Rate Applied:</span> <span id="audit-dr" class="text-slate-900"></span></li>
-                        <li class="flex justify-between pt-1"><span>Physical Condition:</span> <span id="audit-cond" class="text-slate-900"></span></li>
+                    <h4 class="text-[10px] font-black text-blue-800 uppercase tracking-widest mb-1.5">Agreement Context</h4>
+                    <ul class="space-y-1 text-[10px] font-bold text-slate-700">
+                        <li class="flex justify-between border-b pb-0.5"><span>System Age:</span> <span id="audit-age" class="text-slate-900"></span></li>
+                        <li class="flex justify-between border-b pb-0.5"><span>Useful Life Remaining:</span> <span id="audit-rem" class="text-slate-900"></span></li>
+                        <li class="flex justify-between border-b pb-0.5"><span>Discount Rate Applied:</span> <span id="audit-dr" class="text-slate-900"></span></li>
+                        <li class="flex justify-between pt-0.5"><span>Physical Condition:</span> <span id="audit-cond" class="text-slate-900"></span></li>
                     </ul>
                 </div>
             </div>
 
-            <div class="bg-slate-50 p-6 rounded-[32px] border border-slate-200">
-                <h4 class="text-xs font-black text-slate-800 uppercase tracking-widest mb-6">Performance Audit Proof</h4>
-                <div class="space-y-6">
+            <div class="bg-slate-50 p-4 rounded-3xl border border-slate-200">
+                <h4 class="text-[10px] font-black text-slate-800 uppercase tracking-widest mb-2.5">Performance Audit Proof</h4>
+                <div class="space-y-2">
                     <div class="flex justify-between items-center">
-                        <span class="text-[10px] font-bold text-slate-500 uppercase tracking-tight">Metered Production (Lifetime)</span>
-                        <span id="audit-act" class="text-base font-black text-slate-900"></span>
+                        <span class="text-[9px] font-bold text-slate-500 uppercase tracking-tight">Metered Production (Lifetime)</span>
+                        <span id="audit-act" class="text-sm font-black text-slate-900"></span>
                     </div>
                     <div class="flex justify-between items-center">
-                        <span class="text-[10px] font-bold text-slate-500 uppercase tracking-tight">Technical Benchmark</span>
-                        <span id="audit-bench" class="text-base font-black text-slate-900"></span>
+                        <span class="text-[9px] font-bold text-slate-500 uppercase tracking-tight">Technical Benchmark</span>
+                        <span id="audit-bench" class="text-sm font-black text-slate-900"></span>
                     </div>
-                    <div class="pt-4 border-t-2 border-slate-200 flex justify-between items-start">
+                    <div class="pt-2 border-t-2 border-slate-200 flex justify-between items-start">
                         <div>
-                            <p class="text-[9px] font-black text-amber-700 uppercase tracking-widest">Energy Shortfall</p>
-                            <p id="audit-shortfall" class="text-xl font-black text-amber-600 tracking-tighter"></p>
+                            <p class="text-[8px] font-black text-amber-700 uppercase tracking-widest">Energy Shortfall</p>
+                            <p id="audit-shortfall" class="text-lg font-black text-amber-600 tracking-tighter"></p>
                         </div>
                         <div class="text-right">
-                            <p class="text-[9px] font-black text-amber-700 uppercase tracking-widest">True-Up Value</p>
-                            <p id="audit-trueUp" class="text-xl font-black text-amber-600 tracking-tighter"></p>
+                            <p class="text-[8px] font-black text-amber-700 uppercase tracking-widest">True-Up Value</p>
+                            <p id="audit-trueUp" class="text-lg font-black text-amber-600 tracking-tighter"></p>
                         </div>
                     </div>
-                    <p class="text-[8px] text-slate-500 font-medium leading-relaxed italic mt-4">
+                    <p class="text-[8px] text-slate-500 font-medium leading-relaxed italic mt-1">
                         *Production shortfall indicates a technical variance from the technical benchmark. This value represents an immediate financial liability for the provider under standard agreement terms.
                     </p>
                 </div>
@@ -219,56 +261,64 @@ Architecture: Standalone HTML5 / URL-Parameter Data Handoff
         </div>
 
         <!-- UNDERWRITING ASSUMPTIONS SCHEDULE -->
-        <div class="mb-8">
-            <h4 class="text-xs font-black text-slate-900 uppercase tracking-widest mb-4 border-b-2 border-slate-900 pb-2">Underwriting Assumptions Schedule</h4>
-            <div class="grid grid-cols-2 gap-6 bg-white p-6 rounded-3xl border-2 border-slate-100 shadow-sm">
-                <ul class="space-y-3 text-[11px] font-bold text-slate-700">
-                    <li class="flex justify-between border-b border-slate-50 pb-1"><span>Federal ITC Exclusion (Cost Basis):</span> <span id="assump-itc" class="text-slate-900"></span></li>
-                    <li class="flex justify-between border-b border-slate-50 pb-1"><span>Utility Escalation Cap (Income Basis):</span> <span id="assump-esccap" class="text-slate-900"></span></li>
+        <div class="mb-4">
+            <h4 class="text-[10px] font-black text-slate-900 uppercase tracking-widest mb-2 border-b-2 border-slate-900 pb-1">Underwriting Assumptions Schedule</h4>
+            <div class="grid grid-cols-2 gap-4 bg-white p-4 rounded-2xl border-2 border-slate-100 shadow-sm">
+                <ul class="space-y-1.5 text-[10px] font-bold text-slate-700">
+                    <li class="flex justify-between border-b border-slate-50 pb-0.5"><span>Federal ITC Exclusion:</span> <span id="assump-itc" class="text-slate-900"></span></li>
+                    <li class="flex justify-between border-b border-slate-50 pb-0.5"><span>Utility Escalation Cap:</span> <span id="assump-esccap" class="text-slate-900"></span></li>
                 </ul>
-                <ul class="space-y-3 text-[11px] font-bold text-slate-700">
-                    <li class="flex justify-between border-b border-slate-50 pb-1"><span>Future CapEx Liability (Inverter):</span> <span id="assump-capex" class="text-slate-900"></span></li>
-                    <li class="flex justify-between border-b border-slate-50 pb-1"><span>Expected Battery Degradation:</span> <span id="assump-batdeg" class="text-slate-900"></span></li>
+                <ul class="space-y-1.5 text-[10px] font-bold text-slate-700">
+                    <li class="flex justify-between border-b border-slate-50 pb-0.5"><span>Future CapEx (Inverter):</span> <span id="assump-capex" class="text-slate-900"></span></li>
+                    <li id="assump-bat-row" class="flex justify-between border-b border-slate-50 pb-0.5"><span>Expected Battery Deg.:</span> <span id="assump-batdeg" class="text-slate-900"></span></li>
                 </ul>
             </div>
-            <p class="text-[9px] text-slate-500 font-medium leading-relaxed italic mt-3 text-justify">
-                *The assumptions listed above represent strict, defensible limits applied to the Discounted Cash Flow (DCF) and Replacement Cost New (RCN) models to account for real-world equipment degradation, finite tax incentives, and standard capital expenditure requirements.
+            <p class="text-[8px] text-slate-500 font-medium leading-relaxed italic mt-2 text-justify">
+                *Assumptions represent strict, defensible limits applied to the Discounted Cash Flow (DCF) and Replacement Cost New (RCN) models to account for real-world equipment degradation, finite tax incentives, and standard capital expenditure requirements verified on-site.
             </p>
         </div>
 
-        <div class="grid grid-cols-2 gap-8 mb-8">
-            <div class="p-6 bg-slate-50 rounded-2xl border border-slate-200">
-                <h5 class="text-[10px] font-black text-slate-900 uppercase tracking-widest mb-2 italic">Cost Approach Basis</h5>
-                <p id="basis-cost" class="text-2xl font-black text-slate-700"></p>
-                <p class="text-[9px] text-slate-500 mt-2 leading-snug">Calculated based on current "Replacement Cost New" (RCN) adjusted for physical and functional depreciation of hardware.</p>
+        <div class="grid grid-cols-2 gap-4 mb-4">
+            <div class="p-4 bg-slate-50 rounded-2xl border border-slate-200">
+                <h5 class="text-[9px] font-black text-slate-900 uppercase tracking-widest mb-1 italic">Cost Approach Basis</h5>
+                <p id="basis-cost" class="text-xl font-black text-slate-700"></p>
+                <p class="text-[8px] text-slate-500 mt-1 leading-snug">Calculated based on current "Replacement Cost New" (RCN) adjusted for physical and functional depreciation.</p>
             </div>
-            <div class="p-6 bg-slate-50 rounded-2xl border border-slate-200">
-                <h5 class="text-[10px] font-black text-slate-900 uppercase tracking-widest mb-2 italic">Income Approach Basis</h5>
-                <p id="basis-inc" class="text-2xl font-black text-green-700"></p>
-                <p class="text-[9px] text-slate-500 mt-2 leading-snug">Calculated using a Discounted Cash Flow (DCF) analysis of avoided utility costs minus remaining liabilities.</p>
+            <div class="p-4 bg-slate-50 rounded-2xl border border-slate-200">
+                <h5 class="text-[9px] font-black text-slate-900 uppercase tracking-widest mb-1 italic">Income Approach Basis</h5>
+                <p id="basis-inc" class="text-xl font-black text-green-700"></p>
+                <p class="text-[8px] text-slate-500 mt-1 leading-snug">Calculated using a Discounted Cash Flow (DCF) analysis of avoided utility costs minus remaining liabilities.</p>
             </div>
+        </div>
+
+        <!-- RECONCILIATION BLOCK -->
+        <div class="mb-4 p-4 bg-slate-900 rounded-2xl shadow-sm border border-slate-800">
+            <h5 class="text-[9px] font-black text-blue-400 uppercase tracking-widest mb-1.5 flex items-center gap-2">
+                <i class="fas fa-calculator"></i> Valuation Reconciliation Logic
+            </h5>
+            <p id="reconciliation-text" class="text-[10px] text-slate-300 leading-relaxed text-justify"></p>
         </div>
 
         <!-- CERTIFICATION SECTION -->
-        <div class="mt-auto p-8 border-heavy border-slate-900 rounded-3xl">
-            <h4 class="text-xs font-black text-slate-900 uppercase tracking-widest mb-4">Certification of Accuracy</h4>
-            <p class="text-[11px] text-slate-600 leading-relaxed italic mb-6">
-                I certify that, to the best of my knowledge and belief, the statements of fact contained in this report are true and correct. The reported analyses, opinions, and conclusions are limited only by the reported assumptions and limiting conditions and are my personal, impartial, and unbiased professional analyses, opinions, and conclusions.
+        <div class="mt-auto p-4 border-heavy border-slate-900 rounded-2xl">
+            <h4 class="text-[10px] font-black text-slate-900 uppercase tracking-widest mb-1.5">Certification of Technical Accuracy</h4>
+            <p class="text-[9px] text-slate-600 leading-relaxed italic mb-3">
+                I certify that, to the best of my knowledge and belief, the technical statements of fact contained in this report are true and correct. The reported analyses, opinions, and conclusions are limited only by the reported assumptions and limiting conditions and are my personal, impartial, and unbiased professional technical analyses, opinions, and conclusions.
             </p>
             <div class="flex justify-between items-end gap-10">
-                <div class="flex-1 border-b-2 border-slate-300 pb-2">
-                    <p id="display-cert-company" class="text-sm font-black text-slate-900 uppercase tracking-tighter italic"></p>
-                    <p class="text-[9px] font-black text-slate-400 uppercase tracking-widest mt-1">Authorized Certifying Agency</p>
+                <div class="flex-1 border-b-2 border-slate-300 pb-1">
+                    <p id="display-cert-company" class="text-[11px] font-black text-slate-900 uppercase tracking-tighter italic"></p>
+                    <p class="text-[8px] font-black text-slate-400 uppercase tracking-widest mt-1">Certifying Technical Agency</p>
                 </div>
-                <div class="flex-1 border-b-2 border-slate-300 pb-2">
-                    <p id="display-cert-date" class="text-sm font-bold text-slate-900"></p>
-                    <p class="text-[9px] font-black text-slate-400 uppercase tracking-widest mt-1">Date of Certification</p>
+                <div class="flex-1 border-b-2 border-slate-300 pb-1">
+                    <p id="display-cert-date" class="text-[11px] font-bold text-slate-900"></p>
+                    <p class="text-[8px] font-black text-slate-400 uppercase tracking-widest mt-1">Date of Certification</p>
                 </div>
             </div>
             <!-- GENERAL DISCLAIMER -->
-            <div class="disclaimer-section" style="font-size: 0.75rem; color: #666; margin-top: 30px; border-top: 1px solid #ccc; padding-top: 15px; text-align: justify; line-height: 1.4;">
+            <div class="disclaimer-section" style="font-size: 0.55rem; color: #666; margin-top: 10px; border-top: 1px solid #ccc; padding-top: 8px; text-align: justify; line-height: 1.2;">
                 <strong>Statement of Limiting Conditions</strong><br>
-                This Fair Market Value (FMV) audit represents an independent appraisal based on the Principle of Substitution, current replacement costs, and discounted cash flow models. While the data herein is verified by a licensed solar inspection professional, this document does not constitute a legal review of contractual obligations, nor does it guarantee buyout acceptance or specific settlement figures by third-party owners (TPOs). Assumed underwriting variables—including utility escalation caps, hardware lifecycle estimates, and tax incentive exclusions—are applied to simulate fair market conditions but may vary from actual future events. This report is not intended to serve as formal tax, legal, or actuarial counsel.
+                This Fair Market Value (FMV) audit represents an independent technical asset valuation based on the Principle of Substitution, current replacement costs, and discounted cash flow models. This document relies on empirical hardware inspection and metered system performance to ground financial assumptions in physical reality. It is not an appraisal governed by USPAP guidelines, but rather a technical engineering audit intended to facilitate fair market negotiations by establishing the verified operating condition of the system. While the data herein is verified by a licensed solar inspection professional, this document does not constitute a legal review of contractual obligations, nor does it guarantee buyout acceptance or specific settlement figures by third-party owners (TPOs). Assumed underwriting variables—including utility escalation caps, hardware lifecycle estimates, and tax incentive exclusions—are applied to simulate fair market conditions but may vary from actual future events. This report is not intended to serve as formal tax, legal, or actuarial counsel.
             </div>
         </div>
     </div>
@@ -309,7 +359,23 @@ Architecture: Standalone HTML5 / URL-Parameter Data Handoff
 
             // Methodology Text
             const w = parseFloat(data.w) || 0;
-            document.getElementById('display-methodology').innerText = w === 100 ? 'Income Approach' : w === 0 ? 'Cost Approach' : `Blended Appraisal (${w}% Income)`;
+            document.getElementById('display-methodology').innerText = w === 100 ? 'Income Approach' : w === 0 ? 'Cost Approach' : `Blended Valuation (${w}% Income)`;
+
+            // Reconciliation Logic Text
+            const incWeight = w;
+            const costWeight = 100 - w;
+            let recText = "";
+            if (incWeight === 100) {
+                recText = "The final Conclusion of Market Value relies entirely on the Income Approach (100% weighting). This reflects the active service agreement status while strictly discounting for physical degradation, energy shortfalls, and future CapEx verified during the onsite technical inspection.";
+            } else if (costWeight === 100) {
+                recText = "The final Conclusion of Market Value relies entirely on the Cost Approach (100% weighting). This reflects the asset's current physical state, stripping unavailable tax incentives (ITC) and applying depreciation based on verified onsite hardware conditions.";
+            } else {
+                recText = `The final Conclusion of Market Value mathematically reconciles both methodologies. It applies a ${incWeight}% weight to the Income Approach to reflect the active agreement status, and a ${costWeight}% weight to the Cost Approach to anchor the valuation in the physical reality of depreciated, used hardware. This blended approach ensures the theoretical financial models are corrected by verified onsite technical data.`;
+            }
+            if (repairVal > 0) {
+                recText += ` A strict, empirical deduction of ${cur(repairVal)} was then applied to account for the immediate corrective maintenance and deferred liabilities verified onsite.`;
+            }
+            document.getElementById('reconciliation-text').innerText = recText;
 
             // Ownership Logic
             const om = { owned: "Homeowner Owned", lease: "Third-Party Lease", ppa: "Third-Party PPA", prepaid_lease: "Prepaid Lease", prepaid_ppa: "Prepaid PPA" };
@@ -337,7 +403,15 @@ Architecture: Standalone HTML5 / URL-Parameter Data Handoff
             // Underwriting Assumptions Schedule
             document.getElementById('assump-itc').innerText = (data.itc || '30') + '% (Stripped from RCN)';
             document.getElementById('assump-esccap').innerText = 'Capped at Year ' + (data.escCap || '10');
-            document.getElementById('assump-batdeg').innerText = (data.batDeg || '2') + '% Annually';
+            
+            // Battery Conditional Logic
+            if (data.batDeg && parseFloat(data.batDeg) > 0) {
+                document.getElementById('assump-batdeg').innerText = data.batDeg + '% Annually';
+            } else if (data.batBrand || data.batCap || data.batType) {
+                document.getElementById('assump-batdeg').innerText = (data.batDeg || '2') + '% Annually';
+            } else {
+                document.getElementById('assump-bat-row').style.display = 'none';
+            }
             
             const iTypeStr = (data.iType || 'String').toLowerCase();
             if (iTypeStr === 'string') {
