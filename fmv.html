@@ -1,7 +1,7 @@
 <!-- 
 ================================================================================
 PROJECT CONTEXT: SolarCheck Professional - FMV REPORT MODULE
-Current Version: v1.11 (STRATEGIC HANDOFF RECEIVER - RESPONSIVE & PRINT OPTIMIZED)
+Current Version: v1.12 (STRATEGIC HANDOFF RECEIVER - RESPONSIVE & PRINT OPTIMIZED)
 Date: July 2026
 Architecture: Standalone HTML5 / URL-Parameter Data Handoff
 ================================================================================
@@ -34,7 +34,7 @@ Architecture: Standalone HTML5 / URL-Parameter Data Handoff
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Professional Solar Valuation Report v1.11</title>
+    <title>Professional Solar Valuation Report v1.12</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
@@ -200,7 +200,7 @@ Architecture: Standalone HTML5 / URL-Parameter Data Handoff
                 <p class="text-[9px] font-black text-slate-400 uppercase tracking-widest">Document Integrity</p>
                 <p class="text-[10px] font-bold text-slate-700">Audit Ref: <span id="display-ref"></span></p>
             </div>
-            <p class="text-[9px] text-slate-400 font-bold uppercase tracking-widest">SolarCheck Pro | Report v1.11</p>
+            <p class="text-[9px] text-slate-400 font-bold uppercase tracking-widest">SolarCheck Pro | Report v1.12</p>
         </div>
     </div>
 
@@ -404,10 +404,16 @@ Architecture: Standalone HTML5 / URL-Parameter Data Handoff
             document.getElementById('assump-itc').innerText = (data.itc || '30') + '% (Stripped from RCN)';
             document.getElementById('assump-esccap').innerText = 'Capped at Year ' + (data.escCap || '10');
             
-            // Battery Conditional Logic
-            if (data.batDeg && parseFloat(data.batDeg) > 0) {
-                document.getElementById('assump-batdeg').innerText = data.batDeg + '% Annually';
-            } else if (data.batBrand || data.batCap || data.batType) {
+            // STRICT BATTERY CONDITIONAL LOGIC (v1.12)
+            const batCap = parseFloat(data.batCap) || 0;
+            const batBrand = (data.batBrand || '').trim().toLowerCase();
+            const batType = (data.batType || '').trim().toLowerCase();
+            
+            const hasBattery = batCap > 0 || 
+                               (batBrand !== '' && batBrand !== 'n/a' && batBrand !== 'none') || 
+                               (batType !== '' && batType !== 'n/a' && batType !== 'none');
+            
+            if (hasBattery) {
                 document.getElementById('assump-batdeg').innerText = (data.batDeg || '2') + '% Annually';
             } else {
                 document.getElementById('assump-bat-row').style.display = 'none';
