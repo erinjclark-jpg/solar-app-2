@@ -1,7 +1,7 @@
 <!-- 
 ================================================================================
 PROJECT CONTEXT: SolarCheck Professional - FMV REPORT MODULE
-Current Version: v1.13 (STRATEGIC HANDOFF RECEIVER - RESPONSIVE & PRINT OPTIMIZED)
+Current Version: v1.14 (STRATEGIC HANDOFF RECEIVER - RESPONSIVE & PRINT OPTIMIZED)
 Date: August 2026
 Architecture: Standalone HTML5 / URL-Parameter Data Handoff
 ================================================================================
@@ -24,7 +24,8 @@ Architecture: Standalone HTML5 / URL-Parameter Data Handoff
 3. REPORT SECTIONS (LOCKED)
    - EXECUTIVE SUMMARY: Conclusion of Market Value (The FMV Result).
    - STRATEGIC COMPARISON: Contrasting Prepayment Liability vs. Net FMV.
-   - DEFERRED MAINTENANCE: Hard-dollar deductions for verified onsite repairs.
+   - DEFERRED MAINTENANCE: Hard-dollar deductions for verified onsite repairs, 
+     including multi-defect categorization and custom inspector notes.
    - RECONCILIATION LEDGER: Line-by-line mathematical waterfall of all deductions.
    - CERTIFICATION: Official signature and agency branding.
 ================================================================================
@@ -34,7 +35,7 @@ Architecture: Standalone HTML5 / URL-Parameter Data Handoff
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Professional Solar Valuation Report v1.13</title>
+    <title>Professional Solar Valuation Report v1.14</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
@@ -159,7 +160,7 @@ Architecture: Standalone HTML5 / URL-Parameter Data Handoff
 
         <!-- DEFERRED MAINTENANCE (STRATEGIC BLOCK) -->
         <div id="maintenance-block" class="hidden bg-amber-50 p-5 rounded-3xl mb-5 border-2 border-amber-200">
-             <div class="flex justify-between items-start">
+             <div class="flex justify-between items-start mb-3">
                  <div>
                     <h4 class="text-[10px] font-black text-amber-800 uppercase tracking-widest mb-1 flex items-center gap-2"><i class="fas fa-tools"></i> Deferred Maintenance Liability</h4>
                     <p class="text-xs text-amber-900 font-medium leading-relaxed max-w-lg">
@@ -169,6 +170,18 @@ Architecture: Standalone HTML5 / URL-Parameter Data Handoff
                  <div class="text-right">
                     <p id="display-repair" class="text-2xl font-black text-amber-700 tracking-tighter"></p>
                     <p class="text-[9px] font-bold text-amber-600 uppercase tracking-widest">Required Repairs</p>
+                 </div>
+             </div>
+             <div class="pt-3 border-t border-amber-200/50">
+                 <div class="grid grid-cols-2 gap-4">
+                     <div>
+                         <h5 class="text-[9px] font-black text-amber-800 uppercase tracking-widest mb-1">Identified Defect Categories:</h5>
+                         <ul id="display-def-types" class="list-disc list-inside text-[10px] text-amber-900 font-medium ml-2"></ul>
+                     </div>
+                     <div>
+                         <h5 class="text-[9px] font-black text-amber-800 uppercase tracking-widest mb-1">Inspector Context Notes:</h5>
+                         <p id="display-def-notes" class="text-[10px] text-amber-900 italic leading-relaxed"></p>
+                     </div>
                  </div>
              </div>
         </div>
@@ -188,7 +201,7 @@ Architecture: Standalone HTML5 / URL-Parameter Data Handoff
                 <p class="text-[9px] font-black text-slate-400 uppercase tracking-widest">Document Integrity</p>
                 <p class="text-[10px] font-bold text-slate-700">Audit Ref: <span id="display-ref"></span></p>
             </div>
-            <p class="text-[9px] text-slate-400 font-bold uppercase tracking-widest">SolarCheck Pro | Report v1.13</p>
+            <p class="text-[9px] text-slate-400 font-bold uppercase tracking-widest">SolarCheck Pro | Report v1.14</p>
         </div>
     </div>
 
@@ -321,6 +334,15 @@ Architecture: Standalone HTML5 / URL-Parameter Data Handoff
         const cur = (v) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(v || 0);
         const num = (v) => new Intl.NumberFormat('en-US', { maximumFractionDigits: 1 }).format(v || 0);
         
+        const DEFECT_MAP = {
+            'wire': 'Wire Management Failure (Conductor Abrasion / Fire Hazard)',
+            'weather': 'Compromised Weatherproofing (Water Intrusion Risk)',
+            'mech': 'Mechanical / Racking Failure (Wind Uplift Risk)',
+            'thermal': 'Thermal Anomalies (Hotspot / Arc-Fault Risk)',
+            'ground': 'Grounding Continuity Failure (Electrical Shock Hazard)',
+            'other': 'Other Documented Physical Defect'
+        };
+
         function init() {
             const params = new URLSearchParams(window.location.search);
             const data = {};
@@ -343,11 +365,28 @@ Architecture: Standalone HTML5 / URL-Parameter Data Handoff
             document.getElementById('display-fmv').innerText = cur(data.fmv);
             document.getElementById('display-ceiling').innerText = cur(data.ceiling);
             
-            // Repair Data
+            // Defect & Repair Data Parsing
             const repairVal = parseFloat(data.repair) || 0;
             if (repairVal > 0) {
                 document.getElementById('maintenance-block').classList.remove('hidden');
                 document.getElementById('display-repair').innerText = "- " + cur(repairVal);
+                
+                const defectKeys = (data.defTypes || '').split(',').filter(k => k && k !== 'none');
+                const ul = document.getElementById('display-def-types');
+                
+                if (defectKeys.length > 0) {
+                    defectKeys.forEach(k => {
+                        if(DEFECT_MAP[k]) {
+                            const li = document.createElement('li');
+                            li.innerText = DEFECT_MAP[k];
+                            ul.appendChild(li);
+                        }
+                    });
+                } else {
+                    ul.innerHTML = "<li>No specific categories selected.</li>";
+                }
+                
+                document.getElementById('display-def-notes').innerText = data.defNotes || 'No additional context provided.';
             }
 
             // Methodology Text
@@ -383,7 +422,7 @@ Architecture: Standalone HTML5 / URL-Parameter Data Handoff
             document.getElementById('assump-om').innerText = cur(data.omRes || 21) + ' / kW / Year';
             document.getElementById('assump-obs').innerText = (data.obsPct || '0') + '% Hardware Penalty';
             
-            // STRICT BATTERY CONDITIONAL LOGIC (v1.13)
+            // STRICT BATTERY CONDITIONAL LOGIC
             const batCap = parseFloat(data.batCap) || 0;
             const batBrand = (data.batBrand || '').trim().toLowerCase();
             const batType = (data.batType || '').trim().toLowerCase();
