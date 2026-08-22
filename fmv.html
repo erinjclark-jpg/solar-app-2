@@ -1,7 +1,7 @@
 <!-- 
 ================================================================================
 PROJECT CONTEXT: SolarCheck Professional - FMV REPORT MODULE
-Current Version: v1.18 (STRATEGIC HANDOFF RECEIVER - RESPONSIVE & PRINT OPTIMIZED)
+Current Version: v1.19 (STRATEGIC HANDOFF RECEIVER - RESPONSIVE & PRINT OPTIMIZED)
 Date: August 2026
 Architecture: Standalone HTML5 / URL-Parameter Data Handoff
 ================================================================================
@@ -35,7 +35,7 @@ Architecture: Standalone HTML5 / URL-Parameter Data Handoff
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Professional Solar Valuation Report v1.18</title>
+    <title>Professional Solar Valuation Report v1.19</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
@@ -201,7 +201,7 @@ Architecture: Standalone HTML5 / URL-Parameter Data Handoff
                 <p class="text-[9px] font-black text-slate-400 uppercase tracking-widest">Document Integrity</p>
                 <p class="text-[10px] font-bold text-slate-700">Audit Ref: <span id="display-ref"></span></p>
             </div>
-            <p class="text-[9px] text-slate-400 font-bold uppercase tracking-widest">SolarCheck Pro | Report v1.18</p>
+            <p class="text-[9px] text-slate-400 font-bold uppercase tracking-widest">SolarCheck Pro | Report v1.19</p>
         </div>
     </div>
 
@@ -418,12 +418,13 @@ Architecture: Standalone HTML5 / URL-Parameter Data Handoff
             document.getElementById('audit-iType').innerText = data.iType || 'String';
             document.getElementById('audit-sz').innerText = (data.sz || '0') + ' kW DC';
             
-            // Dynamic Battery Injection
+            // Dynamic Battery Injection & Detection
             const batCap = parseFloat(data.batCap) || 0;
             const batBrand = (data.batBrand || '').trim();
             const batMode = (data.batMode || '').trim();
+            const hasBattery = batCap > 0 || (batBrand && batBrand.toLowerCase() !== 'n/a' && batBrand.toLowerCase() !== 'none');
 
-            if (batCap > 0 || (batBrand && batBrand.toLowerCase() !== 'n/a' && batBrand.toLowerCase() !== 'none')) {
+            if (hasBattery) {
                 const ul = document.getElementById('hardware-inventory-list');
                 
                 ul.innerHTML += `
@@ -451,7 +452,7 @@ Architecture: Standalone HTML5 / URL-Parameter Data Handoff
             document.getElementById('assump-obs').innerText = (data.obsPct || '0') + '% Hardware Penalty';
             
             // STRICT BATTERY CONDITIONAL LOGIC FOR ASSUMPTIONS
-            if (batCap > 0 || (batBrand && batBrand.toLowerCase() !== 'n/a' && batBrand.toLowerCase() !== 'none')) {
+            if (hasBattery) {
                 document.getElementById('assump-batdeg').innerText = (data.batDeg || '2') + '% Annually';
             } else {
                 document.getElementById('assump-bat-row').style.display = 'none';
