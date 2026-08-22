@@ -1,7 +1,7 @@
 <!-- 
 ================================================================================
 PROJECT CONTEXT: SolarCheck Professional - FMV REPORT MODULE
-Current Version: v1.14 (STRATEGIC HANDOFF RECEIVER - RESPONSIVE & PRINT OPTIMIZED)
+Current Version: v1.16 (STRATEGIC HANDOFF RECEIVER - RESPONSIVE & PRINT OPTIMIZED)
 Date: August 2026
 Architecture: Standalone HTML5 / URL-Parameter Data Handoff
 ================================================================================
@@ -23,7 +23,7 @@ Architecture: Standalone HTML5 / URL-Parameter Data Handoff
 
 3. REPORT SECTIONS (LOCKED)
    - EXECUTIVE SUMMARY: Conclusion of Market Value (The FMV Result).
-   - STRATEGIC COMPARISON: Contrasting Prepayment Liability vs. Net FMV.
+   - STRATEGIC COMPARISON: Contrasting Initial TPO Quote vs. Net FMV.
    - DEFERRED MAINTENANCE: Hard-dollar deductions for verified onsite repairs, 
      including multi-defect categorization and custom inspector notes.
    - RECONCILIATION LEDGER: Line-by-line mathematical waterfall of all deductions.
@@ -35,7 +35,7 @@ Architecture: Standalone HTML5 / URL-Parameter Data Handoff
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Professional Solar Valuation Report v1.14</title>
+    <title>Professional Solar Valuation Report v1.16</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
@@ -132,10 +132,10 @@ Architecture: Standalone HTML5 / URL-Parameter Data Handoff
         <!-- THE RANGE (Strategic Comparison) -->
         <div class="grid grid-cols-2 gap-5 mb-5">
             <div class="p-6 rounded-3xl border-2 border-slate-200 bg-slate-50 shadow-sm text-center flex flex-col justify-center">
-                <h4 class="text-[11px] font-black text-slate-500 uppercase tracking-widest mb-2">Full Prepayment Liability</h4>
+                <h4 class="text-[11px] font-black text-slate-500 uppercase tracking-widest mb-2">Initial Provider Buyout Demand</h4>
                 <p id="display-ceiling" class="text-4xl font-black text-slate-400 line-through decoration-red-500/60"></p>
                 <p class="text-[9px] text-slate-500 font-medium leading-relaxed mt-2 italic text-center px-4">
-                    Discounted Net Present Value of remaining contractual payments. Excludes real-world asset depreciation and unmitigated maintenance liabilities.
+                    Exact buyout demand quoted by the provider. Excludes real-world asset depreciation, physical defects, and unmitigated maintenance liabilities.
                 </p>
             </div>
             
@@ -178,7 +178,7 @@ Architecture: Standalone HTML5 / URL-Parameter Data Handoff
                          <h5 class="text-[9px] font-black text-amber-800 uppercase tracking-widest mb-1">Identified Defect Categories:</h5>
                          <ul id="display-def-types" class="list-disc list-inside text-[10px] text-amber-900 font-medium ml-2"></ul>
                      </div>
-                     <div>
+                     <div id="notes-container">
                          <h5 class="text-[9px] font-black text-amber-800 uppercase tracking-widest mb-1">Inspector Context Notes:</h5>
                          <p id="display-def-notes" class="text-[10px] text-amber-900 italic leading-relaxed"></p>
                      </div>
@@ -201,7 +201,7 @@ Architecture: Standalone HTML5 / URL-Parameter Data Handoff
                 <p class="text-[9px] font-black text-slate-400 uppercase tracking-widest">Document Integrity</p>
                 <p class="text-[10px] font-bold text-slate-700">Audit Ref: <span id="display-ref"></span></p>
             </div>
-            <p class="text-[9px] text-slate-400 font-bold uppercase tracking-widest">SolarCheck Pro | Report v1.14</p>
+            <p class="text-[9px] text-slate-400 font-bold uppercase tracking-widest">SolarCheck Pro | Report v1.16</p>
         </div>
     </div>
 
@@ -213,13 +213,13 @@ Architecture: Standalone HTML5 / URL-Parameter Data Handoff
             <div class="space-y-3">
                 <div>
                     <h4 class="text-[10px] font-black text-blue-800 uppercase tracking-widest mb-1.5">Hardware Inventory</h4>
-                    <ul class="space-y-1 text-[10px] font-bold text-slate-700">
+                    <ul id="hardware-inventory-list" class="space-y-1 text-[10px] font-bold text-slate-700">
                         <li class="flex justify-between border-b pb-0.5"><span>PV Modules:</span> <span id="audit-pBrand" class="text-slate-900"></span></li>
                         <li class="flex justify-between border-b pb-0.5"><span>Module Count:</span> <span id="audit-pC" class="text-slate-900"></span></li>
                         <li class="flex justify-between border-b pb-0.5"><span>Module Watts:</span> <span id="audit-pW" class="text-slate-900"></span></li>
                         <li class="flex justify-between border-b pb-0.5"><span>Inverter System:</span> <span id="audit-iBrand" class="text-slate-900"></span></li>
                         <li class="flex justify-between border-b pb-0.5"><span>Inverter Type:</span> <span id="audit-iType" class="text-slate-900 uppercase"></span></li>
-                        <li class="flex justify-between pt-0.5"><span>Total Capacity:</span> <span id="audit-sz" class="text-blue-700 font-black"></span></li>
+                        <li class="flex justify-between pt-0.5"><span>Total Solar Capacity:</span> <span id="audit-sz" class="text-blue-700 font-black"></span></li>
                     </ul>
                 </div>
                 <div>
@@ -268,6 +268,7 @@ Architecture: Standalone HTML5 / URL-Parameter Data Handoff
                 <ul class="space-y-1.5 text-[10px] font-bold text-slate-700">
                     <li class="flex justify-between border-b border-slate-50 pb-0.5"><span>Federal ITC Exclusion:</span> <span id="assump-itc" class="text-slate-900"></span></li>
                     <li class="flex justify-between border-b border-slate-50 pb-0.5"><span>Utility Escalation Cap:</span> <span id="assump-esccap" class="text-slate-900"></span></li>
+                    <li class="flex justify-between border-b border-slate-50 pb-0.5"><span>SREC / Market Rev:</span> <span id="assump-srec" class="text-slate-900"></span></li>
                     <li class="flex justify-between border-b border-slate-50 pb-0.5"><span>Annual O&M Reserve:</span> <span id="assump-om" class="text-slate-900"></span></li>
                 </ul>
                 <ul class="space-y-1.5 text-[10px] font-bold text-slate-700">
@@ -277,7 +278,7 @@ Architecture: Standalone HTML5 / URL-Parameter Data Handoff
                 </ul>
             </div>
             <p class="text-[8px] text-slate-500 font-medium leading-relaxed italic mt-2 text-justify">
-                *Assumptions represent strict, defensible limits applied to the Discounted Cash Flow (DCF) and Replacement Cost New (RCN) models to account for real-world equipment degradation, finite tax incentives, and standard capital expenditure requirements verified on-site.
+                *Assumptions represent strict, defensible limits applied to the Discounted Cash Flow (DCF) and Replacement Cost New (RCN) models to account for real-world equipment degradation, finite tax incentives, and standard capital expenditure requirements verified on-site. Functional Obsolescence is a strict penalty applied to the RCN to account for orphaned, discontinued, or unsupported legacy hardware lacking active OEM warranty support in the secondary market. <span id="assump-srec-note"></span>
             </p>
         </div>
 
@@ -290,7 +291,6 @@ Architecture: Standalone HTML5 / URL-Parameter Data Handoff
                 <div class="flex justify-between items-center"><span class="font-bold">Gross Blended Asset Value</span><span id="recon-gross" class="font-black text-slate-900"></span></div>
                 <div class="flex justify-between items-center text-red-600"><span>Less: Functional Obsolescence</span><span id="recon-obs"></span></div>
                 <div class="flex justify-between items-center text-red-600"><span>Less: O&M & CapEx Reserves</span><span id="recon-om"></span></div>
-                <div id="row-cap" class="flex justify-between items-center text-amber-600 hidden"><span>Less: Contractual Payoff Cap Adjustment</span><span id="recon-cap"></span></div>
                 
                 <div class="border-t border-slate-300 my-1 pt-1 flex justify-between items-center font-bold text-slate-800">
                     <span>Base "As-Is" FMV</span><span id="recon-base"></span>
@@ -298,7 +298,6 @@ Architecture: Standalone HTML5 / URL-Parameter Data Handoff
                 
                 <div class="flex justify-between items-center text-red-600"><span>Less: Itemized Repair Costs</span><span id="recon-repairs"></span></div>
                 <div class="flex justify-between items-center text-red-600"><span>Less: True-Up Liability</span><span id="recon-trueup"></span></div>
-                <div id="row-floor" class="flex justify-between items-center text-emerald-600 hidden"><span>Plus: Minimum Buyout Floor Adjustment</span><span id="recon-floor"></span></div>
                 
                 <div class="border-t-2 border-slate-900 my-1 pt-2 flex justify-between items-center text-sm font-black text-slate-900">
                     <span class="uppercase tracking-widest">Net "As-Is" FMV</span><span id="recon-net"></span>
@@ -363,7 +362,7 @@ Architecture: Standalone HTML5 / URL-Parameter Data Handoff
             // Main IDs
             document.getElementById('display-address').innerText = data.a || 'Subject Property';
             document.getElementById('display-fmv').innerText = cur(data.fmv);
-            document.getElementById('display-ceiling').innerText = cur(data.ceiling);
+            document.getElementById('display-ceiling').innerText = cur(data.tpoQuote);
             
             // Defect & Repair Data Parsing
             const repairVal = parseFloat(data.repair) || 0;
@@ -386,7 +385,12 @@ Architecture: Standalone HTML5 / URL-Parameter Data Handoff
                     ul.innerHTML = "<li>No specific categories selected.</li>";
                 }
                 
-                document.getElementById('display-def-notes').innerText = data.defNotes || 'No additional context provided.';
+                // Hide inspector notes completely if blank
+                if (data.defNotes && data.defNotes.trim() !== '') {
+                    document.getElementById('display-def-notes').innerText = data.defNotes;
+                } else {
+                    document.getElementById('notes-container').style.display = 'none';
+                }
             }
 
             // Methodology Text
@@ -405,6 +409,21 @@ Architecture: Standalone HTML5 / URL-Parameter Data Handoff
             document.getElementById('audit-iType').innerText = data.iType || 'String';
             document.getElementById('audit-sz').innerText = (data.sz || '0') + ' kW DC';
             
+            // Dynamic Battery Injection
+            const batCap = parseFloat(data.batCap) || 0;
+            const batBrand = (data.batBrand || '').trim();
+            const batMode = (data.batMode || '').trim();
+
+            if (batCap > 0 || (batBrand && batBrand.toLowerCase() !== 'n/a' && batBrand.toLowerCase() !== 'none')) {
+                const ul = document.getElementById('hardware-inventory-list');
+                
+                ul.innerHTML += `
+                    <li class="flex justify-between border-t border-slate-200 pt-1 mt-1 pb-0.5"><span>Storage System:</span> <span class="text-slate-900">${batBrand || 'Unspecified'}</span></li>
+                    <li class="flex justify-between border-b pb-0.5"><span>Storage Capacity:</span> <span class="text-slate-900">${batCap} kWh</span></li>
+                    <li class="flex justify-between border-b pb-0.5"><span>Storage Mode:</span> <span class="text-slate-900 uppercase">${batMode === 'both' ? 'Backup & Arbitrage' : batMode}</span></li>
+                `;
+            }
+            
             document.getElementById('audit-age').innerText = (data.age || '0') + ' Years';
             document.getElementById('audit-rem').innerText = ((parseFloat(data.l) || 25) - (parseFloat(data.age) || 0)).toFixed(1) + ' Years';
             document.getElementById('audit-dr').innerText = (data.dr || '0') + '%';
@@ -422,16 +441,8 @@ Architecture: Standalone HTML5 / URL-Parameter Data Handoff
             document.getElementById('assump-om').innerText = cur(data.omRes || 21) + ' / kW / Year';
             document.getElementById('assump-obs').innerText = (data.obsPct || '0') + '% Hardware Penalty';
             
-            // STRICT BATTERY CONDITIONAL LOGIC
-            const batCap = parseFloat(data.batCap) || 0;
-            const batBrand = (data.batBrand || '').trim().toLowerCase();
-            const batType = (data.batType || '').trim().toLowerCase();
-            
-            const hasBattery = batCap > 0 || 
-                               (batBrand !== '' && batBrand !== 'n/a' && batBrand !== 'none') || 
-                               (batType !== '' && batType !== 'n/a' && batType !== 'none');
-            
-            if (hasBattery) {
+            // STRICT BATTERY CONDITIONAL LOGIC FOR ASSUMPTIONS
+            if (batCap > 0 || (batBrand && batBrand.toLowerCase() !== 'n/a' && batBrand.toLowerCase() !== 'none')) {
                 document.getElementById('assump-batdeg').innerText = (data.batDeg || '2') + '% Annually';
             } else {
                 document.getElementById('assump-bat-row').style.display = 'none';
@@ -444,26 +455,23 @@ Architecture: Standalone HTML5 / URL-Parameter Data Handoff
                 document.getElementById('assump-capex').innerText = 'N/A (Microinverters)';
             }
 
+            // SREC EXCLUSION LOGIC
+            if (data.srec !== '1') {
+                document.getElementById('assump-srec').innerText = 'Excluded (No CA Res. Market)';
+                document.getElementById('assump-srec-note').innerText = "SREC and phantom market revenues are explicitly excluded as California lacks a liquid residential SREC carve-out, preventing reliable monetization by the system owner.";
+            } else {
+                document.getElementById('assump-srec').innerText = 'Included (' + cur(data.srecP) + '/MWh)';
+                document.getElementById('assump-srec-note').innerText = "";
+            }
+
             // Valuation Reconciliation Ledger
             document.getElementById('recon-gross').innerText = cur(data.grossBlended);
             document.getElementById('recon-obs').innerText = "- " + cur(data.weightedObs);
             document.getElementById('recon-om').innerText = "- " + cur(data.weightedOM);
             
-            const capDiff = parseFloat(data.cappedDiff) || 0;
-            if (capDiff > 0) {
-                document.getElementById('row-cap').classList.remove('hidden');
-                document.getElementById('recon-cap').innerText = "- " + cur(capDiff);
-            }
-            
             document.getElementById('recon-base').innerText = cur(data.baseFMV);
             document.getElementById('recon-repairs').innerText = "- " + cur(data.repair);
             document.getElementById('recon-trueup').innerText = "- " + cur(data.trueUp);
-            
-            const floorDiff = parseFloat(data.floorDiff) || 0;
-            if (floorDiff > 0) {
-                document.getElementById('row-floor').classList.remove('hidden');
-                document.getElementById('recon-floor').innerText = "+ " + cur(floorDiff);
-            }
             
             document.getElementById('recon-net').innerText = cur(data.fmv);
         }
