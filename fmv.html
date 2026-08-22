@@ -1,8 +1,8 @@
 <!-- 
 ================================================================================
 PROJECT CONTEXT: SolarCheck Professional - FMV REPORT MODULE
-Current Version: v1.12 (STRATEGIC HANDOFF RECEIVER - RESPONSIVE & PRINT OPTIMIZED)
-Date: July 2026
+Current Version: v1.13 (STRATEGIC HANDOFF RECEIVER - RESPONSIVE & PRINT OPTIMIZED)
+Date: August 2026
 Architecture: Standalone HTML5 / URL-Parameter Data Handoff
 ================================================================================
 
@@ -17,15 +17,15 @@ Architecture: Standalone HTML5 / URL-Parameter Data Handoff
    B. NO TRUNCATION: Always output 100% of the code. Never use placeholders.
    C. VERSION CONTROL: Increment version (v1.xxx) with every single change.
    D. STRATEGIC TONE: NEVER use internal slang like "Hammer" or "Strategic Floor."
-      Always use professional terms: "Liquidation Liability" and "Payoff Burden."
+      Always use professional terms: "Prepayment Liability" and "Net As-Is FMV."
    E. DATA INTEGRITY: The parameter mapping in init() must match the export 
       logic in index.html exactly.
 
 3. REPORT SECTIONS (LOCKED)
    - EXECUTIVE SUMMARY: Conclusion of Market Value (The FMV Result).
-   - STRATEGIC PINCER: Contrasting Gross Payoff Burden vs. Liquidation Liability.
+   - STRATEGIC COMPARISON: Contrasting Prepayment Liability vs. Net FMV.
    - DEFERRED MAINTENANCE: Hard-dollar deductions for verified onsite repairs.
-   - PERFORMANCE AUDIT: Framing shortfalls as provider liabilities (True-Up).
+   - RECONCILIATION LEDGER: Line-by-line mathematical waterfall of all deductions.
    - CERTIFICATION: Official signature and agency branding.
 ================================================================================
 -->
@@ -34,7 +34,7 @@ Architecture: Standalone HTML5 / URL-Parameter Data Handoff
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Professional Solar Valuation Report v1.12</title>
+    <title>Professional Solar Valuation Report v1.13</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
@@ -128,44 +128,32 @@ Architecture: Standalone HTML5 / URL-Parameter Data Handoff
             </div>
         </div>
 
-        <!-- THE CONCLUSION HUB -->
-        <div class="grid grid-cols-1 gap-5 mb-5">
-            <div class="bg-slate-900 text-white p-6 rounded-[32px] shadow-xl relative overflow-hidden text-center">
+        <!-- THE RANGE (Strategic Comparison) -->
+        <div class="grid grid-cols-2 gap-5 mb-5">
+            <div class="p-6 rounded-3xl border-2 border-slate-200 bg-slate-50 shadow-sm text-center flex flex-col justify-center">
+                <h4 class="text-[11px] font-black text-slate-500 uppercase tracking-widest mb-2">Full Prepayment Liability</h4>
+                <p id="display-ceiling" class="text-4xl font-black text-slate-400 line-through decoration-red-500/60"></p>
+                <p class="text-[9px] text-slate-500 font-medium leading-relaxed mt-2 italic text-center px-4">
+                    Discounted Net Present Value of remaining contractual payments. Excludes real-world asset depreciation and unmitigated maintenance liabilities.
+                </p>
+            </div>
+            
+            <div class="bg-blue-900 text-white p-6 rounded-3xl shadow-xl relative overflow-hidden text-center border-2 border-blue-700">
                 <div class="relative z-10">
-                    <h3 class="text-[11px] font-black text-blue-400 uppercase tracking-[0.4em] mb-3">Conclusion of Market Value</h3>
-                    <div class="flex items-baseline justify-center gap-4">
-                        <span id="display-fmv" class="text-6xl font-black tracking-tighter italic"></span>
-                        <span class="text-blue-400 font-bold uppercase text-xs tracking-widest">USD</span>
+                    <h3 class="text-[11px] font-black text-blue-300 uppercase tracking-[0.2em] mb-2">Net "As-Is" Market Value</h3>
+                    <div class="flex items-baseline justify-center gap-2">
+                        <span id="display-fmv" class="text-5xl font-black tracking-tighter italic"></span>
                     </div>
-                    <div class="mt-4 pt-4 border-t border-white/10 flex justify-between items-center">
+                    <div class="mt-3 pt-3 border-t border-white/20 flex justify-center items-center">
                         <div class="flex items-center gap-2">
                             <div class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></div>
-                            <span id="display-methodology" class="text-[10px] font-bold uppercase tracking-widest text-slate-400"></span>
+                            <span id="display-methodology" class="text-[9px] font-bold uppercase tracking-widest text-blue-200"></span>
                         </div>
-                        <span class="text-[9px] text-slate-500 font-bold uppercase">Independent Technical Audit</span>
                     </div>
                 </div>
-                <div class="absolute right-[-5%] top-[-10%] text-[150px] text-white/5 rotate-12">
-                    <i class="fas fa-balance-scale"></i>
+                <div class="absolute right-[-5%] top-[-10%] text-[140px] text-white/5 rotate-12">
+                    <i class="fas fa-hand-holding-dollar"></i>
                 </div>
-            </div>
-        </div>
-
-        <!-- THE RANGE (Strategic Pincer) -->
-        <div class="grid grid-cols-2 gap-5 mb-5">
-            <div class="p-5 rounded-3xl border-2 border-slate-100 bg-white shadow-sm">
-                <h4 class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">Agreement Payoff Burden</h4>
-                <p id="display-ceiling" class="text-3xl font-black text-slate-400 line-through decoration-red-500/50"></p>
-                <p class="text-[10px] text-slate-500 font-medium leading-relaxed mt-1 italic text-justify">
-                    Represents the theoretical sum of remaining payments plus hardware purchase fees. This figure excludes time-value of money and real-world asset condition.
-                </p>
-            </div>
-            <div class="p-5 rounded-3xl border-2 border-slate-100 bg-white shadow-sm">
-                <h4 class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">Liquidation Cost Liability</h4>
-                <p id="display-floor" class="text-3xl font-black text-slate-800"></p>
-                <p class="text-[10px] text-slate-500 font-medium leading-relaxed mt-1 italic text-justify">
-                    Represents the estimated cost to the provider for decommissioning and removal in the event of an agreement default or non-purchase scenario.
-                </p>
             </div>
         </div>
 
@@ -190,7 +178,7 @@ Architecture: Standalone HTML5 / URL-Parameter Data Handoff
                 <i class="fas fa-info-circle text-blue-600"></i> Auditor's Note on Technical Valuation
             </h4>
             <p class="text-[13px] text-slate-600 leading-relaxed text-justify">
-                The conclusion of value above represents an estimated **Fair Market Value** (FMV) derived from empirical technical asset evaluation standards. While the service provider may present a "payoff" figure based on the full value of a theoretical 20-year revenue stream, the market reality of used solar equipment attached to real property is governed by actual avoided utility costs and current replacement costs, adjusted for physical and functional depreciation observed onsite. <strong>Furthermore, the Cost Approach explicitly excludes unavailable tax incentives (such as the Federal ITC), and the Income Approach accounts for expected future capital expenditures verified during the technical audit.</strong>
+                The conclusion of value above represents an estimated **Fair Market Value** (FMV) derived from empirical technical asset evaluation standards. While the service provider may present a "payoff" figure based on the full value of a theoretical revenue stream, the market reality of used solar equipment attached to real property is governed by actual avoided utility costs and current replacement costs, adjusted for physical and functional depreciation observed onsite. <strong>Furthermore, the Cost Approach explicitly excludes unavailable tax incentives (such as the Federal ITC), and the Income Approach accounts for expected future capital expenditures and unmitigated O&M reserves verified during the technical audit.</strong>
             </p>
         </div>
 
@@ -200,7 +188,7 @@ Architecture: Standalone HTML5 / URL-Parameter Data Handoff
                 <p class="text-[9px] font-black text-slate-400 uppercase tracking-widest">Document Integrity</p>
                 <p class="text-[10px] font-bold text-slate-700">Audit Ref: <span id="display-ref"></span></p>
             </div>
-            <p class="text-[9px] text-slate-400 font-bold uppercase tracking-widest">SolarCheck Pro | Report v1.12</p>
+            <p class="text-[9px] text-slate-400 font-bold uppercase tracking-widest">SolarCheck Pro | Report v1.13</p>
         </div>
     </div>
 
@@ -267,10 +255,12 @@ Architecture: Standalone HTML5 / URL-Parameter Data Handoff
                 <ul class="space-y-1.5 text-[10px] font-bold text-slate-700">
                     <li class="flex justify-between border-b border-slate-50 pb-0.5"><span>Federal ITC Exclusion:</span> <span id="assump-itc" class="text-slate-900"></span></li>
                     <li class="flex justify-between border-b border-slate-50 pb-0.5"><span>Utility Escalation Cap:</span> <span id="assump-esccap" class="text-slate-900"></span></li>
+                    <li class="flex justify-between border-b border-slate-50 pb-0.5"><span>Annual O&M Reserve:</span> <span id="assump-om" class="text-slate-900"></span></li>
                 </ul>
                 <ul class="space-y-1.5 text-[10px] font-bold text-slate-700">
                     <li class="flex justify-between border-b border-slate-50 pb-0.5"><span>Future CapEx (Inverter):</span> <span id="assump-capex" class="text-slate-900"></span></li>
                     <li id="assump-bat-row" class="flex justify-between border-b border-slate-50 pb-0.5"><span>Expected Battery Deg.:</span> <span id="assump-batdeg" class="text-slate-900"></span></li>
+                    <li class="flex justify-between border-b border-slate-50 pb-0.5"><span>Functional Obsolescence:</span> <span id="assump-obs" class="text-slate-900"></span></li>
                 </ul>
             </div>
             <p class="text-[8px] text-slate-500 font-medium leading-relaxed italic mt-2 text-justify">
@@ -278,25 +268,29 @@ Architecture: Standalone HTML5 / URL-Parameter Data Handoff
             </p>
         </div>
 
-        <div class="grid grid-cols-2 gap-4 mb-4">
-            <div class="p-4 bg-slate-50 rounded-2xl border border-slate-200">
-                <h5 class="text-[9px] font-black text-slate-900 uppercase tracking-widest mb-1 italic">Cost Approach Basis</h5>
-                <p id="basis-cost" class="text-xl font-black text-slate-700"></p>
-                <p class="text-[8px] text-slate-500 mt-1 leading-snug">Calculated based on current "Replacement Cost New" (RCN) adjusted for physical and functional depreciation.</p>
-            </div>
-            <div class="p-4 bg-slate-50 rounded-2xl border border-slate-200">
-                <h5 class="text-[9px] font-black text-slate-900 uppercase tracking-widest mb-1 italic">Income Approach Basis</h5>
-                <p id="basis-inc" class="text-xl font-black text-green-700"></p>
-                <p class="text-[8px] text-slate-500 mt-1 leading-snug">Calculated using a Discounted Cash Flow (DCF) analysis of avoided utility costs minus remaining liabilities.</p>
-            </div>
-        </div>
-
-        <!-- RECONCILIATION BLOCK -->
-        <div class="mb-4 p-4 bg-slate-900 rounded-2xl shadow-sm border border-slate-800">
-            <h5 class="text-[9px] font-black text-blue-400 uppercase tracking-widest mb-1.5 flex items-center gap-2">
-                <i class="fas fa-calculator"></i> Valuation Reconciliation Logic
+        <!-- RECONCILIATION LEDGER -->
+        <div class="mb-4 p-5 bg-slate-50 rounded-3xl shadow-sm border border-slate-200">
+            <h5 class="text-[11px] font-black text-slate-900 uppercase tracking-widest mb-3 flex items-center gap-2 border-b-2 border-slate-200 pb-2">
+                <i class="fas fa-file-invoice-dollar text-indigo-600"></i> Valuation Reconciliation Ledger
             </h5>
-            <p id="reconciliation-text" class="text-[10px] text-slate-300 leading-relaxed text-justify"></p>
+            <div class="space-y-2 text-[10px] sm:text-[11px] text-slate-700 font-semibold">
+                <div class="flex justify-between items-center"><span class="font-bold">Gross Blended Asset Value</span><span id="recon-gross" class="font-black text-slate-900"></span></div>
+                <div class="flex justify-between items-center text-red-600"><span>Less: Functional Obsolescence</span><span id="recon-obs"></span></div>
+                <div class="flex justify-between items-center text-red-600"><span>Less: O&M & CapEx Reserves</span><span id="recon-om"></span></div>
+                <div id="row-cap" class="flex justify-between items-center text-amber-600 hidden"><span>Less: Contractual Payoff Cap Adjustment</span><span id="recon-cap"></span></div>
+                
+                <div class="border-t border-slate-300 my-1 pt-1 flex justify-between items-center font-bold text-slate-800">
+                    <span>Base "As-Is" FMV</span><span id="recon-base"></span>
+                </div>
+                
+                <div class="flex justify-between items-center text-red-600"><span>Less: Itemized Repair Costs</span><span id="recon-repairs"></span></div>
+                <div class="flex justify-between items-center text-red-600"><span>Less: True-Up Liability</span><span id="recon-trueup"></span></div>
+                <div id="row-floor" class="flex justify-between items-center text-emerald-600 hidden"><span>Plus: Minimum Buyout Floor Adjustment</span><span id="recon-floor"></span></div>
+                
+                <div class="border-t-2 border-slate-900 my-1 pt-2 flex justify-between items-center text-sm font-black text-slate-900">
+                    <span class="uppercase tracking-widest">Net "As-Is" FMV</span><span id="recon-net"></span>
+                </div>
+            </div>
         </div>
 
         <!-- CERTIFICATION SECTION -->
@@ -348,7 +342,6 @@ Architecture: Standalone HTML5 / URL-Parameter Data Handoff
             document.getElementById('display-address').innerText = data.a || 'Subject Property';
             document.getElementById('display-fmv').innerText = cur(data.fmv);
             document.getElementById('display-ceiling').innerText = cur(data.ceiling);
-            document.getElementById('display-floor').innerText = cur(data.floor);
             
             // Repair Data
             const repairVal = parseFloat(data.repair) || 0;
@@ -361,24 +354,8 @@ Architecture: Standalone HTML5 / URL-Parameter Data Handoff
             const w = parseFloat(data.w) || 0;
             document.getElementById('display-methodology').innerText = w === 100 ? 'Income Approach' : w === 0 ? 'Cost Approach' : `Blended Valuation (${w}% Income)`;
 
-            // Reconciliation Logic Text
-            const incWeight = w;
-            const costWeight = 100 - w;
-            let recText = "";
-            if (incWeight === 100) {
-                recText = "The final Conclusion of Market Value relies entirely on the Income Approach (100% weighting). This reflects the active service agreement status while strictly discounting for physical degradation, energy shortfalls, and future CapEx verified during the onsite technical inspection.";
-            } else if (costWeight === 100) {
-                recText = "The final Conclusion of Market Value relies entirely on the Cost Approach (100% weighting). This reflects the asset's current physical state, stripping unavailable tax incentives (ITC) and applying depreciation based on verified onsite hardware conditions.";
-            } else {
-                recText = `The final Conclusion of Market Value mathematically reconciles both methodologies. It applies a ${incWeight}% weight to the Income Approach to reflect the active agreement status, and a ${costWeight}% weight to the Cost Approach to anchor the valuation in the physical reality of depreciated, used hardware. This blended approach ensures the theoretical financial models are corrected by verified onsite technical data.`;
-            }
-            if (repairVal > 0) {
-                recText += ` A strict, empirical deduction of ${cur(repairVal)} was then applied to account for the immediate corrective maintenance and deferred liabilities verified onsite.`;
-            }
-            document.getElementById('reconciliation-text').innerText = recText;
-
             // Ownership Logic
-            const om = { owned: "Homeowner Owned", lease: "Third-Party Lease", ppa: "Third-Party PPA", prepaid_lease: "Prepaid Lease", prepaid_ppa: "Prepaid PPA" };
+            const om = { owned: "Homeowner Owned", lease: "Fixed Payment (Lease / Predictable PPA)", ppa: "Variable Payment (True Pay-per-kWh PPA)", prepaid_lease: "Prepaid Agreement", prepaid_ppa: "Prepaid Agreement" };
             document.getElementById('display-ownership').innerText = om[data.o] || 'Third-Party Agreement';
 
             // Audit Data
@@ -403,8 +380,10 @@ Architecture: Standalone HTML5 / URL-Parameter Data Handoff
             // Underwriting Assumptions Schedule
             document.getElementById('assump-itc').innerText = (data.itc || '30') + '% (Stripped from RCN)';
             document.getElementById('assump-esccap').innerText = 'Capped at Year ' + (data.escCap || '10');
+            document.getElementById('assump-om').innerText = cur(data.omRes || 21) + ' / kW / Year';
+            document.getElementById('assump-obs').innerText = (data.obsPct || '0') + '% Hardware Penalty';
             
-            // STRICT BATTERY CONDITIONAL LOGIC (v1.12)
+            // STRICT BATTERY CONDITIONAL LOGIC (v1.13)
             const batCap = parseFloat(data.batCap) || 0;
             const batBrand = (data.batBrand || '').trim().toLowerCase();
             const batType = (data.batType || '').trim().toLowerCase();
@@ -426,9 +405,28 @@ Architecture: Standalone HTML5 / URL-Parameter Data Handoff
                 document.getElementById('assump-capex').innerText = 'N/A (Microinverters)';
             }
 
-            // Bases
-            document.getElementById('basis-cost').innerText = cur(data.costBasis);
-            document.getElementById('basis-inc').innerText = cur(data.incBasis);
+            // Valuation Reconciliation Ledger
+            document.getElementById('recon-gross').innerText = cur(data.grossBlended);
+            document.getElementById('recon-obs').innerText = "- " + cur(data.weightedObs);
+            document.getElementById('recon-om').innerText = "- " + cur(data.weightedOM);
+            
+            const capDiff = parseFloat(data.cappedDiff) || 0;
+            if (capDiff > 0) {
+                document.getElementById('row-cap').classList.remove('hidden');
+                document.getElementById('recon-cap').innerText = "- " + cur(capDiff);
+            }
+            
+            document.getElementById('recon-base').innerText = cur(data.baseFMV);
+            document.getElementById('recon-repairs').innerText = "- " + cur(data.repair);
+            document.getElementById('recon-trueup').innerText = "- " + cur(data.trueUp);
+            
+            const floorDiff = parseFloat(data.floorDiff) || 0;
+            if (floorDiff > 0) {
+                document.getElementById('row-floor').classList.remove('hidden');
+                document.getElementById('recon-floor').innerText = "+ " + cur(floorDiff);
+            }
+            
+            document.getElementById('recon-net').innerText = cur(data.fmv);
         }
 
         window.onload = init;
