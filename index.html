@@ -1,7 +1,7 @@
 <!-- 
 ================================================================================
 PROJECT CONTEXT: SolarCheck Professional
-Current Version: v7.333 (PRECISION VALUATION MODULE - BULLETPROOF APPRAISAL UPGRADE)
+Current Version: v7.334 (PRECISION VALUATION MODULE - BULLETPROOF APPRAISAL UPGRADE)
 Date: August 2026
 Architecture: Modular Single-File HTML5 (Sub-Renderer Pattern)
 ================================================================================
@@ -37,9 +37,21 @@ Architecture: Modular Single-File HTML5 (Sub-Renderer Pattern)
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SolarCheck Professional v7.333</title>
+    <title>SolarCheck Professional v7.334</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <script>
+        // CRITICAL SAFETY NET: Extracted OUTSIDE the module to catch parsing/loading errors immediately.
+        window.onerror = function(msg, url, line) {
+            document.addEventListener('DOMContentLoaded', function() {
+                const root = document.getElementById('root') || document.body;
+                root.innerHTML = '<div style="padding:40px; text-align:center; font-family:sans-serif; color:#ef4444; max-width:600px; margin:0 auto;"><h2 style="font-size:24px; font-weight:bold; margin-bottom:10px;"><i class="fas fa-triangle-exclamation"></i> Application Error</h2><p style="color:#7f1d1d; margin-bottom:20px;">SolarCheck Pro encountered a fatal error loading the interface. This is usually caused by a copy/paste error where the bottom of the code was cut off.</p><div style="background:#fee2e2; padding:15px; border-radius:8px; font-family:monospace; text-align:left; display:inline-block; border:1px solid #fca5a5; word-break:break-all;"><strong>Error:</strong> ' + msg + '<br><strong>Line:</strong> ' + line + '</div></div>';
+            });
+            return false;
+        };
+    </script>
+
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
         body { font-family: 'Inter', sans-serif; }
@@ -70,25 +82,6 @@ Architecture: Modular Single-File HTML5 (Sub-Renderer Pattern)
     <div id="report-view" class="hidden min-h-screen bg-slate-300 pb-20 absolute top-0 left-0 w-full z-50 overflow-y-auto"></div>
 
     <script type="module">
-        // GLOBAL SAFETY NET: Prevents silent blank screens by catching and displaying execution errors
-        window.onerror = function(msg, url, line) {
-            const root = document.getElementById('root');
-            if (root) {
-                root.innerHTML = `<div style="padding:40px; text-align:center; font-family:sans-serif; color:#ef4444; max-w-lg; mx-auto;">
-                    <h2 style="font-size:24px; font-weight:bold; margin-bottom:10px;"><i class="fas fa-triangle-exclamation"></i> Application Error</h2>
-                    <p style="color:#7f1d1d; margin-bottom:20px;">SolarCheck Pro encountered a problem rendering the UI.</p>
-                    <div style="background:#fee2e2; padding:15px; border-radius:8px; font-family:monospace; text-align:left; display:inline-block; border:1px solid #fca5a5;">
-                        <strong>Error:</strong> ${msg}<br><strong>Line:</strong> ${line}
-                    </div>
-                </div>`;
-            }
-            return false;
-        };
-
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, doc, getDoc, setDoc, onSnapshot, setLogLevel } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
-
         // =====================================================================
         // [UI_TEXT_CATALOG] - THE SINGLE SOURCE OF TRUTH FOR LABELS & NARRATIVES
         // =====================================================================
@@ -150,7 +143,6 @@ Architecture: Modular Single-File HTML5 (Sub-Renderer Pattern)
             omRes: { l: "O&M Reserve ($/kW/Yr)", d: "Annual maintenance and monitoring reserve.", p: "21" },
             obsPct: { l: "Func. Obsolescence (Cost %)", d: "Secondary market depreciation penalty.", p: "0" },
 
-            // Result Specific Consistency Keys
             sz_label: { l: "Rated Size", d: "System DC capacity." },
             age_label: { l: "Solar System Current Age", d: "Years since PTO." },
             rem_label: { l: "Contract Remaining Years", d: "Liability end date." },
@@ -165,7 +157,6 @@ Architecture: Modular Single-File HTML5 (Sub-Renderer Pattern)
             batYC_label: { l: "Battery Payment", d: "Escalated energy storage service fee." },
             remLiability: { l: "Agreement Liabilities", d: "Total remaining payoff or balance of the service contract." },
 
-            // SYNCED LABELS & DESCRIPTIONS (Dashboard & Report)
             perfHeader: { l: "Solar System Health", d: "Review of energy production versus original design." },
             yieldAccuracy: { l: "Overall Efficiency", d: "Actual performance compared to benchmark." },
             verifyDashboard: { l: "Certified Solar Summary", d: "Final audit results for this property." },
@@ -578,7 +569,7 @@ Architecture: Modular Single-File HTML5 (Sub-Renderer Pattern)
                     shortfallkWh, trueUpRefund
                 };
 
-                // 7. PRECISION VALUATION DCF MODEL (BULLETPROOF UPGRADE v7.333)
+                // 7. PRECISION VALUATION DCF MODEL (BULLETPROOF UPGRADE v7.334)
                 const sC = (s * 1000 * parseFloat(rC||0)) + totalBatHardwareCost; 
                 const rL = Math.max(0, (parseFloat(l)||25) - age); 
                 const depCost = l > 0 ? (rL / l) : 0; 
@@ -679,19 +670,21 @@ Architecture: Modular Single-File HTML5 (Sub-Renderer Pattern)
                     floorDiff
                 };
             } catch (err) {
-                console.error("Calculation Error:", err);
-                throw err;
+                console.error("Calculation Engine Error:", err);
             }
         };
 
         // --- STATE & UTILITIES ---
+        let savedCompany = 'rsr';
+        try { savedCompany = localStorage.getItem('solarCheck_company') || 'rsr'; } catch(e) {}
+        
         window.state = {
             activeTab: "inputs", activeModal: null, a: "", iDt: "", pDt: new Date().toISOString().split('T')[0],
-            o: "lease", tpoName: "", pC: "", pW: "", sz: 0, or: "mix", pi: "standard", sh: "some", ac: "", b: "", br: "", scr: 50, it: "string", invBrand: "SolarEdge", invCount: "", invAge: "", panelBrand: "", batteryBrand: "", batteryMode: "both", cellMon: "none", ut: "nem2", rU: 0.48, eU: 0.45, te: "", tE: "", tG: "", tEs: "", pa: "", paB: "", tR: "", rR: 0.20, rC: 3.50, batCost: 800, ne: 0.8, c: 0.9, rp: 0, defTypes: [], defNotes: '', aC: true, l: 25, om: 20, dr: 7.88, tx: false, e: 7.0, w: 100, srec: false, srecP: 25, itc: 30, invRepCost: 2000, invRepYear: 12, batDeg: 2, escCap: 10, tpoQuote: "", minBuyout: "", omRes: 21, obsPct: 0, r: null, aR: null, company: localStorage.getItem('solarCheck_company') || 'rsr'
+            o: "lease", tpoName: "", pC: "", pW: "", sz: 0, or: "mix", pi: "standard", sh: "some", ac: "", b: "", br: "", scr: 50, it: "string", invBrand: "SolarEdge", invCount: "", invAge: "", panelBrand: "", batteryBrand: "", batteryMode: "both", cellMon: "none", ut: "nem2", rU: 0.48, eU: 0.45, te: "", tE: "", tG: "", tEs: "", pa: "", paB: "", tR: "", rR: 0.20, rC: 3.50, batCost: 800, ne: 0.8, c: 0.9, rp: 0, defTypes: [], defNotes: '', aC: true, l: 25, om: 20, dr: 7.88, tx: false, e: 7.0, w: 100, srec: false, srecP: 25, itc: 30, invRepCost: 2000, invRepYear: 12, batDeg: 2, escCap: 10, tpoQuote: "", minBuyout: "", omRes: 21, obsPct: 0, r: null, aR: null, company: savedCompany
         };
 
         const COMPANIES = {
-            rsr: { name: "ROCKLIN SOLAR REPAIR", license: "CA Lic # 1050566", phone: "916-741-0194", email: "erin@rocklinsolarrepair.com", logo: "thumbnail_RSR LOGO.png", website: "www.rocklinsolarrepair.com" },
+            rsr: { name: "ROCKLIN SOLAR Repair", license: "CA Lic # 1050566", phone: "916-741-0194", email: "erin@rocklinsolarrepair.com", logo: "thumbnail_RSR LOGO.png", website: "www.rocklinsolarrepair.com" },
             shine: { name: "SHINE ON SOLAR & MAINTENANCE", license: "CA Lic # 968940", phone: "707-596-9026", email: "iain@shineonsolar.us", logo: "Shine on Logo.png", website: "shineonsolar.us" },
             ssoc: { name: "SOLAR SERVICE OF COLORADO", license: "", phone: "303-747-5065", email: "matt.essig@solarserviceofco.com", logo: "ssoc_logo.png", website: "solarserviceofcolorado.com" }
         };
@@ -705,7 +698,6 @@ Architecture: Modular Single-File HTML5 (Sub-Renderer Pattern)
             if (e.target.type === 'number') v = v === "" ? "" : parseFloat(v); 
             window.state[k] = v; 
 
-            // SMART DEFAULTS FOR USEFUL LIFE (l)
             if (k === 'o') {
                 if (v === 'owned') window.state.l = 25;
                 else if (window.state.te) window.state.l = window.state.te;
@@ -728,7 +720,12 @@ Architecture: Modular Single-File HTML5 (Sub-Renderer Pattern)
             window.render();
         };
 
-        window.handleCompanyChange = function(e) { window.state.company = e.target.value; localStorage.setItem('solarCheck_company', e.target.value); window.render(); };
+        window.handleCompanyChange = function(e) { 
+            window.state.company = e.target.value; 
+            try { localStorage.setItem('solarCheck_company', e.target.value); } catch(err) {} 
+            window.render(); 
+        };
+        
         window.handleProductionChange = function(e) { const val = parseFloat(e.target.value); window.state.tE = isNaN(val) ? "" : val; const tR = parseFloat(window.state.tR); if (!isNaN(val) && !isNaN(tR) && val > 0) { window.state.pa = parseFloat(((tR * val) / 12).toFixed(2)); } window.calculate(); window.render(); };
         window.handleRateChange = function(e) { const val = parseFloat(e.target.value); window.state.tR = isNaN(val) ? "" : val; const tE = parseFloat(window.state.tE); if (!isNaN(val) && !isNaN(tE) && tE > 0) { window.state.pa = parseFloat(((val * tE) / 12).toFixed(2)); } window.calculate(); window.render(); };
         window.handlePaymentChange = function(e) { const val = parseFloat(e.target.value); window.state.pa = isNaN(val) ? "" : val; const tE = parseFloat(window.state.tE); if (!isNaN(val) && !isNaN(tE) && tE > 0) { window.state.tR = parseFloat(((val * 12) / tE).toFixed(4)); } window.calculate(); window.render(); };
@@ -737,7 +734,6 @@ Architecture: Modular Single-File HTML5 (Sub-Renderer Pattern)
         window.openModal = (id) => { const m = document.getElementById(id); if (m) { m.showModal(); window.state.activeModal = id; } };
         window.closeModal = () => { const m = document.getElementById(window.state.activeModal); if (m) m.close(); window.state.activeModal = null; };
 
-        // SAFETY NET: Stores payload in local memory to bypass browser URL character limits
         window.handleFMVExport = function() {
             try {
                 if (!window.state.r || !window.state.aR) return;
@@ -779,10 +775,12 @@ Architecture: Modular Single-File HTML5 (Sub-Renderer Pattern)
                     invRepCost: invRepCost || 2000, invRepYear: invRepYear || 12
                 };
                 
-                // Store payload in browser session memory to bypass 2000-character URL limits
-                localStorage.setItem('solarcheck_fmv_payload', JSON.stringify(payload));
+                try {
+                    localStorage.setItem('solarcheck_fmv_payload', JSON.stringify(payload));
+                } catch (storageErr) {
+                    alert("Storage Warning: Your browser is blocking local storage (Incognito Mode?). The report may not open properly.");
+                }
                 
-                // Cache-Busting Timestamp forces browser to download the latest fmv.html instead of loading a broken cached version
                 const newWin = window.open('fmv.html?v=' + Date.now(), '_blank');
                 
                 if (!newWin || newWin.closed || typeof newWin.closed === 'undefined') {
@@ -792,7 +790,7 @@ Architecture: Modular Single-File HTML5 (Sub-Renderer Pattern)
                 }
 
             } catch (err) {
-                alert("Data Export Error: " + err.message + "\n\nPlease ensure all required calculation fields are filled out.");
+                alert("Data Export Error: " + err.message);
                 console.error(err);
             }
         };
@@ -830,7 +828,6 @@ Architecture: Modular Single-File HTML5 (Sub-Renderer Pattern)
             <div id="report-content" class="bg-slate-300 py-10 print:py-0 min-h-screen font-sans">
               <div class="p-12 max-w-4xl mx-auto border-t-[16px] border-slate-900 shadow-2xl bg-white flex flex-col print:shadow-none print:border-t-0 print:p-8 relative">
 
-                 <!-- Header -->
                  <div class="flex justify-between items-start border-b-4 border-slate-900 pb-6 mb-8">
                     <div>
                        <h1 class="text-4xl font-black text-slate-900 uppercase tracking-tighter italic">Solar Financial Analysis</h1>
@@ -844,7 +841,6 @@ Architecture: Modular Single-File HTML5 (Sub-Renderer Pattern)
                     </div>
                  </div>
 
-                 <!-- Top Metrics Row -->
                  <div class="grid grid-cols-3 gap-6 mb-10">
                     <div class="bg-slate-50 p-6 rounded-2xl border-2 border-slate-200 text-center shadow-inner">
                        <i class="fas fa-solar-panel text-2xl text-blue-400 mb-3"></i>
@@ -863,7 +859,6 @@ Architecture: Modular Single-File HTML5 (Sub-Renderer Pattern)
                     </div>
                  </div>
 
-                 <!-- Monthly Cash Flow Block -->
                  <div class="mb-10 border-4 border-slate-900 rounded-[32px] overflow-hidden shadow-xl">
                      <div class="bg-slate-900 text-white px-8 py-4">
                          <h2 class="text-lg font-black uppercase tracking-widest flex items-center gap-3"><i class="fas fa-money-bill-trend-up text-emerald-400"></i> ${isNegativeCashFlow ? 'Monthly Cash Flow Shortfall' : 'Monthly Cash Flow Positive'}</h2>
@@ -881,9 +876,7 @@ Architecture: Modular Single-File HTML5 (Sub-Renderer Pattern)
                      </div>
                  </div>
 
-                 <!-- Long Term Advantage & Hedge -->
                  <div class="grid grid-cols-2 gap-10 mb-10">
-                    <!-- Cumulative Narrative -->
                     <div class="bg-slate-900 text-white p-8 rounded-[32px] shadow-xl flex flex-col justify-center relative overflow-hidden">
                         <div class="relative z-10">
                             <p class="text-xl sm:text-2xl font-black text-blue-400 uppercase tracking-[0.1em] mb-4">${isNegativeTerm ? 'CUMULATIVE FINANCIAL COST' : 'Future Solar Savings'}</p>
@@ -893,7 +886,6 @@ Architecture: Modular Single-File HTML5 (Sub-Renderer Pattern)
                         <div class="absolute right-[-10%] bottom-[-10%] text-9xl text-white/5 rotate-12"><i class="fas fa-chart-line"></i></div>
                     </div>
 
-                    <!-- The Inflation Hedge Tables -->
                     <div class="space-y-6">
                         <div class="bg-white border-2 border-slate-200 rounded-2xl p-5 shadow-sm">
                             <h3 class="text-[10px] font-black text-slate-800 uppercase tracking-widest mb-4 border-b pb-2">Energy Cost Comparison</h3>
@@ -935,13 +927,11 @@ Architecture: Modular Single-File HTML5 (Sub-Renderer Pattern)
                     </div>
                  </div>
 
-                 <!-- General Disclaimer -->
                  <div class="disclaimer-section" style="font-size: 0.75rem; color: #666; margin-top: 30px; border-top: 1px solid #ccc; padding-top: 15px; text-align: justify; line-height: 1.4; margin-bottom: 20px;">
                    <strong>General Disclaimer &amp; Forward-Looking Statements</strong><br>
                    This financial analysis is an estimate based on current market conditions, utility rate structures, and historical system data. Projections of future utility costs, solar energy production, and net financial savings are inherently uncertain and subject to change due to weather, hardware degradation, and evolving utility tariffs. While this report is prepared by a licensed California solar contractor and inspector, it is provided strictly for informational and advisory purposes. It does not constitute financial, legal, or tax advice. Homeowners are encouraged to consult with independent financial or legal professionals regarding the execution or transfer of third-party service agreements.
                  </div>
 
-                 <!-- Footer -->
                  <div class="mt-auto border-t-4 border-slate-900 pt-6 flex justify-between items-end">
                     <div>
                         <p class="text-sm font-bold text-slate-800 uppercase tracking-tight mb-2"><i class="fas fa-screwdriver-wrench text-blue-600 mr-2"></i> ${isTPO || isPrepaid ? 'Service & maintenance covered under agreement.' : 'Homeowner responsible for service & maintenance.'}</p>
@@ -951,7 +941,7 @@ Architecture: Modular Single-File HTML5 (Sub-Renderer Pattern)
                         </div>
                     </div>
                     <div class="text-right">
-                        <p class="text-[10px] text-slate-400 font-black uppercase tracking-[0.2em] italic mb-4">SolarCheck Pro v7.333</p>
+                        <p class="text-[10px] text-slate-400 font-black uppercase tracking-[0.2em] italic mb-4">SolarCheck Pro v7.334</p>
                         <div class="no-print flex gap-3 justify-end">
                             <button onclick="window.printReport()" class="bg-blue-600 text-white px-8 py-3 rounded-2xl font-black uppercase text-[10px] tracking-widest shadow-xl transition-all hover:bg-blue-500 active:scale-95 border-b-4 border-blue-800"><i class="fas fa-print mr-2"></i> Print</button>
                             <button onclick="window.closeReport()" class="bg-slate-100 text-slate-700 px-8 py-3 rounded-2xl font-black uppercase text-[10px] tracking-widest transition-all hover:bg-slate-200 border-b-4 border-slate-300">Back</button>
@@ -967,10 +957,14 @@ Architecture: Modular Single-File HTML5 (Sub-Renderer Pattern)
             window.scrollTo(0,0);
         };
 
-        // --- INITIALIZATION ---
         const init = async () => {
             try {
+                // DYNAMIC IMPORT: Prevents fatal crash if ad-blocker blocks gstatic.com
                 if (typeof __firebase_config !== 'undefined' && __firebase_config !== '{}') {
+                    const { initializeApp } = await import("https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js");
+                    const { getAuth, signInAnonymously, signInWithCustomToken } = await import("https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js");
+                    const { getFirestore } = await import("https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js");
+                    
                     const firebaseConfig = JSON.parse(__firebase_config);
                     const app = initializeApp(firebaseConfig);
                     const db = getFirestore(app);
@@ -979,13 +973,17 @@ Architecture: Modular Single-File HTML5 (Sub-Renderer Pattern)
                     else await signInAnonymously(auth); 
                 }
             } catch (err) {
-                console.error("Firebase Note:", err);
+                console.error("Firebase Note: Blocked by network/ad-blocker. Proceeding offline.", err);
             }
-            window.calculate();
+            
+            try {
+                window.calculate();
+            } catch (calcErr) {
+                console.error("Calculation Engine Error:", calcErr);
+            }
             window.render();
         };
 
-        // Safe DOM execution: Prevents race-condition blank screens in ES Modules
         if (document.readyState === 'loading') {
             document.addEventListener('DOMContentLoaded', init);
         } else {
