@@ -1,7 +1,7 @@
 <!-- 
 ================================================================================
 PROJECT CONTEXT: SolarCheck Professional - FMV REPORT MODULE
-Current Version: v1.16 (STRATEGIC HANDOFF RECEIVER - RESPONSIVE & PRINT OPTIMIZED)
+Current Version: v1.17 (STRATEGIC HANDOFF RECEIVER - RESPONSIVE & PRINT OPTIMIZED)
 Date: August 2026
 Architecture: Standalone HTML5 / URL-Parameter Data Handoff
 ================================================================================
@@ -35,7 +35,7 @@ Architecture: Standalone HTML5 / URL-Parameter Data Handoff
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Professional Solar Valuation Report v1.16</title>
+    <title>Professional Solar Valuation Report v1.17</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
@@ -201,7 +201,7 @@ Architecture: Standalone HTML5 / URL-Parameter Data Handoff
                 <p class="text-[9px] font-black text-slate-400 uppercase tracking-widest">Document Integrity</p>
                 <p class="text-[10px] font-bold text-slate-700">Audit Ref: <span id="display-ref"></span></p>
             </div>
-            <p class="text-[9px] text-slate-400 font-bold uppercase tracking-widest">SolarCheck Pro | Report v1.16</p>
+            <p class="text-[9px] text-slate-400 font-bold uppercase tracking-widest">SolarCheck Pro | Report v1.17</p>
         </div>
     </div>
 
@@ -291,6 +291,7 @@ Architecture: Standalone HTML5 / URL-Parameter Data Handoff
                 <div class="flex justify-between items-center"><span class="font-bold">Gross Blended Asset Value</span><span id="recon-gross" class="font-black text-slate-900"></span></div>
                 <div class="flex justify-between items-center text-red-600"><span>Less: Functional Obsolescence</span><span id="recon-obs"></span></div>
                 <div class="flex justify-between items-center text-red-600"><span>Less: O&M & CapEx Reserves</span><span id="recon-om"></span></div>
+                <div id="row-cap" class="flex justify-between items-center text-amber-600 hidden"><span>Less: Contractual Payoff Cap Adjustment</span><span id="recon-cap"></span></div>
                 
                 <div class="border-t border-slate-300 my-1 pt-1 flex justify-between items-center font-bold text-slate-800">
                     <span>Base "As-Is" FMV</span><span id="recon-base"></span>
@@ -298,6 +299,7 @@ Architecture: Standalone HTML5 / URL-Parameter Data Handoff
                 
                 <div class="flex justify-between items-center text-red-600"><span>Less: Itemized Repair Costs</span><span id="recon-repairs"></span></div>
                 <div class="flex justify-between items-center text-red-600"><span>Less: True-Up Liability</span><span id="recon-trueup"></span></div>
+                <div id="row-floor" class="flex justify-between items-center text-emerald-600 hidden"><span>Plus: Minimum Buyout Floor Adjustment</span><span id="recon-floor"></span></div>
                 
                 <div class="border-t-2 border-slate-900 my-1 pt-2 flex justify-between items-center text-sm font-black text-slate-900">
                     <span class="uppercase tracking-widest">Net "As-Is" FMV</span><span id="recon-net"></span>
@@ -362,7 +364,15 @@ Architecture: Standalone HTML5 / URL-Parameter Data Handoff
             // Main IDs
             document.getElementById('display-address').innerText = data.a || 'Subject Property';
             document.getElementById('display-fmv').innerText = cur(data.fmv);
-            document.getElementById('display-ceiling').innerText = cur(data.tpoQuote);
+            
+            // Dynamic TPO Quote Display
+            const tpoQ = parseFloat(data.tpoQuote) || 0;
+            if (tpoQ > 0) {
+                document.getElementById('display-ceiling').innerText = cur(tpoQ);
+            } else {
+                document.getElementById('display-ceiling').innerText = "Not Provided";
+                document.getElementById('display-ceiling').classList.remove('line-through', 'decoration-red-500/60');
+            }
             
             // Defect & Repair Data Parsing
             const repairVal = parseFloat(data.repair) || 0;
@@ -469,9 +479,21 @@ Architecture: Standalone HTML5 / URL-Parameter Data Handoff
             document.getElementById('recon-obs').innerText = "- " + cur(data.weightedObs);
             document.getElementById('recon-om').innerText = "- " + cur(data.weightedOM);
             
+            const capDiff = parseFloat(data.cappedDiff) || 0;
+            if (capDiff > 0) {
+                document.getElementById('row-cap').classList.remove('hidden');
+                document.getElementById('recon-cap').innerText = "- " + cur(capDiff);
+            }
+            
             document.getElementById('recon-base').innerText = cur(data.baseFMV);
             document.getElementById('recon-repairs').innerText = "- " + cur(data.repair);
             document.getElementById('recon-trueup').innerText = "- " + cur(data.trueUp);
+            
+            const floorDiff = parseFloat(data.floorDiff) || 0;
+            if (floorDiff > 0) {
+                document.getElementById('row-floor').classList.remove('hidden');
+                document.getElementById('recon-floor').innerText = "+ " + cur(floorDiff);
+            }
             
             document.getElementById('recon-net').innerText = cur(data.fmv);
         }
