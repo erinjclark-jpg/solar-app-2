@@ -1,7 +1,7 @@
 <!-- 
 ================================================================================
 PROJECT CONTEXT: SolarCheck Professional
-Current Version: v7.336 (PRECISION VALUATION MODULE - BULLETPROOF APPRAISAL UPGRADE)
+Current Version: v7.337 (PRECISION VALUATION MODULE - BULLETPROOF APPRAISAL UPGRADE)
 Date: August 2026
 Architecture: Modular Single-File HTML5 (Sub-Renderer Pattern)
 ================================================================================
@@ -37,7 +37,7 @@ Architecture: Modular Single-File HTML5 (Sub-Renderer Pattern)
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SolarCheck Professional v7.336</title>
+    <title>SolarCheck Professional v7.337</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     
@@ -627,7 +627,7 @@ Architecture: Modular Single-File HTML5 (Sub-Renderer Pattern)
                     shortfallkWh, trueUpRefund
                 };
 
-                // 7. PRECISION VALUATION DCF MODEL (BULLETPROOF UPGRADE v7.336)
+                // 7. PRECISION VALUATION DCF MODEL (BULLETPROOF UPGRADE v7.337)
                 const sC = (s * 1000 * parseFloat(rC||0)) + totalBatHardwareCost; 
                 const rL = Math.max(0, (parseFloat(l)||25) - age); 
                 const depCost = l > 0 ? (rL / l) : 0; 
@@ -793,7 +793,7 @@ Architecture: Modular Single-File HTML5 (Sub-Renderer Pattern)
         window.openModal = (id) => { const m = document.getElementById(id); if (m) { m.showModal(); window.state.activeModal = id; } };
         window.closeModal = () => { const m = document.getElementById(window.state.activeModal); if (m) m.close(); window.state.activeModal = null; };
 
-        // SAFETY NET: Stores payload in local memory to bypass browser URL character limits
+        // UPDATE: Converting payload to URL Search Parameters as required by fmv.html architecture
         window.handleFMVExport = function() {
             try {
                 if (!window.state.r || !window.state.aR) return;
@@ -835,13 +835,12 @@ Architecture: Modular Single-File HTML5 (Sub-Renderer Pattern)
                     invRepCost: invRepCost || 2000, invRepYear: invRepYear || 12
                 };
                 
-                try {
-                    localStorage.setItem('solarcheck_fmv_payload', JSON.stringify(payload));
-                } catch (storageErr) {
-                    alert("Storage Warning: Your browser is blocking local storage (Incognito Mode?). The report may not open properly.");
+                const params = new URLSearchParams();
+                for (const key in payload) {
+                    params.append(key, payload[key]);
                 }
                 
-                const newWin = window.open('fmv.html?v=' + Date.now(), '_blank');
+                const newWin = window.open('fmv.html?' + params.toString(), '_blank');
                 
                 if (!newWin || newWin.closed || typeof newWin.closed === 'undefined') {
                     alert("Popup blocked! Your web browser blocked the new tab from opening.\n\nPlease click the 'Pop-up blocked' icon in the right corner of your address bar and select 'Always allow pop-ups from this site.'");
@@ -1001,7 +1000,7 @@ Architecture: Modular Single-File HTML5 (Sub-Renderer Pattern)
                         </div>
                     </div>
                     <div class="text-right">
-                        <p class="text-[10px] text-slate-400 font-black uppercase tracking-[0.2em] italic mb-4">SolarCheck Pro v7.336</p>
+                        <p class="text-[10px] text-slate-400 font-black uppercase tracking-[0.2em] italic mb-4">SolarCheck Pro v7.337</p>
                         <div class="no-print flex gap-3 justify-end">
                             <button onclick="window.printReport()" class="bg-blue-600 text-white px-8 py-3 rounded-2xl font-black uppercase text-[10px] tracking-widest shadow-xl transition-all hover:bg-blue-500 active:scale-95 border-b-4 border-blue-800"><i class="fas fa-print mr-2"></i> Print</button>
                             <button onclick="window.closeReport()" class="bg-slate-100 text-slate-700 px-8 py-3 rounded-2xl font-black uppercase text-[10px] tracking-widest transition-all hover:bg-slate-200 border-b-4 border-slate-300">Back</button>
