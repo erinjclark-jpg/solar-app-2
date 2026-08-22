@@ -1,7 +1,7 @@
 <!-- 
 ================================================================================
 PROJECT CONTEXT: SolarCheck Professional - FMV REPORT MODULE
-Current Version: v1.19 (STRATEGIC HANDOFF RECEIVER - RESPONSIVE & PRINT OPTIMIZED)
+Current Version: v1.20 (STRATEGIC HANDOFF RECEIVER - RESPONSIVE & PRINT OPTIMIZED)
 Date: August 2026
 Architecture: Standalone HTML5 / URL-Parameter Data Handoff
 ================================================================================
@@ -35,7 +35,7 @@ Architecture: Standalone HTML5 / URL-Parameter Data Handoff
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Professional Solar Valuation Report v1.19</title>
+    <title>Professional Solar Valuation Report v1.20</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
@@ -95,10 +95,10 @@ Architecture: Standalone HTML5 / URL-Parameter Data Handoff
 <body class="text-slate-800 antialiased">
 
     <div class="no-print fixed top-5 right-5 z-50 flex gap-3 print:hidden">
-        <button onclick="window.print()" class="bg-blue-600 text-white px-6 py-2.5 rounded-full font-bold shadow-lg hover:bg-blue-700 transition-all flex items-center gap-2">
+        <button onclick="triggerPrint()" class="bg-blue-600 text-white px-6 py-2.5 rounded-full font-bold shadow-lg hover:bg-blue-700 transition-all flex items-center gap-2">
             <i class="fas fa-print"></i> Print to PDF
         </button>
-        <button onclick="window.close()" class="bg-slate-800 text-white px-6 py-2.5 rounded-full font-bold shadow-lg hover:bg-slate-900 transition-all">
+        <button onclick="closeAudit()" class="bg-slate-800 text-white px-6 py-2.5 rounded-full font-bold shadow-lg hover:bg-slate-900 transition-all">
             Close Audit
         </button>
     </div>
@@ -201,7 +201,7 @@ Architecture: Standalone HTML5 / URL-Parameter Data Handoff
                 <p class="text-[9px] font-black text-slate-400 uppercase tracking-widest">Document Integrity</p>
                 <p class="text-[10px] font-bold text-slate-700">Audit Ref: <span id="display-ref"></span></p>
             </div>
-            <p class="text-[9px] text-slate-400 font-bold uppercase tracking-widest">SolarCheck Pro | Report v1.19</p>
+            <p class="text-[9px] text-slate-400 font-bold uppercase tracking-widest">SolarCheck Pro | Report v1.20</p>
         </div>
     </div>
 
@@ -331,6 +331,17 @@ Architecture: Standalone HTML5 / URL-Parameter Data Handoff
     </div>
 
     <script>
+        // Bound handlers strictly to the global window object to prevent focus errors
+        window.triggerPrint = function() {
+            setTimeout(function() {
+                window.print();
+            }, 100);
+        };
+        
+        window.closeAudit = function() {
+            window.close();
+        };
+
         const cur = (v) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(v || 0);
         const num = (v) => new Intl.NumberFormat('en-US', { maximumFractionDigits: 1 }).format(v || 0);
         
