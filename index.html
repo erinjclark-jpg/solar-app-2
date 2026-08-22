@@ -1,8 +1,8 @@
 <!-- 
 ================================================================================
 PROJECT CONTEXT: SolarCheck Professional
-Current Version: v7.326 (PRECISION VALUATION MODULE - BULLETPROOF APPRAISAL UPGRADE)
-Date: August 2026
+Current Version: v7.312 (PRECISION VALUATION MODULE)
+Date: March 2026
 Architecture: Modular Single-File HTML5 (Sub-Renderer Pattern)
 ================================================================================
 
@@ -37,7 +37,7 @@ Architecture: Modular Single-File HTML5 (Sub-Renderer Pattern)
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SolarCheck Professional v7.326</title>
+    <title>SolarCheck Professional v7.312</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
@@ -79,7 +79,7 @@ Architecture: Modular Single-File HTML5 (Sub-Renderer Pattern)
         // =====================================================================
         window.UI_TEXT = {
             company: { l: "Company Profile", d: "Select the primary service provider logo and license for the final report.", p: "" },
-            ownership: { l: "Ownership Agreement", d: "If the contract has a fixed monthly payment schedule, select Fixed Payment. If the monthly bill fluctuates based on actual metered kWh production, select Variable Payment.", p: "" },
+            ownership: { l: "Ownership Agreement", d: "Owned systems are property assets. Lease/PPA (TPO) systems are financial liabilities.", p: "" },
             tpoName: { l: "TPO Provider Name", d: "The financial institution or entity that owns the service agreement.", p: "e.g. Sunrun" },
             address: { l: "Property Address", d: "The physical address used for asset tracking and location-based utility mapping.", p: "123 Solar Way, Rocklin CA" },
             pC: { l: "Panel Count", d: "Total quantity of PV modules.", p: "e.g. 20" },
@@ -117,24 +117,13 @@ Architecture: Modular Single-File HTML5 (Sub-Renderer Pattern)
             dr: { l: "Discount Rate (%)", d: "Target return or cost of capital (Standard: 6-10%).", p: "7.88" },
             e: { l: "Utility Escalation (%)", d: "Assumed annual utility rate inflation.", p: "7.0" },
             rC: { l: "Replacement Cost ($/W)", d: "Current cost per watt to build a similar new system.", p: "3.50" },
-            batCost: { l: "Bat. Hardware ($/kWh)", d: "Replacement cost per kWh of energy storage.", p: "800" },
             l: { l: "Useful Life (Years)", d: "Estimated total life of equipment (Standard: 25y)." , p: "25" },
             ne: { l: "NEM Policy", d: "Tariff adjustment for net metering value.", p: "" },
             c: { l: "Asset Condition (0-1)", d: "Physical health multiplier (1.0 = Perfect).", p: "0.9" },
-            rp: { l: "Repair Cost ($)", d: "Total cost of required corrective maintenance.", p: "0" },
-            defNotes: { l: "Inspector Notes", d: "Specific defect context or location." },
+            rp: { l: "Onsite Repair Costs ($)", d: "Enter verified cost for required corrective maintenance.", p: "0" },
             srec: { l: "Include SRECs / Incentives?", d: "Toggle for secondary solar revenue streams.", p: "" },
             srecP: { l: "SREC Value ($/MWh)", d: "Current market value of Solar Renewable Energy Credits.", p: "25" },
-            itc: { l: "Federal ITC Haircut (%)", d: "Tax credit percentage stripped from used hardware cost.", p: "30" },
-            invRepCost: { l: "Inverter Rep. Cost ($)", d: "Expected future cost to replace string inverter.", p: "2000" },
-            invRepYear: { l: "Inverter Rep. Year", d: "Expected year of string inverter failure.", p: "12" },
-            batDeg: { l: "Battery Degradation (%)", d: "Annual capacity loss for energy storage.", p: "2" },
-            escCap: { l: "Escalation Cap (Years)", d: "Year to cap compounding utility inflation.", p: "10" },
-            tpoQuote: { l: "TPO Buyout Quote ($)", d: "Exact contractual buyout demand.", p: "" },
-            minBuyout: { l: "Min. Contract Buyout ($)", d: "Contractual buyout floor for the current year.", p: "0" },
-            omRes: { l: "O&M Reserve ($/kW/Yr)", d: "Annual maintenance and monitoring reserve.", p: "21" },
-            obsPct: { l: "Func. Obsolescence (Cost %)", d: "Secondary market depreciation penalty.", p: "0" },
-
+            
             // Result Specific Consistency Keys
             sz_label: { l: "Rated Size", d: "System DC capacity." },
             age_label: { l: "Solar System Current Age", d: "Years since PTO." },
@@ -176,9 +165,8 @@ Architecture: Modular Single-File HTML5 (Sub-Renderer Pattern)
             arbitrage_intro: "This audit verifies if the solar energy is cheaper than the electricity bought from the utility. A positive delta means the system is creating financial value.",
             perf_ratio_intro: "This is the health score of the system. 100% means the system is performing exactly as designed. If a legal guarantee exists, we compare actual production to that floor. Otherwise, we compare to the original estimate.",
             valuation_cost_footer: "Value based on building a new system today minus depreciation.",
-            valuation_inc_footer: "Value based on the net energy cash flows the system provides over its life.",
-            valuation_tpo_split: "For 3rd party agreements, Fair Market Value is weighted toward the physical equipment value and the net avoided grid electricity value delivered to the host customer.",
-            valuation_gross_note: "The figures below represent the Gross Valuation Basis. They display the raw mathematical value before site-specific penalties (like deferred maintenance or performance true-ups) and contractual cap adjustments are applied. This is why they may differ from the Net FMV at the top of the page."
+            valuation_inc_footer: "Value based on the net energy savings the system provides over its life.",
+            valuation_tpo_split: "For 3rd party agreements, Fair Market Value is weighted toward the immediate savings provided during the remaining contract term."
         };
 
         // --- GLOBAL HELPERS ---
@@ -193,7 +181,7 @@ Architecture: Modular Single-File HTML5 (Sub-Renderer Pattern)
         };
         window.Idark = function(l, v, key, t = "number", d, st = "0.01", disabled = false) { 
             const txt = window.UI_TEXT[key] || { l, d, p: "" };
-            return `<div class=""><label for="${key}" class="block text-blue-200 text-xs sm:text-sm mb-1 font-bold uppercase tracking-wide">${l || txt.l}</label><input type="${t}" step="${st}" id="${key}" placeholder="${txt.p}" class="w-full p-2 sm:p-2.5 border border-slate-500 rounded-lg bg-slate-700/50 text-white text-base sm:text-lg font-semibold focus:ring-2 focus:ring-blue-400 focus:border-blue-400 placeholder-slate-400 backdrop-blur-sm ${disabled ? 'opacity-50 cursor-not-allowed' : ''}" value="${v}" ${disabled ? 'disabled' : ''} onchange="handleInputChange(event,'${key}')"/><p class="text-[12px] text-blue-100 mt-1 leading-snug italic">${d || txt.d || ''}</p></div>`; 
+            return `<div class=""><label for="${key}" class="block text-blue-200 text-xs sm:text-sm mb-1 font-bold uppercase tracking-wide">${txt.l}</label><input type="${t}" step="${st}" id="${key}" placeholder="${txt.p}" class="w-full p-2 sm:p-2.5 border border-slate-500 rounded-lg bg-slate-700/50 text-white text-base sm:text-lg font-semibold focus:ring-2 focus:ring-blue-400 focus:border-blue-400 placeholder-slate-400 backdrop-blur-sm ${disabled ? 'opacity-50 cursor-not-allowed' : ''}" value="${v}" ${disabled ? 'disabled' : ''} onchange="handleInputChange(event,'${key}')"/><p class="text-[12px] text-blue-100 mt-1 leading-snug italic">${txt.d || ''}</p></div>`; 
         };
         window.Sdark = function(l, v, key, o, d) { 
             const txt = window.UI_TEXT[key] || { l, d };
@@ -229,7 +217,7 @@ Architecture: Modular Single-File HTML5 (Sub-Renderer Pattern)
                      <h3 class="font-bold mb-4 text-slate-800 flex items-center gap-2 text-[10px] sm:text-xs uppercase tracking-widest">Site & Branding</h3>
                      <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
                         ${window.S("Company Profile", st.company, "company", [{v:'rsr', l:'Rocklin Solar Repair'}, {v:'shine', l:'Shine on Solar & Maintenance'}, {v:'ssoc', l:'Solar Service of Colorado'}])}
-                        ${window.S("Ownership Agreement", st.o, "o", [{ v: "owned", l: "Homeowner Owned" }, { v: "lease", l: "Fixed Payment (Lease / Predictable PPA)" }, { v: "ppa", l: "Variable Payment (True Pay-per-kWh PPA)" }, { v: "prepaid_lease", l: "Prepaid Agreement" }])}
+                        ${window.S("Ownership Agreement", st.o, "o", [{ v: "owned", l: "Homeowner Owned" }, { v: "lease", l: "Lease (Fixed Payment)" }, { v: "ppa", l: "PPA (Pay per kWh)" }, { v: "prepaid_lease", l: "Prepaid Lease" }, { v: "prepaid_ppa", l: "Prepaid PPA" }])}
                         <div class="${st.o === 'owned' ? 'hidden' : ''}">${window.I("TPO Provider Name", st.tpoName, "tpoName", "text")}</div>
                         <div class="col-span-1 sm:col-span-2">${window.I("Property Address", st.a, "a", "text")}</div>
                      </div>
@@ -291,95 +279,21 @@ Architecture: Modular Single-File HTML5 (Sub-Renderer Pattern)
 
         window.renderValuationTab = function(st, aR) {
             const isTPO = ['lease', 'ppa', 'prepaid_lease', 'prepaid_ppa'].includes(st.o);
-            const { r } = window.state;
-            
             return `<div class="tab-content space-y-6">
-                
-                ${isTPO ? `
-                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6 mb-6">
-                    <div class="bg-slate-800 text-white p-6 sm:p-8 rounded-3xl shadow-xl relative overflow-hidden text-center border-2 border-slate-600">
-                        <p class="text-[10px] font-black text-blue-300 uppercase tracking-[0.2em] mb-2 opacity-80">Initial TPO Buyout Quote</p>
-                        <p class="text-4xl sm:text-5xl font-black mb-1 tracking-tighter italic leading-none line-through decoration-red-500/60">${st.tpoQuote ? window.cur(st.tpoQuote) : '---'}</p>
-                        <p class="text-[11px] text-slate-400 font-bold uppercase tracking-widest mt-2">Provider Demand</p>
-                        <div class="absolute right-[-10%] top-[-10%] text-[100px] opacity-10 rotate-12"><i class="fas fa-file-invoice-dollar"></i></div>
-                    </div>
-                    <div class="bg-blue-900 text-white p-6 sm:p-8 rounded-3xl shadow-xl relative overflow-hidden text-center border-2 border-blue-700">
-                        <p class="text-[10px] font-black text-blue-300 uppercase tracking-[0.2em] mb-2 opacity-80">System Purchase (FMV)</p>
-                        <p class="text-4xl sm:text-5xl font-black mb-1 tracking-tighter italic leading-none">${window.cur(aR.val)}</p>
-                        <p class="text-[11px] text-blue-200 font-bold uppercase tracking-widest mt-2">${st.w === 100 ? 'Income Approach' : st.w === 0 ? 'Cost Approach' : `Blended (${st.w}% Income)`}</p>
-                        <div class="absolute right-[-10%] top-[-10%] text-[100px] opacity-10 rotate-12"><i class="fas fa-hand-holding-dollar"></i></div>
-                    </div>
-                </div>
-                ` : `
-                <div class="bg-blue-900 text-white p-8 sm:p-10 rounded-3xl shadow-xl relative overflow-hidden text-center mb-6 border-2 border-blue-700">
-                    <p class="text-[9px] sm:text-[10px] font-black text-blue-300 uppercase tracking-[0.3em] mb-3 opacity-80">System Purchase Price (FMV)</p>
-                    <p class="text-5xl sm:text-7xl font-black mb-2 tracking-tighter italic leading-none">${window.cur(aR.val)}</p>
-                    <p class="text-[12px] text-slate-200 font-bold uppercase tracking-widest">${st.w === 100 ? 'Income Approach' : st.w === 0 ? 'Cost Approach' : `Blended (${st.w}% Income)`}</p>
-                    <div class="absolute right-[-10%] top-[-10%] text-[140px] sm:text-[160px] opacity-10 rotate-12"><i class="fas fa-hand-holding-dollar"></i></div>
-                </div>
-                `}
-
+                <div class="bg-slate-800 text-white p-8 sm:p-10 rounded-3xl shadow-xl relative overflow-hidden text-center"><p class="text-[9px] sm:text-[10px] font-black text-blue-300 uppercase tracking-[0.3em] mb-3 opacity-80">Fair Market Value (FMV)</p><p class="text-5xl sm:text-7xl font-black mb-2 tracking-tighter italic leading-none">${window.cur(aR.val)}</p><p class="text-[12px] text-slate-200 font-bold uppercase tracking-widest">${st.w === 100 ? 'Income Approach' : st.w === 0 ? 'Cost Approach' : `Blended (${st.w}% Income)`}</p><div class="absolute right-[-10%] top-[-10%] text-[140px] sm:text-[160px] opacity-10 rotate-12"><i class="fas fa-balance-scale"></i></div></div>
                 <div class="bg-slate-700 p-6 sm:p-8 rounded-3xl border border-slate-600 shadow-xl">
                     <h4 class="text-[9px] font-black text-white uppercase mb-6 border-b border-slate-600 pb-3 tracking-widest">Adjustments & Assumptions</h4>
-                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-5 sm:gap-6">
-                        ${window.Idark("Discount Rate (%)", st.dr, "dr")}
-                        ${window.Idark("Utility Esc. (%)", st.e, "e")}
-                        ${window.Idark("Rep. Cost ($/W)", st.rC, "rC")}
-                        ${window.Idark("Bat. Hardware ($/kWh)", st.batCost, "batCost")}
-                        ${window.Idark("Life (Years)", st.l, "l")}
-                        ${window.Idark("ITC Haircut (%)", st.itc, "itc")}
-                        ${window.Idark("Utility Esc. Cap (Yrs)", st.escCap, "escCap")}
-                        ${window.Idark("Bat. Degradation (%)", st.batDeg, "batDeg")}
-                        ${window.Idark("Inv. Rep. Cost ($)", st.invRepCost, "invRepCost")}
-                        ${window.Idark("Inv. Rep. Year", st.invRepYear, "invRepYear")}
-                        ${isTPO ? window.Idark("TPO Buyout Quote ($)", st.tpoQuote, "tpoQuote", "number") : ''}
-                        ${window.Idark("O&M Reserve ($/kW/Yr)", st.omRes, "omRes", "number")}
-                        ${window.Idark("Func. Obsolescence (Cost %)", st.obsPct, "obsPct", "number")}
-                    <div class="sm:col-span-2 border-t border-slate-600 pt-4 mt-4">
-                        <h5 class="text-[10px] font-black text-amber-400 uppercase tracking-widest mb-3"><i class="fas fa-tools"></i> Deferred Maintenance / Defect Reporting</h5>
-                        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-4">
-                            <div class="col-span-1 sm:col-span-3 mb-2">
-                                <label class="block text-blue-200 text-xs sm:text-sm mb-2 font-bold uppercase tracking-wide">Identified Defect Categories</label>
-                                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
-                                    ${[
-                                        {v:'wire', l:'Wire Management Failure'}, 
-                                        {v:'weather', l:'Compromised Weatherproofing'}, 
-                                        {v:'mech', l:'Mechanical / Racking Failure'}, 
-                                        {v:'thermal', l:'Thermal Anomalies'}, 
-                                        {v:'ground', l:'Grounding Continuity Failure'}, 
-                                        {v:'other', l:'Other / Custom Defect'}
-                                    ].map(o => `
-                                        <label class="flex items-center space-x-2 text-sm text-white cursor-pointer hover:bg-slate-600/50 p-2 rounded-lg transition-colors border border-slate-600">
-                                            <input type="checkbox" class="form-checkbox h-4 w-4 text-blue-500 rounded border-slate-500 bg-slate-700" 
-                                                   ${st.defTypes.includes(o.v) ? 'checked' : ''} 
-                                                   onchange="handleDefectChange('${o.v}')">
-                                            <span class="font-medium">${o.l}</span>
-                                        </label>
-                                    `).join('')}
-                                </div>
-                            </div>
-                            <div class="col-span-1 sm:col-span-1">
-                                ${window.Idark("Repair Cost ($)", st.rp, "rp", "number", "Total corrective cost.")}
-                            </div>
-                            <div class="col-span-1 sm:col-span-2">
-                                ${window.Idark("Inspector Notes", st.defNotes, "defNotes", "text", "Specific defect context.")}
-                            </div>
-                        </div>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-5 sm:gap-6">${window.Idark("Discount Rate (%)", st.dr, "dr")}${window.Idark("Utility Esc. (%)", st.e, "e")}${window.Idark("Rep. Cost ($/W)", st.rC, "rC")}${window.Idark("Life (Years)", st.l, "l")}
+                    <div class="sm:col-span-2 border-t border-slate-600 pt-4 mt-2">
+                        ${window.Idark("Onsite Repair Costs ($)", st.rp, "rp", "number", "Enter verified cost for required corrective maintenance.")}
                     </div>
                     </div>
                     <div class="pt-6 border-t border-slate-600 mt-6 flex justify-between items-center"><label class="text-blue-200 text-[9px] font-bold uppercase tracking-widest">${window.UI_TEXT.srec.l}</label><button onclick="updateState('srec', ${!st.srec})" class="w-10 h-5 sm:w-11 sm:h-6 rounded-full transition-colors ${st.srec ? 'bg-green-500' : 'bg-slate-600'} relative shadow-inner"><div class="w-3 h-3 sm:w-4 h-4 bg-white rounded-full absolute top-1 transition-all ${st.srec ? 'left-6' : 'left-1'}"></div></button></div>
                     ${st.srec ? `<div class="mt-4">${window.Idark("SREC Value ($/MWh)", st.srecP, "srecP")}</div>` : ''}
                     <div class="mt-8 pt-8 border-t border-slate-600 text-center"><label class="block text-blue-200 text-[9px] font-black uppercase mb-4 tracking-widest">Methodology</label><div class="flex bg-slate-800 p-1 rounded-2xl border border-slate-600 shadow-inner max-w-sm mx-auto"><button onclick="updateState('w', 100)" class="flex-1 py-3 rounded-xl text-[9px] font-black transition-all ${st.w === 100 ? 'bg-blue-600 text-white shadow-lg' : 'text-slate-500'} uppercase">Income</button><button onclick="updateState('w', 0)" class="flex-1 py-3 rounded-xl text-[9px] font-black ${st.w === 0 ? 'bg-blue-600 text-white shadow-lg' : 'text-slate-500'} uppercase">Cost</button></div></div>
                 </div>
-                ${isTPO ? `<div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-md"><h4 class="text-xs font-bold text-slate-800 uppercase tracking-widest mb-4">Income Basis Breakdown (TPO Model)</h4><div class="space-y-3">${window.R("Term Cash Flows", window.cur(aR.incContract), "", "Discounted present value of active PPA/Lease utility avoidance.")}${window.R("Residual Value", window.cur(aR.incResidual), "", "Discounted present value of wholesale residual energy.")}<div class="bg-indigo-50 p-3 rounded-xl border border-indigo-100 mt-4 text-[13px] font-semibold text-indigo-900 leading-relaxed">${window.UI_NARRATIVES.valuation_tpo_split}</div></div></div>` : ''}
-                
-                <div class="bg-blue-50 p-4 rounded-xl border border-blue-100 text-[13px] font-semibold text-blue-900 leading-relaxed shadow-inner">
-                    <i class="fas fa-info-circle mr-2 text-blue-600"></i><strong>Gross vs. Net Valuation:</strong> ${window.UI_NARRATIVES.valuation_gross_note}
-                </div>
-                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6 mt-6">
-                    ${window.C("Gross Cost Basis", "Raw physical value.", `<p class="text-2xl sm:text-4xl font-black italic text-slate-700">${window.cur(aR.cost)}</p><p class="text-[12px] text-slate-800 font-bold mt-2">${window.UI_NARRATIVES.valuation_cost_footer}</p>`, 'text-slate-700')}
-                    ${window.C("Gross Income Basis", "Raw discounted cash flows.", `<p class="text-2xl sm:text-4xl font-black italic text-green-700">${window.cur(aR.inc)}</p><p class="text-[12px] text-slate-800 font-bold mt-2">${window.UI_NARRATIVES.valuation_inc_footer}</p>`, 'text-green-700')}
-                </div>
+                ${isTPO ? `<div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-md"><h4 class="text-xs font-bold text-slate-800 uppercase tracking-widest mb-4">Income Basis Breakdown (TPO Model)</h4><div class="space-y-3">${window.R("Contract Savings", window.cur(aR.incContract), "", "Discounted value of net energy savings during remaining lease term.")}${window.R("Residual Value", window.cur(aR.incResidual), "", "Discounted value of energy savings after contract expiration.")}<div class="bg-indigo-50 p-3 rounded-xl border border-indigo-100 mt-4 text-[13px] font-semibold text-indigo-900 leading-relaxed">${window.UI_NARRATIVES.valuation_tpo_split}</div></div></div>` : ''}
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">${window.C("Cost Basis", "Physical value.", `<p class="text-2xl sm:text-4xl font-black italic text-slate-700">${window.cur(aR.cost)}</p><p class="text-[12px] text-slate-800 font-bold mt-2">${window.UI_NARRATIVES.valuation_cost_footer}</p>`, 'text-slate-700')}${window.C("Income Basis", "Discounted savings.", `<p class="text-2xl sm:text-4xl font-black italic text-green-700">${window.cur(aR.inc)}</p><p class="text-[12px] text-slate-800 font-bold mt-2">${window.UI_NARRATIVES.valuation_inc_footer}</p>`, 'text-green-700')}</div>
             </div>`;
         };
 
@@ -387,7 +301,7 @@ Architecture: Modular Single-File HTML5 (Sub-Renderer Pattern)
         // [CALCULATION_ENGINE]
         // =====================================================================
         window.calculate = function() {
-            const { pC, pW, iDt, pDt, or, sh, pi, ac, b, br, scr, ut, rU, eU, tE, tG, tEs, pa, paB, tR, rC, batCost, l, dr, rp, e, w, te, o, srec, srecP, it, itc, invRepCost, invRepYear, batDeg, escCap, tpoQuote, minBuyout, omRes, obsPct } = window.state;
+            const { pC, pW, iDt, pDt, or, sh, pi, ac, b, br, scr, ut, rU, eU, tE, tG, tEs, pa, paB, tR, rC, l, dr, rp, e, w, te, o, srec, srecP } = window.state;
             const nPC = parseFloat(pC) || 0; const nPW = parseFloat(pW) || 0; const nAC = parseFloat(ac) || 0;
             const s = (nPC * nPW) / 1000; window.state.sz = s;
             const DEG_RATE = 0.005; const iT = +new Date(iDt), pT = +new Date(pDt);
@@ -417,11 +331,12 @@ Architecture: Modular Single-File HTML5 (Sub-Renderer Pattern)
             ptd += th * (1 - (iC * DEG_RATE)) * (age % 1);
             const cP = th * Math.max(0, 1 - (age * DEG_RATE));
 
-            // 2. Real World Performance Ratio
+            // 2. NEW: Real World Performance Ratio
+            // We use this multiplier to project true future yield based on historical actuals
             const realRatio = (ptd > 0 && nAC > 0) ? ((nAC * 1000) / ptd) : 1;
-            const cP_real = cP * realRatio; 
+            const cP_real = cP * realRatio; // Actual instantaneous annual pace
 
-            // 3. TPO Payments Refactor
+            // 3. TPO Payments Refactor (Self-Policing PPA support)
             const ppaRateY1 = ntR;
             const ppaRateYC = ntR * Math.pow(1 + (ntEs/100), iC);
             const ppaRateYL = ntR * Math.pow(1 + (ntEs/100), iL);
@@ -451,8 +366,6 @@ Architecture: Modular Single-File HTML5 (Sub-Renderer Pattern)
 
             // Battery and Utility Blending
             const totalB = parseFloat(b) || 0;
-            const bC = parseFloat(batCost) || 0;
-            const totalBatHardwareCost = totalB * bC;
             const usableB = totalB * (1 - (parseFloat(br) || 0) / 100);
             const dailyGenAvg = (s * 4.5); 
             const batteryBoost = (usableB / (dailyGenAvg || 1)) * 40; 
@@ -460,35 +373,27 @@ Architecture: Modular Single-File HTML5 (Sub-Renderer Pattern)
             
             const blendedUtility = (finalSCR/100 * (rU || 0.35)) + ((1 - finalSCR/100) * (eU || 0.05));
             
-            // 4. Savings Loops
+            // 4. Savings Loops (Projecting based on real ratio)
             let fSa = 0; 
             const calcTerm = parseFloat(l) || 25; 
             const rM = Math.max(0, calcTerm - age);
             const retailBase = rU || 0.35;
             const exportBase = eU || 0.05;
             const utilityEscFactor = 1 + (parseFloat(e || 0) / 100);
-            const bDegRate = 1 - (parseFloat(batDeg) || 0) / 100;
-            const eCap = parseFloat(escCap) || 10;
 
             for (let i = 0; i < Math.ceil(rM); i++) { 
                 const yr = age + i;
                 const currentExportBase = (yr <= 20) ? exportBase : 0.05;
+                const currentBlendedBase = (finalSCR/100 * retailBase) + ((1 - finalSCR/100) * currentExportBase);
+                const currentBlendedEscalated = currentBlendedBase * Math.pow(utilityEscFactor, i);
                 
-                const currentUsableB = usableB * Math.pow(bDegRate, yr);
-                const currentBatteryBoost = (currentUsableB / (dailyGenAvg || 1)) * 40;
-                const currentSCR = Math.min(98, (parseFloat(scr) || 0) + (currentUsableB > 0 ? currentBatteryBoost : 0));
-                
-                const currentBlendedBase = (currentSCR/100 * retailBase) + ((1 - currentSCR/100) * currentExportBase);
-                const cappedEscYear = Math.min(i, eCap);
-                const currentBlendedEscalated = currentBlendedBase * Math.pow(utilityEscFactor, cappedEscYear);
-                
+                // Use real-world projected production
                 const yrRealProd = th * Math.max(0, 1 - (yr * DEG_RATE)) * realRatio;
                 fSa += yrRealProd * currentBlendedEscalated; 
             }
 
             // 5. Cost Loops (Real liability simulation)
-            let tCt = 0, remCost = 0, discountedRemCost = 0;
-            const prepayDiscount = 5.0 / 100; // Left internally for NPV reference
+            let tCt = 0, remCost = 0;
             let current_tR = ntR; 
             let currentPay_sol = nPa * 12; 
             let currentPay_bat = nPaB * 12;
@@ -507,15 +412,12 @@ Architecture: Modular Single-File HTML5 (Sub-Renderer Pattern)
                 
                 const totalYearly = yearlySolCost + currentPay_bat;
                 tCt += totalYearly;
-                if (i >= iC) {
-                    remCost += totalYearly;
-                    discountedRemCost += totalYearly / Math.pow(1 + prepayDiscount, (i - iC) + 1);
-                }
+                if (i >= iC) remCost += totalYearly;
                 
                 currentPay_bat *= (1 + (ntEs/100));
             }
             
-            if (isPrepaid) { remCost = 0; discountedRemCost = 0; }
+            if (isPrepaid) remCost = 0; // Prepaid agreements have no remaining payment liability
 
             // 6. Final Dashboard Snapshots
             const rYC_sol = realProdYC > 0 ? (solYC * 12) / realProdYC : 0;
@@ -534,119 +436,62 @@ Architecture: Modular Single-File HTML5 (Sub-Renderer Pattern)
                 actSav, actSavNet, futSav: fSa, futSavNet, totSav, totSavNet, 
                 tCost: tCt, pY1, solY1, batY1, solYC, batYC, pYC, solYL, batYL, pYL, rYC_sol, 
                 physTD: ptd/1000, estTD: etd/1000, guarTD: gtd/1000, fTe: fTe/1000, fTg: fTg/1000, 
-                blendedUtility, effSCR: finalSCR, arbDelta, arbDiscount, estDay: cP_real/365, estN12: cP_real, usableB, remCost, discountedRemCost, ptd,
+                blendedUtility, effSCR: finalSCR, arbDelta, arbDiscount, estDay: cP_real/365, estN12: cP_real, usableB, remCost, ptd,
                 shortfallkWh, trueUpRefund
             };
 
-            // 7. PRECISION VALUATION DCF MODEL (BULLETPROOF UPGRADE v7.326)
-            const sC = (s * 1000 * parseFloat(rC||0)) + totalBatHardwareCost; 
+            // 7. Precision Valuation DCF Model
+            const sC = s * 1000 * parseFloat(rC||0); 
             const rL = Math.max(0, (parseFloat(l)||25) - age); 
-            const depCost = l > 0 ? (rL / l) : 0; 
-            const itcMultiplier = 1 - ((parseFloat(itc) || 0) / 100);
-            const unvestedFactor = age < 5 ? Math.max(0, (5 - age) / 5) : 0;
-            const itcRecaptureLiability = sC * ((parseFloat(itc) || 30) / 100) * unvestedFactor;
+            const depCost = l > 0 ? (rL / l) : 0; const cV = sC * depCost;
             
-            // Gross Cost (Before Obsolescence)
-            let grossCost = (sC * depCost * itcMultiplier) + itcRecaptureLiability; 
-            let obsDeduction = grossCost * ((parseFloat(obsPct) || 0) / 100);
-            let netCost = grossCost - obsDeduction;
+            let dcfContract = 0, dcfResidual = 0; 
+            let lCA_sol_rate = ppaRateYC;
+            let lCA_sol_lease = solYC * 12;
+            let lCA_bat_val = batYC * 12;
             
-            let grossIncContract = 0, grossIncResidual = 0; 
-            let omCapExDiscounted = 0;
-            
-            const repCost = parseFloat(invRepCost) || 0;
-            const repYear = parseFloat(invRepYear) || 12;
-            const omRate = parseFloat(omRes) || 0;
-
             for (let y = 1; y <= Math.ceil(rL); y++) { 
                 const yr = age + y;
-                const yrRealProd = th * Math.max(0, 1 - (yr * DEG_RATE)) * realRatio;
-                
-                // Strict 10-year expiration limit applied to SREC revenue projection
-                const srev = (srec && srecP && yr <= 10) ? (yrRealProd / 1000) * srecP : 0;
-                
-                // Income Approach - Energy Value
                 const currentExportBase = (yr <= 20) ? exportBase : 0.05;
-                const currentUsableB = usableB * Math.pow(bDegRate, yr);
-                const currentBatteryBoost = (currentUsableB / (dailyGenAvg || 1)) * 40;
-                const currentSCR = Math.min(98, (parseFloat(scr) || 0) + (currentUsableB > 0 ? currentBatteryBoost : 0));
-                const currentBlendedBase = (currentSCR/100 * retailBase) + ((1 - currentSCR/100) * currentExportBase);
-                const cappedEscYear = Math.min(y, eCap);
-                const currentBlendedEscalated = currentBlendedBase * Math.pow(utilityEscFactor, cappedEscYear);
-                const energy_revenue = (yrRealProd * currentBlendedEscalated);
+                const currentBlendedBase = (finalSCR/100 * retailBase) + ((1 - finalSCR/100) * currentExportBase);
+                const currentBlendedEscalated = currentBlendedBase * Math.pow(utilityEscFactor, y);
                 
-                // Gross Cash Flows
-                let grossNetYearly = energy_revenue + srev;
-                let discountedGross = grossNetYearly / Math.pow(1 + (dr / 100), y);
+                const yrRealProd = th * Math.max(0, 1 - (yr * DEG_RATE)) * realRatio;
+                const srev = (srec && srecP) ? (yrRealProd / 1000) * srecP : 0;
                 
-                if (isTPO && yr <= nTe) {
-                    grossIncContract += discountedGross;
-                } else {
-                    grossIncResidual += discountedGross;
+                let yearlyLiab = 0;
+                if (isTPO && !isPrepaid && yr <= nTe) { // Check liability boundary against term
+                    let solLiab = (o === 'ppa') ? (yrRealProd * lCA_sol_rate) : lCA_sol_lease;
+                    yearlyLiab = solLiab + lCA_bat_val;
                 }
                 
-                // O&M and CapEx Liabilities
-                let omYearly = (s * omRate) * Math.pow(1.025, y);
-                let capEx = (it === 'string' && Math.floor(yr) === repYear && y <= rL) ? repCost : 0;
+                const net = (yrRealProd * currentBlendedEscalated) + srev - yearlyLiab; 
+                const discounted = net / Math.pow(1 + (dr / 100), y);
+                if (isTPO && yr <= nTe) dcfContract += discounted; else dcfResidual += discounted;
                 
-                omCapExDiscounted += (omYearly + capEx) / Math.pow(1 + (dr / 100), y);
+                if (o === 'ppa') {
+                    lCA_sol_rate *= (1 + (ntEs / 100));
+                } else {
+                    lCA_sol_lease *= (1 + (ntEs / 100)); 
+                }
+                lCA_bat_val *= (1 + (ntEs / 100));
             }
-            
-            let grossIncome = grossIncContract + grossIncResidual;
-            
-            let grossBlended = (grossIncome * (w / 100)) + (grossCost * (1 - (w / 100)));
-            let weightedObs = obsDeduction * (1 - (w / 100));
-            let weightedOM = omCapExDiscounted * (w / 100);
-            
-            let rawBaseFMV = grossBlended - weightedObs - weightedOM;
-            
-            // ==========================================
-            // THE EMERGENCY BRAKE (TPO QUOTE CAP)
-            // ==========================================
-            const nTpoQuote = parseFloat(tpoQuote) || 0;
-            let cappedBaseFMV = rawBaseFMV;
-            let cappedDiff = 0;
-            
-            // "Lesser Of" Strategic Gate: Cap at TPO Quote if provided
-            if (isTPO && nTpoQuote > 0 && rawBaseFMV > nTpoQuote) {
-                cappedBaseFMV = nTpoQuote;
-                cappedDiff = rawBaseFMV - nTpoQuote;
-            }
-            
-            // Hard Physical Deductions and Minimum Buyout Floor
+            const totalDCF = dcfContract + dcfResidual;
+            const valInput = (isTPO && w === 100) ? dcfContract : totalDCF;
             const nRP = parseFloat(rp) || 0;
-            const minContractBuyout = parseFloat(minBuyout) || 0;
-            
-            let rawNetFMV = cappedBaseFMV - nRP - trueUpRefund;
-            let finalFMV = rawNetFMV;
-            let floorDiff = 0;
-            
-            if (finalFMV < minContractBuyout) { 
-                finalFMV = minContractBuyout; 
-                floorDiff = minContractBuyout - rawNetFMV; 
-            }
-
             window.state.aR = { 
-                cost: grossCost, 
-                inc: grossIncome, 
-                incContract: grossIncContract, 
-                incResidual: grossIncResidual, 
-                val: finalFMV,
-                grossBlended,
-                weightedObs,
-                weightedOM,
-                cappedDiff,
-                baseFMV: cappedBaseFMV,
-                rp: nRP,
-                trueUpRefund,
-                floorDiff
+                cost: cV - nRP, 
+                inc: totalDCF - nRP, 
+                incContract: dcfContract, 
+                incResidual: dcfResidual, 
+                val: Math.max(0, (valInput * (w / 100)) + (cV * (1 - (w / 100))) - nRP) 
             };
         };
 
         // --- STATE & UTILITIES ---
         window.state = {
             activeTab: "inputs", activeModal: null, a: "", iDt: "", pDt: new Date().toISOString().split('T')[0],
-            o: "lease", tpoName: "", pC: "", pW: "", sz: 0, or: "mix", pi: "standard", sh: "some", ac: "", b: "", br: "", scr: 50, it: "string", invBrand: "SolarEdge", invCount: "", invAge: "", panelBrand: "", batteryBrand: "", batteryMode: "both", cellMon: "none", ut: "nem2", rU: 0.48, eU: 0.45, te: "", tE: "", tG: "", tEs: "", pa: "", paB: "", tR: "", rR: 0.20, rC: 3.50, batCost: 800, ne: 0.8, c: 0.9, rp: 0, defTypes: [], defNotes: '', aC: true, l: 25, om: 20, dr: 7.88, tx: false, e: 7.0, w: 100, srec: false, srecP: 25, itc: 30, invRepCost: 2000, invRepYear: 12, batDeg: 2, escCap: 10, tpoQuote: "", minBuyout: "", omRes: 21, obsPct: 0, r: null, aR: null, company: localStorage.getItem('solarCheck_company') || 'rsr'
+            o: "lease", tpoName: "", pC: "", pW: "", sz: 0, or: "mix", pi: "standard", sh: "some", ac: "", b: "", br: "", scr: 50, it: "string", invBrand: "SolarEdge", invCount: "", invAge: "", panelBrand: "", batteryBrand: "", batteryMode: "both", cellMon: "none", ut: "nem2", rU: 0.48, eU: 0.45, te: "", tE: "", tG: "", tEs: "", pa: "", paB: "", tR: "", rR: 0.20, rC: 3.50, ne: 0.8, c: 0.9, rp: 0, aC: true, l: 25, om: 20, dr: 7.88, tx: false, e: 7.0, w: 100, srec: false, srecP: 25, r: null, aR: null, company: localStorage.getItem('solarCheck_company') || 'rsr'
         };
 
         const COMPANIES = {
@@ -677,16 +522,6 @@ Architecture: Modular Single-File HTML5 (Sub-Renderer Pattern)
             window.render(); 
         };
 
-        window.handleDefectChange = function(val) {
-            const idx = window.state.defTypes.indexOf(val);
-            if (idx > -1) {
-                window.state.defTypes.splice(idx, 1);
-            } else {
-                window.state.defTypes.push(val);
-            }
-            window.render();
-        };
-
         window.handleCompanyChange = function(e) { window.state.company = e.target.value; localStorage.setItem('solarCheck_company', e.target.value); window.render(); };
         window.handleProductionChange = function(e) { const val = parseFloat(e.target.value); window.state.tE = isNaN(val) ? "" : val; const tR = parseFloat(window.state.tR); if (!isNaN(val) && !isNaN(tR) && val > 0) { window.state.pa = parseFloat(((tR * val) / 12).toFixed(2)); } window.calculate(); window.render(); };
         window.handleRateChange = function(e) { const val = parseFloat(e.target.value); window.state.tR = isNaN(val) ? "" : val; const tE = parseFloat(window.state.tE); if (!isNaN(val) && !isNaN(tE) && tE > 0) { window.state.pa = parseFloat(((val * tE) / 12).toFixed(2)); } window.calculate(); window.render(); };
@@ -697,7 +532,7 @@ Architecture: Modular Single-File HTML5 (Sub-Renderer Pattern)
         window.closeModal = () => { const m = document.getElementById(window.state.activeModal); if (m) m.close(); window.state.activeModal = null; };
 
         window.handleBuybackExport = function() {
-            if (!window.state.r || !window.state.aR) return;
+            if (!window.state.r) return;
             const { a, sz, it } = window.state;
             const { age, estN12 } = window.state.r;
             const params = new URLSearchParams({ a: a || "Subject Property", sz: sz || 0, age: age.toFixed(2), prod: estN12.toFixed(0), it: it || "string" });
@@ -706,9 +541,18 @@ Architecture: Modular Single-File HTML5 (Sub-Renderer Pattern)
 
         window.handleFMVExport = function() {
             if (!window.state.r || !window.state.aR) return;
-            const { a, o, sz, dr, e, rC, l, rp, defTypes, defNotes, w, srec, srecP, pC, pW, panelBrand, invBrand, batteryBrand, b, batteryMode, it, company, itc, escCap, batDeg, invRepCost, invRepYear, tpoQuote, minBuyout, batCost, omRes, obsPct } = window.state;
-            const { age, estN12, act, guarTD, estTD, physTD, shortfallkWh, trueUpRefund } = window.state.r;
-            const { val, cost, inc, incContract, incResidual, weightedObs, weightedOM, cappedDiff, baseFMV, floorDiff } = window.state.aR;
+            const { a, o, sz, dr, e, rC, l, rp, w, srec, srecP, pC, pW, panelBrand, invBrand, it, company } = window.state;
+            const { age, estN12, act, guarTD, estTD, physTD, shortfallkWh, trueUpRefund, remCost } = window.state.r;
+            const { val, cost, inc, incContract, incResidual } = window.state.aR;
+            
+            // Strategic Floor: TPO Removal Liability
+            const removalCost = (parseFloat(pC) || 0) * 175;
+
+            // Estimated TPO Hardware Residual Fee (They often ask for ~15% of new system cost)
+            const hardwareResidualFee = (sz * 1000 * rC) * 0.15;
+            
+            // Strategic Ceiling: Remaining Payments + Hardware Purchase Price
+            const strategicCeiling = remCost + hardwareResidualFee;
 
             // Benchmark Identification Logic
             const isTPO = ['lease', 'ppa', 'prepaid_lease', 'prepaid_ppa'].includes(o);
@@ -723,7 +567,6 @@ Architecture: Modular Single-File HTML5 (Sub-Renderer Pattern)
                 dr,
                 e,
                 rC,
-                batCost: batCost || 800,
                 l,
                 w,
                 srec: srec ? '1' : '0',
@@ -733,39 +576,21 @@ Architecture: Modular Single-File HTML5 (Sub-Renderer Pattern)
                 incBasis: inc.toFixed(0),
                 incContract: incContract.toFixed(0),
                 incResidual: incResidual.toFixed(0),
-                // Strategic Handoff Data
+                // Strategic Handoff Data (v7.300)
                 pC: pC || 0,
                 pW: pW || 0,
                 pBrand: panelBrand || 'Tier 1',
                 iBrand: invBrand || 'Central Inverter',
                 iType: it || 'string',
-                batBrand: batteryBrand || 'N/A',
-                batCap: b || 0,
-                batMode: batteryMode || 'both',
                 act: act.toFixed(1),
                 bench: benchmark.toFixed(1),
                 shortfall: shortfallkWh.toFixed(0),
                 trueUp: trueUpRefund.toFixed(0),
-                tpoQuote: tpoQuote || 0,
+                ceiling: strategicCeiling.toFixed(0),
+                floor: removalCost.toFixed(0),
                 co: COMPANIES[company].name,
-                // Deferred Maintenance & Adjustments
-                repair: rp || 0,
-                defTypes: defTypes.join(',') || 'none',
-                defNotes: defNotes || '',
-                omRes: omRes || 21,
-                obsPct: obsPct || 0,
-                weightedObs: weightedObs.toFixed(0),
-                weightedOM: weightedOM.toFixed(0),
-                cappedDiff: cappedDiff.toFixed(0),
-                floorDiff: floorDiff.toFixed(0),
-                grossBlended: window.state.aR.grossBlended.toFixed(0),
-                baseFMV: baseFMV.toFixed(0),
-                // Underwriting Assumptions Handoff
-                itc: itc || 30,
-                escCap: escCap || 10,
-                batDeg: batDeg || 2,
-                invRepCost: invRepCost || 2000,
-                invRepYear: invRepYear || 12
+                // Deferred Maintenance
+                repair: rp || 0
             });
             
             // Destination FMV Report Link
@@ -785,10 +610,10 @@ Architecture: Modular Single-File HTML5 (Sub-Renderer Pattern)
             
             const ownershipMap = {
                 owned: "Homeowner Owned",
-                lease: "Fixed Payment (Lease / Predictable PPA)",
-                ppa: "Variable Payment (True Pay-per-kWh PPA)",
-                prepaid_lease: "Prepaid Agreement",
-                prepaid_ppa: "Prepaid Agreement"
+                lease: "Lease (Fixed Payment)",
+                ppa: "PPA (Pay per kWh)",
+                prepaid_lease: "Prepaid Lease",
+                prepaid_ppa: "Prepaid PPA"
             };
             const mainOwnershipText = isTPO ? "Third Party Owned" : "Homeowner Owned";
             const subOwnershipText = isTPO ? (ownershipMap[o] || "") : "";
@@ -910,12 +735,6 @@ Architecture: Modular Single-File HTML5 (Sub-Renderer Pattern)
                     </div>
                  </div>
 
-                 <!-- General Disclaimer -->
-                 <div class="disclaimer-section" style="font-size: 0.75rem; color: #666; margin-top: 30px; border-top: 1px solid #ccc; padding-top: 15px; text-align: justify; line-height: 1.4; margin-bottom: 20px;">
-                   <strong>General Disclaimer &amp; Forward-Looking Statements</strong><br>
-                   This financial analysis is an estimate based on current market conditions, utility rate structures, and historical system data. Projections of future utility costs, solar energy production, and net financial savings are inherently uncertain and subject to change due to weather, hardware degradation, and evolving utility tariffs. While this report is prepared by a licensed California solar contractor and inspector, it is provided strictly for informational and advisory purposes. It does not constitute financial, legal, or tax advice. Homeowners are encouraged to consult with independent financial or legal professionals regarding the execution or transfer of third-party service agreements.
-                 </div>
-
                  <!-- Footer -->
                  <div class="mt-auto border-t-4 border-slate-900 pt-6 flex justify-between items-end">
                     <div>
@@ -926,7 +745,7 @@ Architecture: Modular Single-File HTML5 (Sub-Renderer Pattern)
                         </div>
                     </div>
                     <div class="text-right">
-                        <p class="text-[10px] text-slate-400 font-black uppercase tracking-[0.2em] italic mb-4">SolarCheck Pro v7.326</p>
+                        <p class="text-[10px] text-slate-400 font-black uppercase tracking-[0.2em] italic mb-4">SolarCheck Pro v7.312</p>
                         <div class="no-print flex gap-3 justify-end">
                             <button onclick="window.printReport()" class="bg-blue-600 text-white px-8 py-3 rounded-2xl font-black uppercase text-[10px] tracking-widest shadow-xl transition-all hover:bg-blue-500 active:scale-95 border-b-4 border-blue-800"><i class="fas fa-print mr-2"></i> Print</button>
                             <button onclick="window.closeReport()" class="bg-slate-100 text-slate-700 px-8 py-3 rounded-2xl font-black uppercase text-[10px] tracking-widest transition-all hover:bg-slate-200 border-b-4 border-slate-300">Back</button>
@@ -957,7 +776,7 @@ Architecture: Modular Single-File HTML5 (Sub-Renderer Pattern)
                     <div class="bg-slate-900 text-white px-4 sm:px-6 py-3 sm:py-4 sticky top-0 z-50 flex justify-between items-center shadow-lg border-b border-white/5 gap-2">
                         <div class="flex items-center gap-2 sm:gap-4 min-w-0">
                             <span class="text-2xl sm:text-3xl flex-shrink-0"><i class="fas fa-sun text-yellow-400"></i></span>
-                            <div class="min-w-0 truncate"><h1 class="font-bold text-lg sm:text-2xl tracking-tighter italic truncate">SolarCheck Pro</h1><p class="text-[7px] sm:text-[9px] opacity-60 font-black uppercase tracking-[0.4em]">v7.326</p></div>
+                            <div class="min-w-0 truncate"><h1 class="font-bold text-lg sm:text-2xl tracking-tighter italic truncate">SolarCheck Pro</h1><p class="text-[7px] sm:text-[9px] opacity-60 font-black uppercase tracking-[0.4em]">v7.312</p></div>
                         </div>
                         <div class="flex items-center gap-2 flex-shrink-0">
                             <button onclick="window.open(window.location.href, '_blank')" class="header-btn bg-slate-800 text-white/80 p-2 sm:px-4 sm:py-2.5 rounded-xl text-sm shadow-xl transition-all hover:bg-slate-700 active:scale-95"><i class="fas fa-expand"></i></button>
@@ -996,7 +815,7 @@ Architecture: Modular Single-File HTML5 (Sub-Renderer Pattern)
         // --- INITIALIZATION ---
         const init = async () => {
             try {
-                const firebaseConfig = JSON.parse(typeof __firebase_config !== 'undefined' ? __firebase_config : '{}');
+                const firebaseConfig = JSON.parse(__firebase_config);
                 const app = initializeApp(firebaseConfig);
                 const db = getFirestore(app);
                 const auth = getAuth(app);
