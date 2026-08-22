@@ -1,7 +1,7 @@
 <!-- 
 ================================================================================
 PROJECT CONTEXT: SolarCheck Professional
-Current Version: v7.334 (PRECISION VALUATION MODULE - BULLETPROOF APPRAISAL UPGRADE)
+Current Version: v7.335 (PRECISION VALUATION MODULE - BULLETPROOF APPRAISAL UPGRADE)
 Date: August 2026
 Architecture: Modular Single-File HTML5 (Sub-Renderer Pattern)
 ================================================================================
@@ -37,17 +37,18 @@ Architecture: Modular Single-File HTML5 (Sub-Renderer Pattern)
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SolarCheck Professional v7.334</title>
+    <title>SolarCheck Professional v7.335</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     
     <script>
-        // CRITICAL SAFETY NET: Extracted OUTSIDE the module to catch parsing/loading errors immediately.
+        // CRITICAL SAFETY NET: Catches any fatal browser exception and forces it to the screen instead of failing silently.
         window.onerror = function(msg, url, line) {
-            document.addEventListener('DOMContentLoaded', function() {
-                const root = document.getElementById('root') || document.body;
-                root.innerHTML = '<div style="padding:40px; text-align:center; font-family:sans-serif; color:#ef4444; max-width:600px; margin:0 auto;"><h2 style="font-size:24px; font-weight:bold; margin-bottom:10px;"><i class="fas fa-triangle-exclamation"></i> Application Error</h2><p style="color:#7f1d1d; margin-bottom:20px;">SolarCheck Pro encountered a fatal error loading the interface. This is usually caused by a copy/paste error where the bottom of the code was cut off.</p><div style="background:#fee2e2; padding:15px; border-radius:8px; font-family:monospace; text-align:left; display:inline-block; border:1px solid #fca5a5; word-break:break-all;"><strong>Error:</strong> ' + msg + '<br><strong>Line:</strong> ' + line + '</div></div>';
-            });
+            const errDiv = document.createElement('div');
+            errDiv.style.cssText = "position:fixed;top:10%;left:10%;right:10%;background:#fee2e2;color:#7f1d1d;z-index:99999;padding:30px;border-radius:12px;border:3px solid #f87171;font-family:sans-serif;box-shadow:0 10px 25px rgba(0,0,0,0.2);";
+            errDiv.innerHTML = "<h2 style='font-size:24px;font-weight:900;margin-bottom:10px;'><i class='fas fa-triangle-exclamation'></i> Fatal Application Error</h2><p style='margin-bottom:15px;'>The application crashed. Please take a screenshot of this box.</p><p style='font-family:monospace;background:white;padding:10px;border-radius:6px;'><strong>Error:</strong> " + msg + "<br><strong>Line:</strong> " + line + "</p>";
+            if(document.body) document.body.appendChild(errDiv);
+            else document.documentElement.appendChild(errDiv);
             return false;
         };
     </script>
@@ -78,10 +79,21 @@ Architecture: Modular Single-File HTML5 (Sub-Renderer Pattern)
 </head>
 <body class="bg-slate-200 text-slate-800 antialiased">
 
+    <!-- HARDCODED LOADING SCREEN: Proves HTML loaded even if JS is delayed -->
+    <div id="loading-screen" class="min-h-screen flex items-center justify-center flex-col text-slate-500">
+        <i class="fas fa-sun text-4xl text-yellow-400 mb-4 animate-spin-slow"></i>
+        <h2 class="text-xl font-bold tracking-tight italic">Loading SolarCheck Pro...</h2>
+        <p class="text-xs mt-2 font-medium tracking-widest uppercase">Initializing Calculation Engine</p>
+    </div>
+
     <div id="root"></div>
     <div id="report-view" class="hidden min-h-screen bg-slate-300 pb-20 absolute top-0 left-0 w-full z-50 overflow-y-auto"></div>
 
     <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, getDoc, setDoc, onSnapshot, setLogLevel } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
         // =====================================================================
         // [UI_TEXT_CATALOG] - THE SINGLE SOURCE OF TRUTH FOR LABELS & NARRATIVES
         // =====================================================================
@@ -569,7 +581,7 @@ Architecture: Modular Single-File HTML5 (Sub-Renderer Pattern)
                     shortfallkWh, trueUpRefund
                 };
 
-                // 7. PRECISION VALUATION DCF MODEL (BULLETPROOF UPGRADE v7.334)
+                // 7. PRECISION VALUATION DCF MODEL (BULLETPROOF UPGRADE v7.335)
                 const sC = (s * 1000 * parseFloat(rC||0)) + totalBatHardwareCost; 
                 const rL = Math.max(0, (parseFloat(l)||25) - age); 
                 const depCost = l > 0 ? (rL / l) : 0; 
@@ -671,6 +683,7 @@ Architecture: Modular Single-File HTML5 (Sub-Renderer Pattern)
                 };
             } catch (err) {
                 console.error("Calculation Engine Error:", err);
+                throw err;
             }
         };
 
@@ -684,7 +697,7 @@ Architecture: Modular Single-File HTML5 (Sub-Renderer Pattern)
         };
 
         const COMPANIES = {
-            rsr: { name: "ROCKLIN SOLAR Repair", license: "CA Lic # 1050566", phone: "916-741-0194", email: "erin@rocklinsolarrepair.com", logo: "thumbnail_RSR LOGO.png", website: "www.rocklinsolarrepair.com" },
+            rsr: { name: "ROCKLIN SOLAR REPAIR", license: "CA Lic # 1050566", phone: "916-741-0194", email: "erin@rocklinsolarrepair.com", logo: "thumbnail_RSR LOGO.png", website: "www.rocklinsolarrepair.com" },
             shine: { name: "SHINE ON SOLAR & MAINTENANCE", license: "CA Lic # 968940", phone: "707-596-9026", email: "iain@shineonsolar.us", logo: "Shine on Logo.png", website: "shineonsolar.us" },
             ssoc: { name: "SOLAR SERVICE OF COLORADO", license: "", phone: "303-747-5065", email: "matt.essig@solarserviceofco.com", logo: "ssoc_logo.png", website: "solarserviceofcolorado.com" }
         };
@@ -734,6 +747,7 @@ Architecture: Modular Single-File HTML5 (Sub-Renderer Pattern)
         window.openModal = (id) => { const m = document.getElementById(id); if (m) { m.showModal(); window.state.activeModal = id; } };
         window.closeModal = () => { const m = document.getElementById(window.state.activeModal); if (m) m.close(); window.state.activeModal = null; };
 
+        // SAFETY NET: Stores payload in local memory to bypass browser URL character limits
         window.handleFMVExport = function() {
             try {
                 if (!window.state.r || !window.state.aR) return;
@@ -941,7 +955,7 @@ Architecture: Modular Single-File HTML5 (Sub-Renderer Pattern)
                         </div>
                     </div>
                     <div class="text-right">
-                        <p class="text-[10px] text-slate-400 font-black uppercase tracking-[0.2em] italic mb-4">SolarCheck Pro v7.334</p>
+                        <p class="text-[10px] text-slate-400 font-black uppercase tracking-[0.2em] italic mb-4">SolarCheck Pro v7.335</p>
                         <div class="no-print flex gap-3 justify-end">
                             <button onclick="window.printReport()" class="bg-blue-600 text-white px-8 py-3 rounded-2xl font-black uppercase text-[10px] tracking-widest shadow-xl transition-all hover:bg-blue-500 active:scale-95 border-b-4 border-blue-800"><i class="fas fa-print mr-2"></i> Print</button>
                             <button onclick="window.closeReport()" class="bg-slate-100 text-slate-700 px-8 py-3 rounded-2xl font-black uppercase text-[10px] tracking-widest transition-all hover:bg-slate-200 border-b-4 border-slate-300">Back</button>
@@ -958,32 +972,32 @@ Architecture: Modular Single-File HTML5 (Sub-Renderer Pattern)
         };
 
         const init = async () => {
-            try {
-                // DYNAMIC IMPORT: Prevents fatal crash if ad-blocker blocks gstatic.com
-                if (typeof __firebase_config !== 'undefined' && __firebase_config !== '{}') {
-                    const { initializeApp } = await import("https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js");
-                    const { getAuth, signInAnonymously, signInWithCustomToken } = await import("https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js");
-                    const { getFirestore } = await import("https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js");
-                    
-                    const firebaseConfig = JSON.parse(__firebase_config);
-                    const app = initializeApp(firebaseConfig);
-                    const db = getFirestore(app);
-                    const auth = getAuth(app);
-                    if (typeof __initial_auth_token !== 'undefined') await signInWithCustomToken(auth, __initial_auth_token); 
-                    else await signInAnonymously(auth); 
-                }
-            } catch (err) {
-                console.error("Firebase Note: Blocked by network/ad-blocker. Proceeding offline.", err);
-            }
-            
-            try {
-                window.calculate();
-            } catch (calcErr) {
-                console.error("Calculation Engine Error:", calcErr);
-            }
+            // Immediately strip the loading screen
+            const loadScreen = document.getElementById('loading-screen');
+            if (loadScreen) loadScreen.remove();
+
+            // Run core logic synchronously. If it fails, the global error catcher forces the red box.
+            window.calculate();
             window.render();
+
+            // Load Firebase entirely in the background so it can never block the UI
+            setTimeout(async () => {
+                try {
+                    if (typeof __firebase_config !== 'undefined' && __firebase_config !== '{}') {
+                        const firebaseConfig = JSON.parse(__firebase_config);
+                        const app = initializeApp(firebaseConfig);
+                        const db = getFirestore(app);
+                        const auth = getAuth(app);
+                        if (typeof __initial_auth_token !== 'undefined') await signInWithCustomToken(auth, __initial_auth_token); 
+                        else await signInAnonymously(auth); 
+                    }
+                } catch (err) {
+                    console.warn("Firebase offline or blocked. UI will continue to function natively.");
+                }
+            }, 500);
         };
 
+        // Guarantee execution regardless of when the browser loads the module
         if (document.readyState === 'loading') {
             document.addEventListener('DOMContentLoaded', init);
         } else {
