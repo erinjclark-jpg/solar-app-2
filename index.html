@@ -1,7 +1,7 @@
 <!-- 
 ================================================================================
 PROJECT CONTEXT: SolarCheck Professional
-Current Version: v7.332 (PRECISION VALUATION MODULE - BULLETPROOF APPRAISAL UPGRADE)
+Current Version: v7.333 (PRECISION VALUATION MODULE - BULLETPROOF APPRAISAL UPGRADE)
 Date: August 2026
 Architecture: Modular Single-File HTML5 (Sub-Renderer Pattern)
 ================================================================================
@@ -37,7 +37,7 @@ Architecture: Modular Single-File HTML5 (Sub-Renderer Pattern)
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SolarCheck Professional v7.332</title>
+    <title>SolarCheck Professional v7.333</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
@@ -70,6 +70,21 @@ Architecture: Modular Single-File HTML5 (Sub-Renderer Pattern)
     <div id="report-view" class="hidden min-h-screen bg-slate-300 pb-20 absolute top-0 left-0 w-full z-50 overflow-y-auto"></div>
 
     <script type="module">
+        // GLOBAL SAFETY NET: Prevents silent blank screens by catching and displaying execution errors
+        window.onerror = function(msg, url, line) {
+            const root = document.getElementById('root');
+            if (root) {
+                root.innerHTML = `<div style="padding:40px; text-align:center; font-family:sans-serif; color:#ef4444; max-w-lg; mx-auto;">
+                    <h2 style="font-size:24px; font-weight:bold; margin-bottom:10px;"><i class="fas fa-triangle-exclamation"></i> Application Error</h2>
+                    <p style="color:#7f1d1d; margin-bottom:20px;">SolarCheck Pro encountered a problem rendering the UI.</p>
+                    <div style="background:#fee2e2; padding:15px; border-radius:8px; font-family:monospace; text-align:left; display:inline-block; border:1px solid #fca5a5;">
+                        <strong>Error:</strong> ${msg}<br><strong>Line:</strong> ${line}
+                    </div>
+                </div>`;
+            }
+            return false;
+        };
+
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, doc, getDoc, setDoc, onSnapshot, setLogLevel } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
@@ -411,257 +426,262 @@ Architecture: Modular Single-File HTML5 (Sub-Renderer Pattern)
         // [CALCULATION_ENGINE]
         // =====================================================================
         window.calculate = function() {
-            const { pC, pW, iDt, pDt, or, sh, pi, ac, b, br, scr, ut, rU, eU, tE, tG, tEs, pa, paB, tR, rC, batCost, l, dr, rp, e, w, te, o, srec, srecP, it, itc, invRepCost, invRepYear, batDeg, escCap, tpoQuote, minBuyout, omRes, obsPct } = window.state;
-            const nPC = parseFloat(pC) || 0; const nPW = parseFloat(pW) || 0; const nAC = parseFloat(ac) || 0;
-            const s = (nPC * nPW) / 1000; window.state.sz = s;
-            const DEG_RATE = 0.005; const iT = +new Date(iDt), pT = +new Date(pDt);
-            const age = (iT && pT && pT > iT) ? (pT - iT) / (31557600000) : 0;
-            const iC = Math.floor(age); const iL = Math.max(0, (parseFloat(te)||0) - 1);
-            const isTPO = ['lease', 'ppa', 'prepaid_lease', 'prepaid_ppa'].includes(o);
-            const isPrepaid = o && o.includes('prepaid');
-            const nPa = parseFloat(pa) || 0;
-            const nPaB = parseFloat(paB) || 0;
-            const ntEs = parseFloat(tEs) || 0;
-            const ntR = parseFloat(tR) || 0;
+            try {
+                const { pC, pW, iDt, pDt, or, sh, pi, ac, b, br, scr, ut, rU, eU, tE, tG, tEs, pa, paB, tR, rC, batCost, l, dr, rp, e, w, te, o, srec, srecP, it, itc, invRepCost, invRepYear, batDeg, escCap, tpoQuote, minBuyout, omRes, obsPct } = window.state;
+                const nPC = parseFloat(pC) || 0; const nPW = parseFloat(pW) || 0; const nAC = parseFloat(ac) || 0;
+                const s = (nPC * nPW) / 1000; window.state.sz = s;
+                const DEG_RATE = 0.005; const iT = +new Date(iDt), pT = +new Date(pDt);
+                const age = (iT && pT && pT > iT) ? (pT - iT) / (31557600000) : 0;
+                const iC = Math.floor(age); const iL = Math.max(0, (parseFloat(te)||0) - 1);
+                const isTPO = ['lease', 'ppa', 'prepaid_lease', 'prepaid_ppa'].includes(o);
+                const isPrepaid = o && o.includes('prepaid');
+                const nPa = parseFloat(pa) || 0;
+                const nPaB = parseFloat(paB) || 0;
+                const ntEs = parseFloat(tEs) || 0;
+                const ntR = parseFloat(tR) || 0;
 
-            const nTe = parseFloat(te) || 0, ntE = parseFloat(tE) || 0, ntG = parseFloat(tG) || 0;
-            let etd = 0, gtd = 0, fTe = 0, fTg = 0;
-            for (let i = 0; i < nTe; i++) {
-                const deg = 1 - (i * DEG_RATE);
-                const curE = ntE * deg, curG = ntG * deg;
-                fTe += curE; fTg += curG;
-                if (i < iC) { etd += curE; gtd += curG; }
-            }
-            etd += ntE * (1 - (iC * DEG_RATE)) * (age % 1); gtd += ntG * (1 - (iC * DEG_RATE)) * (age % 1);
+                const nTe = parseFloat(te) || 0, ntE = parseFloat(tE) || 0, ntG = parseFloat(tG) || 0;
+                let etd = 0, gtd = 0, fTe = 0, fTg = 0;
+                for (let i = 0; i < nTe; i++) {
+                    const deg = 1 - (i * DEG_RATE);
+                    const curE = ntE * deg, curG = ntG * deg;
+                    fTe += curE; fTg += curG;
+                    if (i < iC) { etd += curE; gtd += curG; }
+                }
+                etd += ntE * (1 - (iC * DEG_RATE)) * (age % 1); gtd += ntG * (1 - (iC * DEG_RATE)) * (age % 1);
 
-            // 1. Calculate physical benchmarks
-            const YF = { south: 1550, mix: 1500, east_west: 1450, north: 1200 }[or] * { none: 1, some: 0.85, alot: 0.7 }[sh] * { standard: 1, flat: 0.89, steep: 0.96 }[pi];
-            const th = s * YF;
-            let ptd = 0; for (let i = 0; i < iC; i++) { ptd += th * (1 - (i * DEG_RATE)); }
-            ptd += th * (1 - (iC * DEG_RATE)) * (age % 1);
-            const cP = th * Math.max(0, 1 - (age * DEG_RATE));
+                // 1. Calculate physical benchmarks
+                const YF = { south: 1550, mix: 1500, east_west: 1450, north: 1200 }[or] * { none: 1, some: 0.85, alot: 0.7 }[sh] * { standard: 1, flat: 0.89, steep: 0.96 }[pi];
+                const th = s * YF;
+                let ptd = 0; for (let i = 0; i < iC; i++) { ptd += th * (1 - (i * DEG_RATE)); }
+                ptd += th * (1 - (iC * DEG_RATE)) * (age % 1);
+                const cP = th * Math.max(0, 1 - (age * DEG_RATE));
 
-            // 2. Real World Performance Ratio
-            const realRatio = (ptd > 0 && nAC > 0) ? ((nAC * 1000) / ptd) : 1;
-            const cP_real = cP * realRatio; 
+                // 2. Real World Performance Ratio
+                const realRatio = (ptd > 0 && nAC > 0) ? ((nAC * 1000) / ptd) : 1;
+                const cP_real = cP * realRatio; 
 
-            // 3. TPO Payments Refactor
-            const ppaRateY1 = ntR;
-            const ppaRateYC = ntR * Math.pow(1 + (ntEs/100), iC);
-            const ppaRateYL = ntR * Math.pow(1 + (ntEs/100), iL);
+                // 3. TPO Payments Refactor
+                const ppaRateY1 = ntR;
+                const ppaRateYC = ntR * Math.pow(1 + (ntEs/100), iC);
+                const ppaRateYL = ntR * Math.pow(1 + (ntEs/100), iL);
 
-            const realProdY1 = th * realRatio;
-            const realProdYC = th * Math.max(0, 1 - (iC * DEG_RATE)) * realRatio;
-            const realProdYL = th * Math.max(0, 1 - (iL * DEG_RATE)) * realRatio;
+                const realProdY1 = th * realRatio;
+                const realProdYC = th * Math.max(0, 1 - (iC * DEG_RATE)) * realRatio;
+                const realProdYL = th * Math.max(0, 1 - (iL * DEG_RATE)) * realRatio;
 
-            let solY1, solYC, solYL;
-            if (o === 'ppa') {
-                solY1 = (realProdY1 * ppaRateY1) / 12;
-                solYC = parseFloat(((realProdYC * ppaRateYC) / 12).toFixed(2));
-                solYL = parseFloat(((realProdYL * ppaRateYL) / 12).toFixed(2));
-            } else {
-                solY1 = nPa;
-                solYC = parseFloat((nPa * Math.pow(1 + (ntEs/100), iC)).toFixed(2));
-                solYL = parseFloat((nPa * Math.pow(1 + (ntEs/100), iL)).toFixed(2));
-            }
-
-            const batY1 = nPaB;
-            const batYC = parseFloat((nPaB * Math.pow(1 + (ntEs/100), iC)).toFixed(2));
-            const batYL = parseFloat((nPaB * Math.pow(1 + (ntEs/100), iL)).toFixed(2));
-
-            const pY1 = isPrepaid ? 0 : (solY1 + batY1);
-            const pYC = isPrepaid ? 0 : (solYC + batYC);
-            const pYL = isPrepaid ? 0 : (solYL + batYL);
-
-            // Battery and Utility Blending
-            const totalB = parseFloat(b) || 0;
-            const bC = parseFloat(batCost) || 0;
-            const totalBatHardwareCost = totalB * bC;
-            const usableB = totalB * (1 - (parseFloat(br) || 0) / 100);
-            const dailyGenAvg = (s * 4.5); 
-            const batteryBoost = (usableB / (dailyGenAvg || 1)) * 40; 
-            const finalSCR = Math.min(98, (parseFloat(scr) || 0) + (usableB > 0 ? batteryBoost : 0));
-            
-            const blendedUtility = (finalSCR/100 * (rU || 0.35)) + ((1 - finalSCR/100) * (eU || 0.05));
-            
-            // 4. Savings Loops
-            let fSa = 0; 
-            const calcTerm = parseFloat(l) || 25; 
-            const rM = Math.max(0, calcTerm - age);
-            const retailBase = rU || 0.35;
-            const exportBase = eU || 0.05;
-            const utilityEscFactor = 1 + (parseFloat(e || 0) / 100);
-            const bDegRate = 1 - (parseFloat(batDeg) || 0) / 100;
-            const eCap = parseFloat(escCap) || 10;
-
-            for (let i = 0; i < Math.ceil(rM); i++) { 
-                const yr = age + i;
-                const currentExportBase = (yr <= 20) ? exportBase : 0.05;
-                
-                const currentUsableB = usableB * Math.pow(bDegRate, yr);
-                const currentBatteryBoost = (currentUsableB / (dailyGenAvg || 1)) * 40;
-                const currentSCR = Math.min(98, (parseFloat(scr) || 0) + (currentUsableB > 0 ? currentBatteryBoost : 0));
-                
-                const currentBlendedBase = (currentSCR/100 * retailBase) + ((1 - currentSCR/100) * currentExportBase);
-                const cappedEscYear = Math.min(i, eCap);
-                const currentBlendedEscalated = currentBlendedBase * Math.pow(utilityEscFactor, cappedEscYear);
-                
-                const yrRealProd = th * Math.max(0, 1 - (yr * DEG_RATE)) * realRatio;
-                fSa += yrRealProd * currentBlendedEscalated; 
-            }
-
-            // 5. Cost Loops (Real liability simulation)
-            let tCt = 0, remCost = 0, discountedRemCost = 0;
-            const prepayDiscount = 5.0 / 100; // Left internally for NPV reference
-            let current_tR = ntR; 
-            let currentPay_sol = nPa * 12; 
-            let currentPay_bat = nPaB * 12;
-
-            for (let i = 0; i < nTe; i++) {
-                const yrRealProd = th * Math.max(0, 1 - (i * DEG_RATE)) * realRatio;
-                
-                let yearlySolCost = 0;
+                let solY1, solYC, solYL;
                 if (o === 'ppa') {
-                    yearlySolCost = yrRealProd * current_tR;
-                    current_tR *= (1 + (ntEs/100)); 
+                    solY1 = (realProdY1 * ppaRateY1) / 12;
+                    solYC = parseFloat(((realProdYC * ppaRateYC) / 12).toFixed(2));
+                    solYL = parseFloat(((realProdYL * ppaRateYL) / 12).toFixed(2));
                 } else {
-                    yearlySolCost = currentPay_sol;
-                    currentPay_sol *= (1 + (ntEs/100)); 
+                    solY1 = nPa;
+                    solYC = parseFloat((nPa * Math.pow(1 + (ntEs/100), iC)).toFixed(2));
+                    solYL = parseFloat((nPa * Math.pow(1 + (ntEs/100), iL)).toFixed(2));
+                }
+
+                const batY1 = nPaB;
+                const batYC = parseFloat((nPaB * Math.pow(1 + (ntEs/100), iC)).toFixed(2));
+                const batYL = parseFloat((nPaB * Math.pow(1 + (ntEs/100), iL)).toFixed(2));
+
+                const pY1 = isPrepaid ? 0 : (solY1 + batY1);
+                const pYC = isPrepaid ? 0 : (solYC + batYC);
+                const pYL = isPrepaid ? 0 : (solYL + batYL);
+
+                // Battery and Utility Blending
+                const totalB = parseFloat(b) || 0;
+                const bC = parseFloat(batCost) || 0;
+                const totalBatHardwareCost = totalB * bC;
+                const usableB = totalB * (1 - (parseFloat(br) || 0) / 100);
+                const dailyGenAvg = (s * 4.5); 
+                const batteryBoost = (usableB / (dailyGenAvg || 1)) * 40; 
+                const finalSCR = Math.min(98, (parseFloat(scr) || 0) + (usableB > 0 ? batteryBoost : 0));
+                
+                const blendedUtility = (finalSCR/100 * (rU || 0.35)) + ((1 - finalSCR/100) * (eU || 0.05));
+                
+                // 4. Savings Loops
+                let fSa = 0; 
+                const calcTerm = parseFloat(l) || 25; 
+                const rM = Math.max(0, calcTerm - age);
+                const retailBase = rU || 0.35;
+                const exportBase = eU || 0.05;
+                const utilityEscFactor = 1 + (parseFloat(e || 0) / 100);
+                const bDegRate = 1 - (parseFloat(batDeg) || 0) / 100;
+                const eCap = parseFloat(escCap) || 10;
+
+                for (let i = 0; i < Math.ceil(rM); i++) { 
+                    const yr = age + i;
+                    const currentExportBase = (yr <= 20) ? exportBase : 0.05;
+                    
+                    const currentUsableB = usableB * Math.pow(bDegRate, yr);
+                    const currentBatteryBoost = (currentUsableB / (dailyGenAvg || 1)) * 40;
+                    const currentSCR = Math.min(98, (parseFloat(scr) || 0) + (currentUsableB > 0 ? currentBatteryBoost : 0));
+                    
+                    const currentBlendedBase = (currentSCR/100 * retailBase) + ((1 - currentSCR/100) * currentExportBase);
+                    const cappedEscYear = Math.min(i, eCap);
+                    const currentBlendedEscalated = currentBlendedBase * Math.pow(utilityEscFactor, cappedEscYear);
+                    
+                    const yrRealProd = th * Math.max(0, 1 - (yr * DEG_RATE)) * realRatio;
+                    fSa += yrRealProd * currentBlendedEscalated; 
+                }
+
+                // 5. Cost Loops (Real liability simulation)
+                let tCt = 0, remCost = 0, discountedRemCost = 0;
+                const prepayDiscount = 5.0 / 100; // Left internally for NPV reference
+                let current_tR = ntR; 
+                let currentPay_sol = nPa * 12; 
+                let currentPay_bat = nPaB * 12;
+
+                for (let i = 0; i < nTe; i++) {
+                    const yrRealProd = th * Math.max(0, 1 - (i * DEG_RATE)) * realRatio;
+                    
+                    let yearlySolCost = 0;
+                    if (o === 'ppa') {
+                        yearlySolCost = yrRealProd * current_tR;
+                        current_tR *= (1 + (ntEs/100)); 
+                    } else {
+                        yearlySolCost = currentPay_sol;
+                        currentPay_sol *= (1 + (ntEs/100)); 
+                    }
+                    
+                    const totalYearly = yearlySolCost + currentPay_bat;
+                    tCt += totalYearly;
+                    if (i >= iC) {
+                        remCost += totalYearly;
+                        discountedRemCost += totalYearly / Math.pow(1 + prepayDiscount, (i - iC) + 1);
+                    }
+                    
+                    currentPay_bat *= (1 + (ntEs/100));
                 }
                 
-                const totalYearly = yearlySolCost + currentPay_bat;
-                tCt += totalYearly;
-                if (i >= iC) {
-                    remCost += totalYearly;
-                    discountedRemCost += totalYearly / Math.pow(1 + prepayDiscount, (i - iC) + 1);
+                if (isPrepaid) { remCost = 0; discountedRemCost = 0; }
+
+                // 6. Final Dashboard Snapshots
+                const rYC_sol = realProdYC > 0 ? (solYC * 12) / realProdYC : 0;
+                const shortfallkWh = Math.max(0, (gtd * 1) - (nAC * 1000));
+                const trueUpRefund = isTPO ? (shortfallkWh * ntR) : 0;
+                const arbDelta = blendedUtility - rYC_sol, arbDiscount = Math.max(0, (arbDelta / (blendedUtility || 1)) * 100);
+                
+                const actSav = cP_real * blendedUtility;
+                const actSavNet = isTPO && !isPrepaid ? (actSav - (pYC * 12)) : actSav;
+                const futSavNet = isTPO && !isPrepaid ? (fSa - remCost) : fSa;
+                const totSav = fSa + (nAC * 1000 * blendedUtility);
+                const totSavNet = isTPO && !isPrepaid ? (totSav - tCt) : totSav;
+
+                window.state.r = { 
+                    age, sz: s, act: nAC, potSav: cP_real * blendedUtility, 
+                    actSav, actSavNet, futSav: fSa, futSavNet, totSav, totSavNet, 
+                    tCost: tCt, pY1, solY1, batY1, solYC, batYC, pYC, solYL, batYL, pYL, rYC_sol, 
+                    physTD: ptd/1000, estTD: etd/1000, guarTD: gtd/1000, fTe: fTe/1000, fTg: fTg/1000, 
+                    blendedUtility, effSCR: finalSCR, arbDelta, arbDiscount, estDay: cP_real/365, estN12: cP_real, usableB, remCost, discountedRemCost, ptd,
+                    shortfallkWh, trueUpRefund
+                };
+
+                // 7. PRECISION VALUATION DCF MODEL (BULLETPROOF UPGRADE v7.333)
+                const sC = (s * 1000 * parseFloat(rC||0)) + totalBatHardwareCost; 
+                const rL = Math.max(0, (parseFloat(l)||25) - age); 
+                const depCost = l > 0 ? (rL / l) : 0; 
+                const itcMultiplier = 1 - ((parseFloat(itc) || 0) / 100);
+                const unvestedFactor = age < 5 ? Math.max(0, (5 - age) / 5) : 0;
+                const itcRecaptureLiability = sC * ((parseFloat(itc) || 30) / 100) * unvestedFactor;
+                
+                // Gross Cost (Before Obsolescence)
+                let grossCost = (sC * depCost * itcMultiplier) + itcRecaptureLiability; 
+                let obsDeduction = grossCost * ((parseFloat(obsPct) || 0) / 100);
+                let netCost = grossCost - obsDeduction;
+                
+                let grossIncContract = 0, grossIncResidual = 0; 
+                let omCapExDiscounted = 0;
+                
+                const repCost = parseFloat(invRepCost) || 0;
+                const repYear = parseFloat(invRepYear) || 12;
+                const omRate = parseFloat(omRes) || 0;
+
+                for (let y = 1; y <= Math.ceil(rL); y++) { 
+                    const yr = age + y;
+                    const yrRealProd = th * Math.max(0, 1 - (yr * DEG_RATE)) * realRatio;
+                    
+                    // Strict 10-year expiration limit applied to SREC revenue projection
+                    const srev = (srec && srecP && yr <= 10) ? (yrRealProd / 1000) * srecP : 0;
+                    
+                    // Income Approach - Energy Value
+                    const currentExportBase = (yr <= 20) ? exportBase : 0.05;
+                    const currentUsableB = usableB * Math.pow(bDegRate, yr);
+                    const currentBatteryBoost = (currentUsableB / (dailyGenAvg || 1)) * 40;
+                    const currentSCR = Math.min(98, (parseFloat(scr) || 0) + (currentUsableB > 0 ? currentBatteryBoost : 0));
+                    const currentBlendedBase = (currentSCR/100 * retailBase) + ((1 - currentSCR/100) * currentExportBase);
+                    const cappedEscYear = Math.min(y, eCap);
+                    const currentBlendedEscalated = currentBlendedBase * Math.pow(utilityEscFactor, cappedEscYear);
+                    const energy_revenue = (yrRealProd * currentBlendedEscalated);
+                    
+                    // Gross Cash Flows
+                    let grossNetYearly = energy_revenue + srev;
+                    let discountedGross = grossNetYearly / Math.pow(1 + (dr / 100), y);
+                    
+                    if (isTPO && yr <= nTe) {
+                        grossIncContract += discountedGross;
+                    } else {
+                        grossIncResidual += discountedGross;
+                    }
+                    
+                    // O&M and CapEx Liabilities
+                    let omYearly = (s * omRate) * Math.pow(1.025, y);
+                    let capEx = (it === 'string' && Math.floor(yr) === repYear && y <= rL) ? repCost : 0;
+                    
+                    omCapExDiscounted += (omYearly + capEx) / Math.pow(1 + (dr / 100), y);
                 }
                 
-                currentPay_bat *= (1 + (ntEs/100));
-            }
-            
-            if (isPrepaid) { remCost = 0; discountedRemCost = 0; }
-
-            // 6. Final Dashboard Snapshots
-            const rYC_sol = realProdYC > 0 ? (solYC * 12) / realProdYC : 0;
-            const shortfallkWh = Math.max(0, (gtd * 1) - (nAC * 1000));
-            const trueUpRefund = isTPO ? (shortfallkWh * ntR) : 0;
-            const arbDelta = blendedUtility - rYC_sol, arbDiscount = Math.max(0, (arbDelta / (blendedUtility || 1)) * 100);
-            
-            const actSav = cP_real * blendedUtility;
-            const actSavNet = isTPO && !isPrepaid ? (actSav - (pYC * 12)) : actSav;
-            const futSavNet = isTPO && !isPrepaid ? (fSa - remCost) : fSa;
-            const totSav = fSa + (nAC * 1000 * blendedUtility);
-            const totSavNet = isTPO && !isPrepaid ? (totSav - tCt) : totSav;
-
-            window.state.r = { 
-                age, sz: s, act: nAC, potSav: cP_real * blendedUtility, 
-                actSav, actSavNet, futSav: fSa, futSavNet, totSav, totSavNet, 
-                tCost: tCt, pY1, solY1, batY1, solYC, batYC, pYC, solYL, batYL, pYL, rYC_sol, 
-                physTD: ptd/1000, estTD: etd/1000, guarTD: gtd/1000, fTe: fTe/1000, fTg: fTg/1000, 
-                blendedUtility, effSCR: finalSCR, arbDelta, arbDiscount, estDay: cP_real/365, estN12: cP_real, usableB, remCost, discountedRemCost, ptd,
-                shortfallkWh, trueUpRefund
-            };
-
-            // 7. PRECISION VALUATION DCF MODEL (BULLETPROOF UPGRADE v7.331)
-            const sC = (s * 1000 * parseFloat(rC||0)) + totalBatHardwareCost; 
-            const rL = Math.max(0, (parseFloat(l)||25) - age); 
-            const depCost = l > 0 ? (rL / l) : 0; 
-            const itcMultiplier = 1 - ((parseFloat(itc) || 0) / 100);
-            const unvestedFactor = age < 5 ? Math.max(0, (5 - age) / 5) : 0;
-            const itcRecaptureLiability = sC * ((parseFloat(itc) || 30) / 100) * unvestedFactor;
-            
-            // Gross Cost (Before Obsolescence)
-            let grossCost = (sC * depCost * itcMultiplier) + itcRecaptureLiability; 
-            let obsDeduction = grossCost * ((parseFloat(obsPct) || 0) / 100);
-            let netCost = grossCost - obsDeduction;
-            
-            let grossIncContract = 0, grossIncResidual = 0; 
-            let omCapExDiscounted = 0;
-            
-            const repCost = parseFloat(invRepCost) || 0;
-            const repYear = parseFloat(invRepYear) || 12;
-            const omRate = parseFloat(omRes) || 0;
-
-            for (let y = 1; y <= Math.ceil(rL); y++) { 
-                const yr = age + y;
-                const yrRealProd = th * Math.max(0, 1 - (yr * DEG_RATE)) * realRatio;
+                let grossIncome = grossIncContract + grossIncResidual;
+                let rawGrossBlended = (grossIncome * (w / 100)) + (grossCost * (1 - (w / 100)));
                 
-                // Strict 10-year expiration limit applied to SREC revenue projection
-                const srev = (srec && srecP && yr <= 10) ? (yrRealProd / 1000) * srecP : 0;
+                // ==========================================
+                // "LESSER OF" STRATEGIC ANCHOR
+                // ==========================================
+                const nTpoQuote = parseFloat(tpoQuote) || 0;
+                const isQuoteAnchor = (isTPO && nTpoQuote > 0 && nTpoQuote < rawGrossBlended);
                 
-                // Income Approach - Energy Value
-                const currentExportBase = (yr <= 20) ? exportBase : 0.05;
-                const currentUsableB = usableB * Math.pow(bDegRate, yr);
-                const currentBatteryBoost = (currentUsableB / (dailyGenAvg || 1)) * 40;
-                const currentSCR = Math.min(98, (parseFloat(scr) || 0) + (currentUsableB > 0 ? currentBatteryBoost : 0));
-                const currentBlendedBase = (currentSCR/100 * retailBase) + ((1 - currentSCR/100) * currentExportBase);
-                const cappedEscYear = Math.min(y, eCap);
-                const currentBlendedEscalated = currentBlendedBase * Math.pow(utilityEscFactor, cappedEscYear);
-                const energy_revenue = (yrRealProd * currentBlendedEscalated);
+                // Ratchets the starting mathematical basis down to their quote if it's lower.
+                const startingGross = isQuoteAnchor ? nTpoQuote : rawGrossBlended;
                 
-                // Gross Cash Flows
-                let grossNetYearly = energy_revenue + srev;
-                let discountedGross = grossNetYearly / Math.pow(1 + (dr / 100), y);
+                let weightedObs = obsDeduction * (1 - (w / 100));
+                let weightedOM = omCapExDiscounted * (w / 100);
                 
-                if (isTPO && yr <= nTe) {
-                    grossIncContract += discountedGross;
-                } else {
-                    grossIncResidual += discountedGross;
+                let baseFMV = startingGross - weightedObs - weightedOM;
+                
+                // Hard Physical Deductions and Minimum Buyout Floor
+                const nRP = parseFloat(rp) || 0;
+                const minContractBuyout = parseFloat(minBuyout) || 0;
+                
+                let rawNetFMV = baseFMV - nRP - trueUpRefund;
+                let finalFMV = rawNetFMV;
+                let floorDiff = 0;
+                
+                if (finalFMV < minContractBuyout) { 
+                    finalFMV = minContractBuyout; 
+                    floorDiff = minContractBuyout - rawNetFMV; 
                 }
-                
-                // O&M and CapEx Liabilities
-                let omYearly = (s * omRate) * Math.pow(1.025, y);
-                let capEx = (it === 'string' && Math.floor(yr) === repYear && y <= rL) ? repCost : 0;
-                
-                omCapExDiscounted += (omYearly + capEx) / Math.pow(1 + (dr / 100), y);
-            }
-            
-            let grossIncome = grossIncContract + grossIncResidual;
-            let rawGrossBlended = (grossIncome * (w / 100)) + (grossCost * (1 - (w / 100)));
-            
-            // ==========================================
-            // "LESSER OF" STRATEGIC ANCHOR
-            // ==========================================
-            const nTpoQuote = parseFloat(tpoQuote) || 0;
-            const isQuoteAnchor = (isTPO && nTpoQuote > 0 && nTpoQuote < rawGrossBlended);
-            
-            // Ratchets the starting mathematical basis down to their quote if it's lower.
-            const startingGross = isQuoteAnchor ? nTpoQuote : rawGrossBlended;
-            
-            let weightedObs = obsDeduction * (1 - (w / 100));
-            let weightedOM = omCapExDiscounted * (w / 100);
-            
-            let baseFMV = startingGross - weightedObs - weightedOM;
-            
-            // Hard Physical Deductions and Minimum Buyout Floor
-            const nRP = parseFloat(rp) || 0;
-            const minContractBuyout = parseFloat(minBuyout) || 0;
-            
-            let rawNetFMV = baseFMV - nRP - trueUpRefund;
-            let finalFMV = rawNetFMV;
-            let floorDiff = 0;
-            
-            if (finalFMV < minContractBuyout) { 
-                finalFMV = minContractBuyout; 
-                floorDiff = minContractBuyout - rawNetFMV; 
-            }
 
-            window.state.aR = { 
-                cost: grossCost, 
-                inc: grossIncome, 
-                incContract: grossIncContract, 
-                incResidual: grossIncResidual, 
-                val: finalFMV,
-                rawGrossBlended,
-                startingGross,
-                isQuoteAnchor,
-                weightedObs,
-                weightedOM,
-                baseFMV,
-                rp: nRP,
-                trueUpRefund,
-                floorDiff
-            };
+                window.state.aR = { 
+                    cost: grossCost, 
+                    inc: grossIncome, 
+                    incContract: grossIncContract, 
+                    incResidual: grossIncResidual, 
+                    val: finalFMV,
+                    rawGrossBlended,
+                    startingGross,
+                    isQuoteAnchor,
+                    weightedObs,
+                    weightedOM,
+                    baseFMV,
+                    rp: nRP,
+                    trueUpRefund,
+                    floorDiff
+                };
+            } catch (err) {
+                console.error("Calculation Error:", err);
+                throw err;
+            }
         };
 
         // --- STATE & UTILITIES ---
@@ -931,7 +951,7 @@ Architecture: Modular Single-File HTML5 (Sub-Renderer Pattern)
                         </div>
                     </div>
                     <div class="text-right">
-                        <p class="text-[10px] text-slate-400 font-black uppercase tracking-[0.2em] italic mb-4">SolarCheck Pro v7.332</p>
+                        <p class="text-[10px] text-slate-400 font-black uppercase tracking-[0.2em] italic mb-4">SolarCheck Pro v7.333</p>
                         <div class="no-print flex gap-3 justify-end">
                             <button onclick="window.printReport()" class="bg-blue-600 text-white px-8 py-3 rounded-2xl font-black uppercase text-[10px] tracking-widest shadow-xl transition-all hover:bg-blue-500 active:scale-95 border-b-4 border-blue-800"><i class="fas fa-print mr-2"></i> Print</button>
                             <button onclick="window.closeReport()" class="bg-slate-100 text-slate-700 px-8 py-3 rounded-2xl font-black uppercase text-[10px] tracking-widest transition-all hover:bg-slate-200 border-b-4 border-slate-300">Back</button>
