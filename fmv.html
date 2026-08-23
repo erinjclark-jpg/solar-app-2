@@ -1,7 +1,7 @@
 <!-- 
 ================================================================================
 PROJECT CONTEXT: SolarCheck Professional - FMV REPORT MODULE
-Current Version: v1.22 (STANDARDIZED CLIENT PDF & IFRAME BREAKOUT PRINTING)
+Current Version: v1.23 (GODADDY SANDBOX BYPASS - EMBEDDED PDF VIEWER)
 Date: August 2026
 Architecture: Standalone HTML5 / URL-Parameter Data Handoff
 ================================================================================
@@ -35,7 +35,7 @@ Architecture: Standalone HTML5 / URL-Parameter Data Handoff
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Professional Solar Valuation Report v1.22</title>
+    <title>Professional Solar Valuation Report v1.23</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <!-- html2pdf.js Library for Direct Client-Side PDF Generation -->
@@ -102,13 +102,13 @@ Architecture: Standalone HTML5 / URL-Parameter Data Handoff
 
     <!-- FLOATING STANDARDIZED ACTION BAR -->
     <div id="action-bar" class="no-print fixed top-5 right-5 z-50 flex items-center gap-3 bg-slate-900/90 backdrop-blur-md p-2 rounded-full shadow-2xl border border-slate-700">
-        <button id="pdf-btn" onclick="exportPDF()" class="bg-blue-600 hover:bg-blue-500 text-white px-5 py-2 rounded-full font-bold text-xs uppercase tracking-wider transition-all flex items-center gap-2 shadow-md">
+        <button type="button" id="pdf-btn" onclick="exportPDF()" class="bg-blue-600 hover:bg-blue-500 text-white px-5 py-2 rounded-full font-bold text-xs uppercase tracking-wider transition-all flex items-center gap-2 shadow-md">
             <i class="fas fa-file-pdf"></i> Download PDF
         </button>
-        <button onclick="triggerPrint()" class="bg-slate-700 hover:bg-slate-600 text-white px-5 py-2 rounded-full font-bold text-xs uppercase tracking-wider transition-all flex items-center gap-2 shadow-md">
+        <button type="button" onclick="triggerPrint()" class="bg-slate-700 hover:bg-slate-600 text-white px-5 py-2 rounded-full font-bold text-xs uppercase tracking-wider transition-all flex items-center gap-2 shadow-md">
             <i class="fas fa-print"></i> Print Report
         </button>
-        <button onclick="closeAudit()" class="bg-slate-800 hover:bg-slate-700 text-slate-300 px-4 py-2 rounded-full font-bold text-xs uppercase tracking-wider transition-all">
+        <button type="button" onclick="closeAudit()" class="bg-slate-800 hover:bg-slate-700 text-slate-300 px-4 py-2 rounded-full font-bold text-xs uppercase tracking-wider transition-all">
             Close
         </button>
     </div>
@@ -212,7 +212,7 @@ Architecture: Standalone HTML5 / URL-Parameter Data Handoff
                     <p class="text-[9px] font-black text-slate-400 uppercase tracking-widest">Document Integrity</p>
                     <p class="text-[10px] font-bold text-slate-700">Audit Ref: <span id="display-ref"></span></p>
                 </div>
-                <p class="text-[9px] text-slate-400 font-bold uppercase tracking-widest">SolarCheck Pro | Report v1.22</p>
+                <p class="text-[9px] text-slate-400 font-bold uppercase tracking-widest">SolarCheck Pro | Report v1.23</p>
             </div>
         </div>
 
@@ -358,22 +358,32 @@ Architecture: Standalone HTML5 / URL-Parameter Data Handoff
             'other': 'Other Documented Physical Defect'
         };
 
-        // IFRAME BREAKOUT PRINT TRIGGER
+        // IFRAME BREAKOUT PRINT TRIGGER WITH FALLBACK
         window.triggerPrint = function() {
             if (window.self !== window.top) {
                 const currentUrl = new URL(window.location.href);
                 currentUrl.searchParams.set('autoprint', 'true');
-                window.open(currentUrl.toString(), '_blank');
+                try {
+                    const newWin = window.open(currentUrl.toString(), '_blank');
+                    // Check if popup blocker or sandbox killed the new window
+                    if (!newWin || newWin.closed || typeof newWin.closed === 'undefined') {
+                        alert("GoDaddy blocked the print tab. Generating an embedded PDF viewer instead...");
+                        window.exportPDF();
+                    }
+                } catch(e) {
+                    alert("GoDaddy restricted printing. Generating an embedded PDF viewer instead...");
+                    window.exportPDF();
+                }
             } else {
                 window.print();
             }
         };
 
-        // DIRECT PDF DOWNLOAD HANDLER
+        // BLOB-BASED PDF GENERATION (BYPASSES GODADDY DOWNLOAD RESTRICTIONS)
         window.exportPDF = function() {
             const btn = document.getElementById('pdf-btn');
             const originalContent = btn.innerHTML;
-            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Generating...';
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Processing...';
             btn.disabled = true;
 
             const element = document.getElementById('report-export-wrapper');
@@ -385,23 +395,64 @@ Architecture: Standalone HTML5 / URL-Parameter Data Handoff
                 image: { type: 'jpeg', quality: 0.98 },
                 html2canvas: { 
                     scale: 2, 
-                    useCORS: true, 
-                    letterRendering: true,
+                    useCORS: true,
                     scrollY: 0
                 },
                 jsPDF: { unit: 'in', format: 'letter', orientation: 'portrait' },
                 pagebreak: { mode: ['css', 'legacy'] }
             };
 
-            html2pdf().set(opt).from(element).save().then(() => {
+            // Output as a Blob URL instead of triggering a restricted download
+            html2pdf().set(opt).from(element).output('bloburl').then(function(blobUrl) {
                 btn.innerHTML = originalContent;
                 btn.disabled = false;
+                
+                // Construct the full-screen PDF viewer overlay
+                const viewer = document.createElement('div');
+                viewer.id = 'pdf-fullscreen-viewer';
+                viewer.style.position = 'fixed';
+                viewer.style.top = '0';
+                viewer.style.left = '0';
+                viewer.style.width = '100vw';
+                viewer.style.height = '100vh';
+                viewer.style.backgroundColor = '#323639';
+                viewer.style.zIndex = '999999';
+                viewer.style.display = 'flex';
+                viewer.style.flexDirection = 'column';
+
+                const toolbar = document.createElement('div');
+                toolbar.style.padding = '12px 20px';
+                toolbar.style.backgroundColor = '#202124';
+                toolbar.style.color = 'white';
+                toolbar.style.display = 'flex';
+                toolbar.style.justifyContent = 'space-between';
+                toolbar.style.alignItems = 'center';
+                toolbar.style.boxShadow = '0 2px 5px rgba(0,0,0,0.5)';
+                toolbar.style.zIndex = '10';
+
+                toolbar.innerHTML = `
+                    <div style="font-family: sans-serif; font-size: 14px; font-weight: bold; color: #e8eaed;">
+                        <i class="fas fa-file-pdf" style="margin-right: 8px; color: #ea4335;"></i> PDF Generated Successfully
+                        <span style="font-size: 11px; font-weight: normal; margin-left: 10px; color: #9aa0a6;">Use the native browser controls below to Print or Save.</span>
+                    </div>
+                    <button onclick="document.getElementById('pdf-fullscreen-viewer').remove()" style="background: #8ab4f8; color: #202124; border: none; padding: 6px 16px; border-radius: 4px; cursor: pointer; font-weight: bold; font-family: sans-serif; transition: background 0.2s;">Return to Document</button>
+                `;
+
+                const iframe = document.createElement('iframe');
+                iframe.src = blobUrl;
+                iframe.style.flexGrow = '1';
+                iframe.style.border = 'none';
+                iframe.style.width = '100%';
+
+                viewer.appendChild(toolbar);
+                viewer.appendChild(iframe);
+                document.body.appendChild(viewer);
+
             }).catch(err => {
                 console.error("PDF generation failed:", err);
                 btn.innerHTML = originalContent;
                 btn.disabled = false;
-                alert("PDF generation encountered an issue. Standard print dialog opening instead.");
-                window.triggerPrint();
+                alert("PDF generation encountered a rendering error. Please try again or attempt standard printing.");
             });
         };
         
@@ -563,7 +614,7 @@ Architecture: Standalone HTML5 / URL-Parameter Data Handoff
             
             document.getElementById('recon-net').innerText = cur(data.fmv);
 
-            // Auto-print check for iframe breakout tab
+            // Auto-print check for iframe breakout tab (if popup is allowed)
             if (params.get('autoprint') === 'true') {
                 setTimeout(() => {
                     window.print();
