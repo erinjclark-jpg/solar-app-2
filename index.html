@@ -1,7 +1,7 @@
 <!-- 
 ================================================================================
 PROJECT CONTEXT: SolarCheck Professional
-Current Version: v7.341 (SELLERS REPORT DECOUPLING)
+Current Version: v7.342 (TRANSFERABLE LOAN INTEGRATION)
 Date: August 2026
 Architecture: Modular Single-File HTML5 (Sub-Renderer Pattern)
 ================================================================================
@@ -37,7 +37,7 @@ Architecture: Modular Single-File HTML5 (Sub-Renderer Pattern)
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SolarCheck Professional v7.341</title>
+    <title>SolarCheck Professional v7.342</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     
@@ -241,7 +241,7 @@ Architecture: Modular Single-File HTML5 (Sub-Renderer Pattern)
                      <h3 class="font-bold mb-4 text-slate-800 flex items-center gap-2 text-[10px] sm:text-xs uppercase tracking-widest">Site & Branding</h3>
                      <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
                         ${window.S("Company Profile", st.company, "company", [{v:'rsr', l:'Rocklin Solar Repair'}, {v:'shine', l:'Shine on Solar & Maintenance'}, {v:'ssoc', l:'Solar Service of Colorado'}])}
-                        ${window.S("Ownership Agreement", st.o, "o", [{ v: "owned", l: "Homeowner Owned" }, { v: "lease", l: "Fixed Payment (Lease / Predictable PPA)" }, { v: "ppa", l: "Variable Payment (True Pay-per-kWh PPA)" }, { v: "prepaid_lease", l: "Prepaid Agreement" }])}
+                        ${window.S("Ownership Agreement", st.o, "o", [{ v: "owned", l: "Homeowner Owned" }, { v: "lease", l: "Fixed Payment (Lease / Predictable PPA)" }, { v: "ppa", l: "Variable Payment (True Pay-per-kWh PPA)" }, { v: "prepaid_lease", l: "Prepaid Agreement" }, { v: "loan", l: "Transferable Loan" }])}
                         <div class="${st.o === 'owned' ? 'hidden' : ''}">${window.I("TPO Provider Name", st.tpoName, "tpoName", "text")}</div>
                         <div class="col-span-1 sm:col-span-2">${window.I("Property Address", st.a, "a", "text")}</div>
                      </div>
@@ -268,7 +268,7 @@ Architecture: Modular Single-File HTML5 (Sub-Renderer Pattern)
         window.renderContractTab = function(st, r) {
             if (st.o === 'owned') return `<div class="tab-content bg-white p-8 rounded-3xl shadow-md border border-slate-200 min-h-[400px] flex flex-col items-center justify-center text-center text-slate-400"><i class="fas fa-file-circle-check text-7xl mb-6 text-slate-200"></i><h3 class="text-xl font-bold text-slate-500">No Contract Data Required</h3><p class="max-w-md mt-2 text-sm leading-relaxed">Homeowner Owned assets do not require contractual audit data as there is no 3rd party liability.</p></div>`;
             const combinedVal = (parseFloat(st.pa) || 0) + (parseFloat(st.paB) || 0);
-            return `<div class="tab-content bg-white p-5 sm:p-8 rounded-3xl shadow-md border border-slate-200 min-h-[400px]"><div class="max-w-3xl mx-auto"><div class="flex items-center gap-4 mb-6 border-b border-slate-200 pb-6"><div class="bg-blue-100 p-4 rounded-2xl text-blue-600 shadow-sm"><i class="fas fa-file-signature text-3xl"></i></div><div><h3 class="text-xl sm:text-2xl font-bold text-slate-800 uppercase tracking-tight">Lease / PPA Agreement</h3><p class="text-[11px] sm:text-xs text-slate-500 mt-1 uppercase tracking-widest font-bold">Audit terms to define financial liability.</p></div></div>
+            return `<div class="tab-content bg-white p-5 sm:p-8 rounded-3xl shadow-md border border-slate-200 min-h-[400px]"><div class="max-w-3xl mx-auto"><div class="flex items-center gap-4 mb-6 border-b border-slate-200 pb-6"><div class="bg-blue-100 p-4 rounded-2xl text-blue-600 shadow-sm"><i class="fas fa-file-signature text-3xl"></i></div><div><h3 class="text-xl sm:text-2xl font-bold text-slate-800 uppercase tracking-tight">${st.o === 'loan' ? 'Loan / Finance Agreement' : 'Lease / PPA Agreement'}</h3><p class="text-[11px] sm:text-xs text-slate-500 mt-1 uppercase tracking-widest font-bold">Audit terms to define financial liability.</p></div></div>
                 <div class="mb-6 bg-blue-50 p-4 rounded-2xl border border-blue-100 text-[13px] font-semibold text-blue-900 leading-relaxed"><i class="fas fa-info-circle mr-2"></i><strong>Why this matters:</strong> ${window.UI_NARRATIVES.contract_intro}</div>
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-6 sm:gap-8">
                 <div class="space-y-4"><h4 class="font-bold text-slate-700 uppercase text-[9px] sm:text-[10px] tracking-widest border-b pb-1">Term & Escalation</h4>${window.I("Contract Term (Years)", st.te, "te")}${window.I("Annual Escalator (%)", st.tEs, "tEs")}</div>
@@ -279,7 +279,7 @@ Architecture: Modular Single-File HTML5 (Sub-Renderer Pattern)
         };
 
         window.renderSummaryTab = function(st, r) {
-            const isTPO = ['lease', 'ppa', 'prepaid_lease', 'prepaid_ppa'].includes(st.o);
+            const isTPO = ['lease', 'ppa', 'prepaid_lease', 'prepaid_ppa', 'loan'].includes(st.o);
             const remTerm = isTPO ? Math.max(0, st.te - r.age).toFixed(1) : null;
             let benchmarkValue, benchmarkLabel, ratio;
             if (r.guarTD > 0) { benchmarkValue = r.guarTD; benchmarkLabel = "Contractual Guarantee"; ratio = r.act / (r.guarTD || 1); }
@@ -302,7 +302,7 @@ Architecture: Modular Single-File HTML5 (Sub-Renderer Pattern)
         };
 
         window.renderValuationTab = function(st, aR) {
-            const isTPO = ['lease', 'ppa', 'prepaid_lease', 'prepaid_ppa'].includes(st.o);
+            const isTPO = ['lease', 'ppa', 'prepaid_lease', 'prepaid_ppa', 'loan'].includes(st.o);
             const { r } = window.state;
             
             return `<div class="tab-content space-y-6">
@@ -431,7 +431,7 @@ Architecture: Modular Single-File HTML5 (Sub-Renderer Pattern)
                 const DEG_RATE = 0.005; const iT = +new Date(iDt), pT = +new Date(pDt);
                 const age = (iT && pT && pT > iT) ? (pT - iT) / (31557600000) : 0;
                 const iC = Math.floor(age); const iL = Math.max(0, (parseFloat(te)||0) - 1);
-                const isTPO = ['lease', 'ppa', 'prepaid_lease', 'prepaid_ppa'].includes(o);
+                const isTPO = ['lease', 'ppa', 'prepaid_lease', 'prepaid_ppa', 'loan'].includes(o);
                 const isPrepaid = o && o.includes('prepaid');
                 const nPa = parseFloat(pa) || 0;
                 const nPaB = parseFloat(paB) || 0;
@@ -756,7 +756,7 @@ Architecture: Modular Single-File HTML5 (Sub-Renderer Pattern)
                 const { age, estN12, act, guarTD, estTD, physTD, shortfallkWh, trueUpRefund } = window.state.r;
                 const { val, cost, inc, incContract, incResidual, startingGross, isQuoteAnchor, weightedObs, weightedOM, baseFMV, floorDiff } = window.state.aR;
 
-                const isTPO = ['lease', 'ppa', 'prepaid_lease', 'prepaid_ppa'].includes(o);
+                const isTPO = ['lease', 'ppa', 'prepaid_lease', 'prepaid_ppa', 'loan'].includes(o);
                 const benchmark = guarTD > 0 ? guarTD : (isTPO ? estTD : physTD);
 
                 const payload = {
@@ -862,7 +862,7 @@ Architecture: Modular Single-File HTML5 (Sub-Renderer Pattern)
                     <div class="bg-slate-900 text-white px-4 sm:px-6 py-3 sm:py-4 sticky top-0 z-50 flex justify-between items-center shadow-lg border-b border-white/5 gap-2">
                         <div class="flex items-center gap-2 sm:gap-4 min-w-0">
                             <span class="text-2xl sm:text-3xl flex-shrink-0"><i class="fas fa-sun text-yellow-400"></i></span>
-                            <div class="min-w-0 truncate"><h1 class="font-bold text-lg sm:text-2xl tracking-tighter italic truncate">SolarCheck Pro</h1><p class="text-[7px] sm:text-[9px] opacity-60 font-black uppercase tracking-[0.4em]">v7.341</p></div>
+                            <div class="min-w-0 truncate"><h1 class="font-bold text-lg sm:text-2xl tracking-tighter italic truncate">SolarCheck Pro</h1><p class="text-[7px] sm:text-[9px] opacity-60 font-black uppercase tracking-[0.4em]">v7.342</p></div>
                         </div>
                         <div class="flex items-center gap-2 flex-shrink-0">
                             <button onclick="window.open(window.location.href, '_blank')" class="header-btn bg-slate-800 text-white/80 p-2 sm:px-4 sm:py-2.5 rounded-xl text-sm shadow-xl transition-all hover:bg-slate-700 active:scale-95"><i class="fas fa-expand"></i></button>
