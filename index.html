@@ -1,7 +1,7 @@
 <!-- 
 ================================================================================
 PROJECT CONTEXT: SolarCheck Professional
-Current Version: v7.350 (SANDBOX ESCAPE REVERT & LZSTRING SYNC)
+Current Version: v7.352 (SYNCED ROUTING HANDOFF)
 Date: August 2026
 Architecture: Modular Single-File HTML5 (Sub-Renderer Pattern)
 ================================================================================
@@ -37,7 +37,7 @@ Architecture: Modular Single-File HTML5 (Sub-Renderer Pattern)
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SolarCheck Professional v7.350</title>
+    <title>SolarCheck Professional v7.352</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <!-- LZ-String for Payload Compression -->
@@ -805,7 +805,7 @@ Architecture: Modular Single-File HTML5 (Sub-Renderer Pattern)
             } else {
                 encodedData = encodeURIComponent(JSON.stringify(payload));
             }
-            return "https://erinjclark-jpg.github.io/solar-app-2/fmv.html?data=" + encodedData;
+            return "./fmv.html?data=" + encodedData;
         };
 
         window.getSellersLink = function() {
@@ -826,7 +826,7 @@ Architecture: Modular Single-File HTML5 (Sub-Renderer Pattern)
             } else {
                 encodedData = encodeURIComponent(JSON.stringify(payload));
             }
-            return "https://erinjclark-jpg.github.io/solar-app-2/sellers.html?data=" + encodedData;
+            return "./sellers.html?data=" + encodedData;
         };
 
         // --- MAIN RENDERER ---
@@ -844,7 +844,7 @@ Architecture: Modular Single-File HTML5 (Sub-Renderer Pattern)
                     <div class="bg-slate-900 text-white px-4 sm:px-6 py-3 sm:py-4 sticky top-0 z-50 flex justify-between items-center shadow-lg border-b border-white/5 gap-2">
                         <div class="flex items-center gap-2 sm:gap-4 min-w-0">
                             <span class="text-2xl sm:text-3xl flex-shrink-0"><i class="fas fa-sun text-yellow-400"></i></span>
-                            <div class="min-w-0 truncate"><h1 class="font-bold text-lg sm:text-2xl tracking-tighter italic truncate">SolarCheck Pro</h1><p class="text-[7px] sm:text-[9px] opacity-60 font-black uppercase tracking-[0.4em]">v7.350</p></div>
+                            <div class="min-w-0 truncate"><h1 class="font-bold text-lg sm:text-2xl tracking-tighter italic truncate">SolarCheck Pro</h1><p class="text-[7px] sm:text-[9px] opacity-60 font-black uppercase tracking-[0.4em]">v7.352</p></div>
                         </div>
                         <div class="flex items-center gap-2 flex-shrink-0">
                             <button onclick="window.open(window.location.href, '_blank')" class="header-btn bg-slate-800 text-white/80 p-2 sm:px-4 sm:py-2.5 rounded-xl text-sm shadow-xl transition-all hover:bg-slate-700 active:scale-95"><i class="fas fa-expand"></i></button>
