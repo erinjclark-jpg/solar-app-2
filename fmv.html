@@ -1,7 +1,7 @@
 <!-- 
 ================================================================================
 PROJECT CONTEXT: SolarCheck Professional - FMV REPORT MODULE
-Current Version: v1.42 (UNIVERSAL PAYLOAD PARSER - NESTED RECEIVER ARCHITECTURE)
+Current Version: v1.43 (UNIVERSAL PAYLOAD PARSER - BULLETPROOF RENDERER)
 Date: August 2026
 Architecture: Standalone HTML5 / URL-Parameter Data Handoff
 ================================================================================
@@ -35,7 +35,7 @@ Architecture: Standalone HTML5 / URL-Parameter Data Handoff
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Professional Solar Valuation Report v1.42</title>
+    <title>Professional Solar Valuation Report v1.43</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <!-- LZ-String Decompression -->
@@ -205,7 +205,7 @@ Architecture: Standalone HTML5 / URL-Parameter Data Handoff
                     <p class="text-[9px] font-black text-slate-400 uppercase tracking-widest">Document Integrity</p>
                     <p class="text-[10px] font-bold text-slate-700">Audit Ref: <span id="display-ref"></span></p>
                 </div>
-                <p class="text-[9px] text-slate-400 font-bold uppercase tracking-widest">SolarCheck Pro | Report v1.42</p>
+                <p class="text-[9px] text-slate-400 font-bold uppercase tracking-widest">SolarCheck Pro | Report v1.43</p>
             </div>
         </div>
 
@@ -360,11 +360,15 @@ Architecture: Standalone HTML5 / URL-Parameter Data Handoff
             let encodedData = params.get('data');
             let data = {};
 
-            // 1. Unified decoding mirror matching sellers.html architecture
+            // 1. Try decoding LZString or standard URI encoded JSON
             if (encodedData) {
                 try {
-                    let decompressed = window.LZString ? window.LZString.decompressFromEncodedURIComponent(encodedData) : null;
-                    data = decompressed ? JSON.parse(decompressed) : JSON.parse(decodeURIComponent(encodedData));
+                    const cleanData = encodedData.replace(/ /g, '+');
+                    let decompressed = window.LZString ? window.LZString.decompressFromEncodedURIComponent(cleanData) : null;
+                    if (!decompressed && window.LZString) {
+                        decompressed = window.LZString.decompressFromEncodedURIComponent(encodedData);
+                    }
+                    data = decompressed ? JSON.parse(decompressed) : JSON.parse(decodeURIComponent(cleanData));
                 } catch(e) {
                     try {
                         data = JSON.parse(decodeURIComponent(encodedData));
@@ -380,7 +384,7 @@ Architecture: Standalone HTML5 / URL-Parameter Data Handoff
                 }
             }
 
-            // 3. FLATTEN NESTED PAYLOAD
+            // 3. FLATTEN NESTED PAYLOAD (Maps the exact Lean Payload passed from index.html)
             if (data.state || data.r || data.aR) {
                 const st = data.state || {};
                 const r = data.r || {};
@@ -439,9 +443,9 @@ Architecture: Standalone HTML5 / URL-Parameter Data Handoff
             if (COMPANIES[data.co]) companyName = COMPANIES[data.co].name;
             document.getElementById('display-cert-company').innerText = companyName;
 
-            // Main IDs
+            // Main IDs (with protective fallback rendering to prevent fatal halts)
             document.getElementById('display-address').innerText = data.a || 'Subject Property';
-            document.getElementById('display-fmv').innerText = cur(data.fmv);
+            document.getElementById('display-fmv').innerText = cur(data.fmv || 0);
             
             // Dynamic TPO Quote Display
             const tpoQ = parseFloat(data.tpoQuote) || 0;
@@ -521,7 +525,7 @@ Architecture: Standalone HTML5 / URL-Parameter Data Handoff
             document.getElementById('audit-act').innerText = num(data.act) + ' MWh';
             document.getElementById('audit-bench').innerText = num(data.bench) + ' MWh';
             document.getElementById('audit-shortfall').innerText = num(data.shortfall) + ' kWh';
-            document.getElementById('audit-trueUp').innerText = cur(data.trueUp);
+            document.getElementById('audit-trueUp').innerText = cur(data.trueUp || 0);
 
             // Underwriting Assumptions Schedule
             document.getElementById('assump-itc').innerText = (data.itc || '30') + '% (Stripped from RCN)';
@@ -559,14 +563,14 @@ Architecture: Standalone HTML5 / URL-Parameter Data Handoff
             // Valuation Reconciliation Ledger
             const isQuoteAnchor = data.isQuoteAnchor === '1';
             document.getElementById('recon-start-label').innerText = isQuoteAnchor ? 'Initial Provider Buyout Demand' : 'Gross Blended Asset Value';
-            document.getElementById('recon-gross').innerText = cur(data.startingGross);
+            document.getElementById('recon-gross').innerText = cur(data.startingGross || 0);
             
-            document.getElementById('recon-obs').innerText = "- " + cur(data.weightedObs);
-            document.getElementById('recon-om').innerText = "- " + cur(data.weightedOM);
+            document.getElementById('recon-obs').innerText = "- " + cur(data.weightedObs || 0);
+            document.getElementById('recon-om').innerText = "- " + cur(data.weightedOM || 0);
             
-            document.getElementById('recon-base').innerText = cur(data.baseFMV);
-            document.getElementById('recon-repairs').innerText = "- " + cur(data.repair);
-            document.getElementById('recon-trueup').innerText = "- " + cur(data.trueUp);
+            document.getElementById('recon-base').innerText = cur(data.baseFMV || 0);
+            document.getElementById('recon-repairs').innerText = "- " + cur(data.repair || 0);
+            document.getElementById('recon-trueup').innerText = "- " + cur(data.trueUp || 0);
             
             const floorDiff = parseFloat(data.floorDiff) || 0;
             if (floorDiff > 0) {
@@ -574,7 +578,16 @@ Architecture: Standalone HTML5 / URL-Parameter Data Handoff
                 document.getElementById('recon-floor').innerText = "+ " + cur(floorDiff);
             }
             
-            document.getElementById('recon-net').innerText = cur(data.fmv);
+            document.getElementById('recon-net').innerText = cur(data.fmv || 0);
+
+            // Auto-print safety trigger
+            if (document.fonts) {
+                document.fonts.ready.then(() => {
+                    setTimeout(() => { window.print(); }, 800);
+                });
+            } else {
+                setTimeout(() => { window.print(); }, 1200);
+            }
         }
 
         window.onload = init;
