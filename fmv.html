@@ -1,7 +1,7 @@
 <!-- 
 ================================================================================
 PROJECT CONTEXT: SolarCheck Professional - FMV REPORT MODULE
-Current Version: v1.24 (GODADDY SANDBOX BYPASS - HIGH RES IMAGE PRINT ENGINE)
+Current Version: v1.25 (HYBRID PRINT ENGINE - CANVAS TO BLANK TAB)
 Date: August 2026
 Architecture: Standalone HTML5 / URL-Parameter Data Handoff
 ================================================================================
@@ -35,7 +35,7 @@ Architecture: Standalone HTML5 / URL-Parameter Data Handoff
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Professional Solar Valuation Report v1.24</title>
+    <title>Professional Solar Valuation Report v1.25</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <!-- html2canvas Library for High-Res DOM Snapshots -->
@@ -66,33 +66,8 @@ Architecture: Standalone HTML5 / URL-Parameter Data Handoff
         .text-justify { text-align: justify; }
         .border-heavy { border-width: 3px; }
         
-        /* STRICT IMAGE PRINTING RULES */
         @media print {
-            body, html { 
-                background: white !important; 
-                margin: 0 !important; 
-                padding: 0 !important; 
-                -webkit-print-color-adjust: exact !important; 
-                print-color-adjust: exact !important; 
-            }
             .no-print { display: none !important; }
-            #report-export-wrapper { display: none !important; } /* Hide raw HTML during print */
-            
-            #safe-print-viewer { 
-                background: white !important; 
-                padding: 0 !important; 
-                position: static !important; 
-            }
-            
-            .safe-print-img { 
-                box-shadow: none !important; 
-                margin: 0 auto !important; 
-                width: 8.5in !important; 
-                height: 11in !important;
-                page-break-after: always;
-                page-break-inside: avoid;
-            }
-            .safe-print-img:last-child { page-break-after: auto; }
         }
     </style>
 </head>
@@ -210,7 +185,7 @@ Architecture: Standalone HTML5 / URL-Parameter Data Handoff
                     <p class="text-[9px] font-black text-slate-400 uppercase tracking-widest">Document Integrity</p>
                     <p class="text-[10px] font-bold text-slate-700">Audit Ref: <span id="display-ref"></span></p>
                 </div>
-                <p class="text-[9px] text-slate-400 font-bold uppercase tracking-widest">SolarCheck Pro | Report v1.24</p>
+                <p class="text-[9px] text-slate-400 font-bold uppercase tracking-widest">SolarCheck Pro | Report v1.25</p>
             </div>
         </div>
 
@@ -354,7 +329,7 @@ Architecture: Standalone HTML5 / URL-Parameter Data Handoff
             'other': 'Other Documented Physical Defect'
         };
 
-        // THE GODADDY BYPASS: Snapshot DOM to Base64 Images & Print Natively
+        // THE HYBRID BYPASS: Snapshot DOM to Images & Dump into Blank Top-Level Tab
         window.processSafePrint = async function() {
             const btn1 = document.getElementById('pdf-btn');
             const btn2 = document.getElementById('print-btn');
@@ -368,95 +343,67 @@ Architecture: Standalone HTML5 / URL-Parameter Data Handoff
             btn2.disabled = true;
 
             try {
-                // 1. Find all report pages
+                // 1. Take high-res snapshot of each page
                 const pages = document.querySelectorAll('.report-page');
-                
-                // 2. Create a clean container overlay for the images
-                const viewer = document.createElement('div');
-                viewer.id = 'safe-print-viewer';
-                viewer.style.position = 'absolute';
-                viewer.style.top = '0';
-                viewer.style.left = '0';
-                viewer.style.width = '100%';
-                viewer.style.minHeight = '100vh';
-                viewer.style.backgroundColor = '#525659';
-                viewer.style.padding = '20px 0';
-                viewer.style.zIndex = '999999';
+                let imagesHtml = '';
 
-                // 3. Build the Toolbar
-                const toolbar = document.createElement('div');
-                toolbar.className = 'no-print';
-                toolbar.style.position = 'fixed';
-                toolbar.style.top = '0';
-                toolbar.style.left = '0';
-                toolbar.style.width = '100%';
-                toolbar.style.backgroundColor = '#202124';
-                toolbar.style.color = 'white';
-                toolbar.style.padding = '15px 20px';
-                toolbar.style.display = 'flex';
-                toolbar.style.justifyContent = 'space-between';
-                toolbar.style.alignItems = 'center';
-                toolbar.style.boxShadow = '0 2px 10px rgba(0,0,0,0.5)';
-                toolbar.style.zIndex = '1000000';
-                toolbar.style.boxSizing = 'border-box';
-
-                toolbar.innerHTML = `
-                    <div style="font-family: sans-serif; font-size: 14px; font-weight: bold;">
-                        <i class="fas fa-check-circle" style="color: #34a853; margin-right: 8px;"></i> Document Ready
-                        <span style="font-size: 12px; font-weight: normal; margin-left: 10px; color: #9aa0a6;">Click Print and select "Save as PDF" to download.</span>
-                    </div>
-                    <div style="display: flex; gap: 10px;">
-                        <button onclick="window.print()" style="background: #8ab4f8; color: #202124; border: none; padding: 8px 20px; border-radius: 4px; font-weight: bold; cursor: pointer; transition: opacity 0.2s;">
-                            <i class="fas fa-print"></i> Print / Save PDF
-                        </button>
-                        <button onclick="location.reload()" style="background: #3c4043; color: white; border: none; padding: 8px 20px; border-radius: 4px; cursor: pointer;">Cancel</button>
-                    </div>
-                `;
-                viewer.appendChild(toolbar);
-
-                const container = document.createElement('div');
-                container.style.marginTop = '60px'; // clear toolbar
-                container.style.display = 'flex';
-                container.style.flexDirection = 'column';
-                container.style.alignItems = 'center';
-                container.style.gap = '20px';
-
-                // 4. Hide action bar to prevent it from showing in the canvas
-                document.getElementById('action-bar').style.display = 'none';
-
-                // 5. Generate high-res image for each page
                 for (let i = 0; i < pages.length; i++) {
                     const canvas = await window.html2canvas(pages[i], { 
                         scale: 2, 
                         useCORS: true,
-                        backgroundColor: '#ffffff'
+                        backgroundColor: '#ffffff',
+                        scrollY: 0
                     });
-                    const img = document.createElement('img');
-                    img.src = canvas.toDataURL('image/jpeg', 0.98);
-                    img.className = 'safe-print-img';
-                    img.style.width = '8.5in'; // Lock visual width
-                    img.style.boxShadow = '0 5px 15px rgba(0,0,0,0.3)';
-                    img.style.display = 'block';
-                    container.appendChild(img);
+                    const imgData = canvas.toDataURL('image/jpeg', 0.98);
+                    imagesHtml += `<img src="${imgData}" class="page-img" />`;
                 }
 
-                viewer.appendChild(container);
-                document.body.appendChild(viewer);
+                // 2. Open a blank, top-level tab (bypasses iframe restrictions)
+                const newWin = window.open('', '_blank');
                 
-                // 6. Hide the raw HTML completely so only the images print
-                document.getElementById('report-export-wrapper').style.display = 'none'; 
+                if (!newWin) {
+                    throw new Error("Popup blocked by browser");
+                }
 
-                // 7. Trigger the print dialog automatically
-                setTimeout(() => { window.print(); }, 500);
+                // 3. Inject the images and auto-trigger the print dialog
+                newWin.document.write(`
+                    <!DOCTYPE html>
+                    <html lang="en">
+                    <head>
+                        <meta charset="UTF-8">
+                        <title>Solar Asset Valuation Report</title>
+                        <style>
+                            body { font-family: sans-serif; background-color: #525659; margin: 0; padding: 20px 0; text-align: center; }
+                            .page-img { display: block; margin: 0 auto 20px auto; width: 8.5in; box-shadow: 0 5px 15px rgba(0,0,0,0.3); }
+                            @media print {
+                                body { background: white; padding: 0; margin: 0; }
+                                .page-img { box-shadow: none; margin: 0 auto; width: 8.5in; height: 11in; page-break-after: always; page-break-inside: avoid; }
+                                .page-img:last-child { page-break-after: auto; }
+                            }
+                        </style>
+                    </head>
+                    <body>
+                        ${imagesHtml}
+                        <script>
+                            setTimeout(() => { window.print(); }, 500);
+                        <\/script>
+                    </body>
+                    </html>
+                `);
+                newWin.document.close();
 
-            } catch (error) {
-                console.error("Canvas generation failed:", error);
-                alert("An error occurred generating the document. Please refresh and try again.");
                 btn1.innerHTML = originalBtn1;
                 btn2.innerHTML = originalBtn2;
                 btn1.disabled = false;
                 btn2.disabled = false;
-                document.getElementById('action-bar').style.display = 'flex';
+
+            } catch (error) {
+                console.error("Print generation failed:", error);
+                alert("GoDaddy or your browser blocked the print window. Please ensure popups are allowed for this site.");
+                btn1.innerHTML = originalBtn1;
+                btn2.innerHTML = originalBtn2;
+                btn1.disabled = false;
+                btn2.disabled = false;
             }
         };
 
