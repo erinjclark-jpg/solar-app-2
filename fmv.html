@@ -1,7 +1,7 @@
 <!-- 
 ================================================================================
 PROJECT CONTEXT: SolarCheck Professional - FMV REPORT MODULE
-Current Version: v1.23 (GODADDY SANDBOX BYPASS - EMBEDDED PDF VIEWER)
+Current Version: v1.24 (GODADDY SANDBOX BYPASS - HIGH RES IMAGE PRINT ENGINE)
 Date: August 2026
 Architecture: Standalone HTML5 / URL-Parameter Data Handoff
 ================================================================================
@@ -35,20 +35,14 @@ Architecture: Standalone HTML5 / URL-Parameter Data Handoff
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Professional Solar Valuation Report v1.23</title>
+    <title>Professional Solar Valuation Report v1.24</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <!-- html2pdf.js Library for Direct Client-Side PDF Generation -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    <!-- html2canvas Library for High-Res DOM Snapshots -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
         
-        /* STRICT PRINT PAGINATION RULES */
-        @page {
-            size: letter portrait;
-            margin: 0;
-        }
-
         body { 
             font-family: 'Inter', sans-serif; 
             background-color: #f1f5f9; 
@@ -69,32 +63,36 @@ Architecture: Standalone HTML5 / URL-Parameter Data Handoff
             box-sizing: border-box; 
         }
 
-        @media print {
-            body { 
-                background: white !important; 
-                -webkit-print-color-adjust: exact !important; 
-                print-color-adjust: exact !important; 
-            }
-            .report-page { 
-                margin: 0 auto !important; 
-                box-shadow: none !important; 
-                height: 11in !important;
-                max-height: 11in !important;
-                page-break-after: always; 
-                page-break-inside: avoid;
-            }
-            .report-page:last-of-type {
-                page-break-after: auto;
-            }
-            .no-print { display: none !important; }
-        }
-        
         .text-justify { text-align: justify; }
         .border-heavy { border-width: 3px; }
         
-        /* HTML2PDF Canvas Fixes */
-        .html2pdf__page-break {
-            page-break-before: always;
+        /* STRICT IMAGE PRINTING RULES */
+        @media print {
+            body, html { 
+                background: white !important; 
+                margin: 0 !important; 
+                padding: 0 !important; 
+                -webkit-print-color-adjust: exact !important; 
+                print-color-adjust: exact !important; 
+            }
+            .no-print { display: none !important; }
+            #report-export-wrapper { display: none !important; } /* Hide raw HTML during print */
+            
+            #safe-print-viewer { 
+                background: white !important; 
+                padding: 0 !important; 
+                position: static !important; 
+            }
+            
+            .safe-print-img { 
+                box-shadow: none !important; 
+                margin: 0 auto !important; 
+                width: 8.5in !important; 
+                height: 11in !important;
+                page-break-after: always;
+                page-break-inside: avoid;
+            }
+            .safe-print-img:last-child { page-break-after: auto; }
         }
     </style>
 </head>
@@ -102,13 +100,13 @@ Architecture: Standalone HTML5 / URL-Parameter Data Handoff
 
     <!-- FLOATING STANDARDIZED ACTION BAR -->
     <div id="action-bar" class="no-print fixed top-5 right-5 z-50 flex items-center gap-3 bg-slate-900/90 backdrop-blur-md p-2 rounded-full shadow-2xl border border-slate-700">
-        <button type="button" id="pdf-btn" onclick="exportPDF()" class="bg-blue-600 hover:bg-blue-500 text-white px-5 py-2 rounded-full font-bold text-xs uppercase tracking-wider transition-all flex items-center gap-2 shadow-md">
-            <i class="fas fa-file-pdf"></i> Download PDF
+        <button type="button" id="pdf-btn" onclick="processSafePrint()" class="bg-blue-600 hover:bg-blue-500 text-white px-5 py-2 rounded-full font-bold text-xs uppercase tracking-wider transition-all flex items-center gap-2 shadow-md">
+            <i class="fas fa-file-pdf"></i> Save as PDF
         </button>
-        <button type="button" onclick="triggerPrint()" class="bg-slate-700 hover:bg-slate-600 text-white px-5 py-2 rounded-full font-bold text-xs uppercase tracking-wider transition-all flex items-center gap-2 shadow-md">
+        <button type="button" id="print-btn" onclick="processSafePrint()" class="bg-slate-700 hover:bg-slate-600 text-white px-5 py-2 rounded-full font-bold text-xs uppercase tracking-wider transition-all flex items-center gap-2 shadow-md">
             <i class="fas fa-print"></i> Print Report
         </button>
-        <button type="button" onclick="closeAudit()" class="bg-slate-800 hover:bg-slate-700 text-slate-300 px-4 py-2 rounded-full font-bold text-xs uppercase tracking-wider transition-all">
+        <button type="button" onclick="window.close()" class="bg-slate-800 hover:bg-slate-700 text-slate-300 px-4 py-2 rounded-full font-bold text-xs uppercase tracking-wider transition-all">
             Close
         </button>
     </div>
@@ -212,11 +210,9 @@ Architecture: Standalone HTML5 / URL-Parameter Data Handoff
                     <p class="text-[9px] font-black text-slate-400 uppercase tracking-widest">Document Integrity</p>
                     <p class="text-[10px] font-bold text-slate-700">Audit Ref: <span id="display-ref"></span></p>
                 </div>
-                <p class="text-[9px] text-slate-400 font-bold uppercase tracking-widest">SolarCheck Pro | Report v1.23</p>
+                <p class="text-[9px] text-slate-400 font-bold uppercase tracking-widest">SolarCheck Pro | Report v1.24</p>
             </div>
         </div>
-
-        <div class="html2pdf__page-break"></div>
 
         <!-- PAGE 2: DATA & AUDIT PROOF -->
         <div class="report-page border-t-[12px] border-slate-900">
@@ -358,106 +354,110 @@ Architecture: Standalone HTML5 / URL-Parameter Data Handoff
             'other': 'Other Documented Physical Defect'
         };
 
-        // IFRAME BREAKOUT PRINT TRIGGER WITH FALLBACK
-        window.triggerPrint = function() {
-            if (window.self !== window.top) {
-                const currentUrl = new URL(window.location.href);
-                currentUrl.searchParams.set('autoprint', 'true');
-                try {
-                    const newWin = window.open(currentUrl.toString(), '_blank');
-                    // Check if popup blocker or sandbox killed the new window
-                    if (!newWin || newWin.closed || typeof newWin.closed === 'undefined') {
-                        alert("GoDaddy blocked the print tab. Generating an embedded PDF viewer instead...");
-                        window.exportPDF();
-                    }
-                } catch(e) {
-                    alert("GoDaddy restricted printing. Generating an embedded PDF viewer instead...");
-                    window.exportPDF();
-                }
-            } else {
-                window.print();
-            }
-        };
-
-        // BLOB-BASED PDF GENERATION (BYPASSES GODADDY DOWNLOAD RESTRICTIONS)
-        window.exportPDF = function() {
-            const btn = document.getElementById('pdf-btn');
-            const originalContent = btn.innerHTML;
-            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Processing...';
-            btn.disabled = true;
-
-            const element = document.getElementById('report-export-wrapper');
-            const address = (document.getElementById('display-address').innerText || 'Valuation_Report').replace(/[^a-zA-Z0-9]/g, '_');
+        // THE GODADDY BYPASS: Snapshot DOM to Base64 Images & Print Natively
+        window.processSafePrint = async function() {
+            const btn1 = document.getElementById('pdf-btn');
+            const btn2 = document.getElementById('print-btn');
             
-            const opt = {
-                margin: 0,
-                filename: `SolarCheck_FMV_Report_${address}.pdf`,
-                image: { type: 'jpeg', quality: 0.98 },
-                html2canvas: { 
-                    scale: 2, 
-                    useCORS: true,
-                    scrollY: 0
-                },
-                jsPDF: { unit: 'in', format: 'letter', orientation: 'portrait' },
-                pagebreak: { mode: ['css', 'legacy'] }
-            };
+            const originalBtn1 = btn1.innerHTML;
+            const originalBtn2 = btn2.innerHTML;
+            
+            btn1.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Processing...';
+            btn2.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Processing...';
+            btn1.disabled = true;
+            btn2.disabled = true;
 
-            // Output as a Blob URL instead of triggering a restricted download
-            html2pdf().set(opt).from(element).output('bloburl').then(function(blobUrl) {
-                btn.innerHTML = originalContent;
-                btn.disabled = false;
+            try {
+                // 1. Find all report pages
+                const pages = document.querySelectorAll('.report-page');
                 
-                // Construct the full-screen PDF viewer overlay
+                // 2. Create a clean container overlay for the images
                 const viewer = document.createElement('div');
-                viewer.id = 'pdf-fullscreen-viewer';
-                viewer.style.position = 'fixed';
+                viewer.id = 'safe-print-viewer';
+                viewer.style.position = 'absolute';
                 viewer.style.top = '0';
                 viewer.style.left = '0';
-                viewer.style.width = '100vw';
-                viewer.style.height = '100vh';
-                viewer.style.backgroundColor = '#323639';
+                viewer.style.width = '100%';
+                viewer.style.minHeight = '100vh';
+                viewer.style.backgroundColor = '#525659';
+                viewer.style.padding = '20px 0';
                 viewer.style.zIndex = '999999';
-                viewer.style.display = 'flex';
-                viewer.style.flexDirection = 'column';
 
+                // 3. Build the Toolbar
                 const toolbar = document.createElement('div');
-                toolbar.style.padding = '12px 20px';
+                toolbar.className = 'no-print';
+                toolbar.style.position = 'fixed';
+                toolbar.style.top = '0';
+                toolbar.style.left = '0';
+                toolbar.style.width = '100%';
                 toolbar.style.backgroundColor = '#202124';
                 toolbar.style.color = 'white';
+                toolbar.style.padding = '15px 20px';
                 toolbar.style.display = 'flex';
                 toolbar.style.justifyContent = 'space-between';
                 toolbar.style.alignItems = 'center';
-                toolbar.style.boxShadow = '0 2px 5px rgba(0,0,0,0.5)';
-                toolbar.style.zIndex = '10';
+                toolbar.style.boxShadow = '0 2px 10px rgba(0,0,0,0.5)';
+                toolbar.style.zIndex = '1000000';
+                toolbar.style.boxSizing = 'border-box';
 
                 toolbar.innerHTML = `
-                    <div style="font-family: sans-serif; font-size: 14px; font-weight: bold; color: #e8eaed;">
-                        <i class="fas fa-file-pdf" style="margin-right: 8px; color: #ea4335;"></i> PDF Generated Successfully
-                        <span style="font-size: 11px; font-weight: normal; margin-left: 10px; color: #9aa0a6;">Use the native browser controls below to Print or Save.</span>
+                    <div style="font-family: sans-serif; font-size: 14px; font-weight: bold;">
+                        <i class="fas fa-check-circle" style="color: #34a853; margin-right: 8px;"></i> Document Ready
+                        <span style="font-size: 12px; font-weight: normal; margin-left: 10px; color: #9aa0a6;">Click Print and select "Save as PDF" to download.</span>
                     </div>
-                    <button onclick="document.getElementById('pdf-fullscreen-viewer').remove()" style="background: #8ab4f8; color: #202124; border: none; padding: 6px 16px; border-radius: 4px; cursor: pointer; font-weight: bold; font-family: sans-serif; transition: background 0.2s;">Return to Document</button>
+                    <div style="display: flex; gap: 10px;">
+                        <button onclick="window.print()" style="background: #8ab4f8; color: #202124; border: none; padding: 8px 20px; border-radius: 4px; font-weight: bold; cursor: pointer; transition: opacity 0.2s;">
+                            <i class="fas fa-print"></i> Print / Save PDF
+                        </button>
+                        <button onclick="location.reload()" style="background: #3c4043; color: white; border: none; padding: 8px 20px; border-radius: 4px; cursor: pointer;">Cancel</button>
+                    </div>
                 `;
-
-                const iframe = document.createElement('iframe');
-                iframe.src = blobUrl;
-                iframe.style.flexGrow = '1';
-                iframe.style.border = 'none';
-                iframe.style.width = '100%';
-
                 viewer.appendChild(toolbar);
-                viewer.appendChild(iframe);
-                document.body.appendChild(viewer);
 
-            }).catch(err => {
-                console.error("PDF generation failed:", err);
-                btn.innerHTML = originalContent;
-                btn.disabled = false;
-                alert("PDF generation encountered a rendering error. Please try again or attempt standard printing.");
-            });
-        };
-        
-        window.closeAudit = function() {
-            window.close();
+                const container = document.createElement('div');
+                container.style.marginTop = '60px'; // clear toolbar
+                container.style.display = 'flex';
+                container.style.flexDirection = 'column';
+                container.style.alignItems = 'center';
+                container.style.gap = '20px';
+
+                // 4. Hide action bar to prevent it from showing in the canvas
+                document.getElementById('action-bar').style.display = 'none';
+
+                // 5. Generate high-res image for each page
+                for (let i = 0; i < pages.length; i++) {
+                    const canvas = await window.html2canvas(pages[i], { 
+                        scale: 2, 
+                        useCORS: true,
+                        backgroundColor: '#ffffff'
+                    });
+                    const img = document.createElement('img');
+                    img.src = canvas.toDataURL('image/jpeg', 0.98);
+                    img.className = 'safe-print-img';
+                    img.style.width = '8.5in'; // Lock visual width
+                    img.style.boxShadow = '0 5px 15px rgba(0,0,0,0.3)';
+                    img.style.display = 'block';
+                    container.appendChild(img);
+                }
+
+                viewer.appendChild(container);
+                document.body.appendChild(viewer);
+                
+                // 6. Hide the raw HTML completely so only the images print
+                document.getElementById('report-export-wrapper').style.display = 'none'; 
+
+                // 7. Trigger the print dialog automatically
+                setTimeout(() => { window.print(); }, 500);
+
+            } catch (error) {
+                console.error("Canvas generation failed:", error);
+                alert("An error occurred generating the document. Please refresh and try again.");
+                btn1.innerHTML = originalBtn1;
+                btn2.innerHTML = originalBtn2;
+                btn1.disabled = false;
+                btn2.disabled = false;
+                document.getElementById('action-bar').style.display = 'flex';
+            }
         };
 
         function init() {
@@ -613,13 +613,6 @@ Architecture: Standalone HTML5 / URL-Parameter Data Handoff
             }
             
             document.getElementById('recon-net').innerText = cur(data.fmv);
-
-            // Auto-print check for iframe breakout tab (if popup is allowed)
-            if (params.get('autoprint') === 'true') {
-                setTimeout(() => {
-                    window.print();
-                }, 500);
-            }
         }
 
         window.onload = init;
