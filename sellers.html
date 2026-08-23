@@ -2,7 +2,7 @@
 ================================================================================
 PROJECT CONTEXT: SolarCheck Professional
 Module: Sellers Report (Standalone)
-Current Version: v1.11 (NATIVE PRINT ENGINE & CSS COLOR FIX)
+Current Version: v1.12 (NATIVE PRINT ENGINE & FLEXBOX TRUNCATION FIX)
 Date: August 2026
 ================================================================================
 -->
@@ -11,40 +11,65 @@ Date: August 2026
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sellers Report - SolarCheck Pro v1.11</title>
+    <title>Sellers Report - SolarCheck Pro v1.12</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- LZ-String Decompression -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/lz-string/1.5.0/lz-string.min.js"></script>
     
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
         body { font-family: 'Inter', sans-serif; background-color: #cbd5e1; margin: 0; padding: 0; }
         
         /* 
-           CRITICAL FIX: This block forces Chrome/Safari/Edge to print 
-           background colors, borders, and shadows exactly as seen on screen. 
+           CRITICAL PRINT FIXES:
+           1. Exact color adjust forces background graphics and Tailwind boxes to render.
+           2. Disabling Flexbox (display: block) prevents Chromium from cutting the page in half.
+           3. Tightened margins ensure it fits perfectly on a single Letter size page.
         */
         @media print {
-            body { 
+            @page { size: letter portrait; margin: 0.3in; }
+            
+            body, html { 
+                background: white !important; 
                 -webkit-print-color-adjust: exact !important; 
                 print-color-adjust: exact !important; 
-                background: white !important;
+                min-height: auto !important;
+                height: auto !important;
             }
+            
             .no-print { display: none !important; }
-            @page { margin: 0.5cm; }
-            #report-export-wrapper { padding: 0 !important; }
-            #report-container { 
-                border: none !important; 
-                box-shadow: none !important; 
-                max-width: 100% !important; 
-                width: 100% !important;
-                padding: 20px !important;
+            
+            #report-export-wrapper { 
+                padding: 0 !important; 
+                margin: 0 !important;
+                display: block !important; 
             }
+            
+            #report-container { 
+                border-top: 12px solid #0f172a !important; 
+                box-shadow: none !important; 
+                padding: 1.5rem !important; 
+                min-height: auto !important;
+                height: auto !important;
+                display: block !important; 
+                max-width: 100% !important;
+                width: 100% !important;
+            }
+            
+            .report-card, .grid { 
+                page-break-inside: avoid; 
+                break-inside: avoid; 
+            }
+            
+            /* Slight scale down to guarantee 1-page fit */
+            body { zoom: 0.96; }
         }
     </style>
 </head>
 <body class="antialiased min-h-screen">
 
-    <!-- FLOATING STANDARDIZED ACTION BAR -->
+    <!-- FLOATING STANDARDIZED ACTION BAR (Hidden on Print) -->
     <div id="action-bar" class="no-print fixed top-5 right-5 z-50 flex items-center gap-3 bg-slate-900/90 backdrop-blur-md p-2 rounded-full shadow-2xl border border-slate-700">
         <button type="button" onclick="window.history.back()" class="bg-slate-800 hover:bg-slate-700 text-slate-300 px-4 py-2 rounded-full font-bold text-xs uppercase tracking-wider transition-all flex items-center gap-2 shadow-md">
             <i class="fas fa-arrow-left"></i> Return
@@ -54,7 +79,7 @@ Date: August 2026
         </button>
     </div>
 
-    <!-- WRAPPER REQUIRED FOR PRINT ENGINE TO HIDE DOM -->
+    <!-- WRAPPER -->
     <div id="report-export-wrapper" class="py-10">
         <div id="report-container" class="max-w-4xl mx-auto border-t-[16px] border-slate-900 shadow-2xl bg-white flex flex-col relative p-12 min-h-[1056px]">
             <!-- Rendered content goes here -->
@@ -79,17 +104,30 @@ Date: August 2026
             const params = new URLSearchParams(window.location.search);
             let encodedData = params.get('data');
             
-            // DEMO FALLBACK FOR PREVIEW WINDOW: 
+            // DEMO FALLBACK FOR PREVIEW WINDOW
             if (!encodedData) {
                 const mockPayload = {
                     state: { a: "789 Demo Drive, Rocklin CA", sz: 7.2, o: "lease", tpoName: "Sunrun", te: 25, company: "rsr", tEs: 2.9, e: 7.0, l: 25, batteryMode: "both" },
                     r: { age: 3.5, act: 38.4, usableB: 10.8, blendedUtility: 0.35, rYC_sol: 0.38, actSav: 2520, pYC: 225.00, actSavNet: -180, futSavNet: 14500, estDay: 28.5 }
                 };
-                encodedData = encodeURIComponent(JSON.stringify(mockPayload));
+                // Fallback decode for local testing
+                if (window.LZString) {
+                    encodedData = window.LZString.compressToEncodedURIComponent(JSON.stringify(mockPayload));
+                } else {
+                    encodedData = encodeURIComponent(JSON.stringify(mockPayload));
+                }
             }
 
             try {
-                const payload = JSON.parse(decodeURIComponent(encodedData));
+                let payload;
+                // Auto-detect if data is LZString compressed or standard URI encoded
+                try {
+                    const decompressed = window.LZString ? window.LZString.decompressFromEncodedURIComponent(encodedData) : null;
+                    payload = decompressed ? JSON.parse(decompressed) : JSON.parse(decodeURIComponent(encodedData));
+                } catch(e) {
+                    payload = JSON.parse(decodeURIComponent(encodedData));
+                }
+
                 const state = payload.state;
                 const r = payload.r;
                 
@@ -220,7 +258,7 @@ Date: August 2026
 
                 // Term Advantage / Hedge Block Integration
                 const termAdvantageHtml = `
-                <div class="grid grid-cols-2 gap-10 mb-10">
+                <div class="grid grid-cols-2 gap-10 mb-8">
                     ${leftColumnHtml}
                     <div class="space-y-6 flex flex-col justify-center">
                         <div class="bg-white border-2 border-slate-200 rounded-2xl p-5 shadow-sm">
@@ -231,7 +269,7 @@ Date: August 2026
                                     <span class="text-lg font-black text-slate-800">$${r.blendedUtility.toFixed(3)} <span class="text-[9px] text-slate-400 uppercase font-bold">/ kWh</span></span>
                                 </div>
                                 <div class="w-full bg-slate-200 rounded-full h-2.5 shadow-inner overflow-hidden">
-                                    <div class="bg-slate-800 h-full rounded-full transition-all" style="width: ${utilPercent}%"></div>
+                                    <div class="bg-slate-800 h-full rounded-full transition-all print-bar" style="width: ${utilPercent}%"></div>
                                 </div>
                             </div>
                             <div>
@@ -240,7 +278,7 @@ Date: August 2026
                                     <span class="text-lg font-black text-blue-600">$${r.rYC_sol.toFixed(3)} <span class="text-[9px] text-slate-400 uppercase font-bold">/ kWh</span></span>
                                 </div>
                                 <div class="w-full bg-blue-100 rounded-full h-2.5 shadow-inner overflow-hidden">
-                                    <div class="bg-blue-600 h-full rounded-full transition-all" style="width: ${solPercent}%"></div>
+                                    <div class="bg-blue-600 h-full rounded-full transition-all print-bar" style="width: ${solPercent}%"></div>
                                 </div>
                             </div>
                         </div>
@@ -317,7 +355,7 @@ Date: August 2026
                  </div>
 
                  <!-- Top Metrics Row -->
-                 <div class="grid grid-cols-3 gap-6 mb-10">
+                 <div class="grid grid-cols-3 gap-6 mb-8">
                     <div class="bg-slate-50 p-6 rounded-2xl border-2 border-slate-200 text-center shadow-inner flex flex-col justify-center">
                        <i class="fas fa-solar-panel text-2xl text-blue-400 mb-3"></i>
                        <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">System Size</p>
@@ -342,7 +380,7 @@ Date: August 2026
                  ${termAdvantageHtml}
 
                  <!-- General Disclaimer -->
-                 <div class="mt-auto" style="font-size: 0.75rem; color: #666; border-top: 1px solid #ccc; padding-top: 15px; text-align: justify; line-height: 1.4; margin-bottom: 20px;">
+                 <div class="mt-8" style="font-size: 0.75rem; color: #666; border-top: 1px solid #ccc; padding-top: 15px; text-align: justify; line-height: 1.4; margin-bottom: 20px;">
                    <strong>General Disclaimer &amp; Forward-Looking Statements</strong><br>
                    This financial analysis is an estimate based on current market conditions, utility rate structures, and historical system data. Projections of future utility costs, solar energy production, and net financial savings are inherently uncertain and subject to change due to weather, hardware degradation, and evolving utility tariffs. While this report is prepared by a licensed California solar contractor and inspector, it is provided strictly for informational and advisory purposes. It does not constitute financial, legal, or tax advice. Homeowners are encouraged to consult with independent financial or legal professionals regarding the execution or transfer of third-party service agreements.
                  </div>
@@ -357,13 +395,21 @@ Date: August 2026
                         </div>
                     </div>
                     <div class="text-right">
-                        <p class="text-[10px] text-slate-400 font-black uppercase tracking-[0.2em] italic mb-4">SolarCheck Pro v1.11</p>
+                        <p class="text-[10px] text-slate-400 font-black uppercase tracking-[0.2em] italic mb-4">SolarCheck Pro v1.12</p>
                     </div>
                  </div>
                 `;
 
                 document.getElementById('report-container').innerHTML = content;
                 document.title = `${state.a || 'Sellers Report'} - SolarCheck Pro`;
+
+                // Add explicit print width to the progress bars so they don't vanish on print
+                setTimeout(() => {
+                    const bars = document.querySelectorAll('.print-bar');
+                    bars.forEach(b => {
+                        b.style.minWidth = b.style.width;
+                    });
+                }, 100);
 
             } catch (err) {
                 console.error("Failed to parse Sellers Report data payload:", err);
