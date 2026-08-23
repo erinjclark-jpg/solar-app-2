@@ -1,7 +1,7 @@
 <!-- 
 ================================================================================
 PROJECT CONTEXT: SolarCheck Professional - FMV REPORT MODULE
-Current Version: v1.36 (NATIVE PRINT ENGINE & MULTI-PAGE FORMATTING FIX)
+Current Version: v1.37 (NATIVE PRINT ENGINE & MULTI-PAGE FORMATTING FIX)
 Date: August 2026
 Architecture: Standalone HTML5 / URL-Parameter Data Handoff
 ================================================================================
@@ -35,9 +35,11 @@ Architecture: Standalone HTML5 / URL-Parameter Data Handoff
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Professional Solar Valuation Report v1.36</title>
+    <title>Professional Solar Valuation Report v1.37</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- LZ-String Decompression -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/lz-string/1.5.0/lz-string.min.js"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
         
@@ -228,7 +230,7 @@ Architecture: Standalone HTML5 / URL-Parameter Data Handoff
                     <p class="text-[9px] font-black text-slate-400 uppercase tracking-widest">Document Integrity</p>
                     <p class="text-[10px] font-bold text-slate-700">Audit Ref: <span id="display-ref"></span></p>
                 </div>
-                <p class="text-[9px] text-slate-400 font-bold uppercase tracking-widest">SolarCheck Pro | Report v1.36</p>
+                <p class="text-[9px] text-slate-400 font-bold uppercase tracking-widest">SolarCheck Pro | Report v1.37</p>
             </div>
         </div>
 
