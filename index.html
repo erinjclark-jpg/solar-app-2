@@ -1,7 +1,7 @@
 <!-- 
 ================================================================================
 PROJECT CONTEXT: SolarCheck Professional
-Current Version: v7.349 (STANDARDIZED LZSTRING COMPRESSION FOR ALL REPORTS)
+Current Version: v7.350 (SANDBOX ESCAPE REVERT & LZSTRING SYNC)
 Date: August 2026
 Architecture: Modular Single-File HTML5 (Sub-Renderer Pattern)
 ================================================================================
@@ -37,7 +37,7 @@ Architecture: Modular Single-File HTML5 (Sub-Renderer Pattern)
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SolarCheck Professional v7.349</title>
+    <title>SolarCheck Professional v7.350</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <!-- LZ-String for Payload Compression -->
@@ -844,7 +844,7 @@ Architecture: Modular Single-File HTML5 (Sub-Renderer Pattern)
                     <div class="bg-slate-900 text-white px-4 sm:px-6 py-3 sm:py-4 sticky top-0 z-50 flex justify-between items-center shadow-lg border-b border-white/5 gap-2">
                         <div class="flex items-center gap-2 sm:gap-4 min-w-0">
                             <span class="text-2xl sm:text-3xl flex-shrink-0"><i class="fas fa-sun text-yellow-400"></i></span>
-                            <div class="min-w-0 truncate"><h1 class="font-bold text-lg sm:text-2xl tracking-tighter italic truncate">SolarCheck Pro</h1><p class="text-[7px] sm:text-[9px] opacity-60 font-black uppercase tracking-[0.4em]">v7.349</p></div>
+                            <div class="min-w-0 truncate"><h1 class="font-bold text-lg sm:text-2xl tracking-tighter italic truncate">SolarCheck Pro</h1><p class="text-[7px] sm:text-[9px] opacity-60 font-black uppercase tracking-[0.4em]">v7.350</p></div>
                         </div>
                         <div class="flex items-center gap-2 flex-shrink-0">
                             <button onclick="window.open(window.location.href, '_blank')" class="header-btn bg-slate-800 text-white/80 p-2 sm:px-4 sm:py-2.5 rounded-xl text-sm shadow-xl transition-all hover:bg-slate-700 active:scale-95"><i class="fas fa-expand"></i></button>
@@ -861,14 +861,14 @@ Architecture: Modular Single-File HTML5 (Sub-Renderer Pattern)
                             <button onclick="closeModal()" class="absolute top-6 right-6 text-slate-300 hover:text-slate-600 transition-colors"><i class="fas fa-times text-2xl"></i></button>
                             <h3 class="font-black mb-6 uppercase text-[9px] tracking-[0.4em] border-b border-slate-100 pb-5 text-slate-400">Generate Audit</h3>
                             <div class="space-y-3">
-                                <a id="btn-sellers-report" href="#" target="_blank" rel="noopener noreferrer" onclick="closeModal()" class="block w-full text-left p-5 sm:p-6 border-2 border-slate-50 rounded-2xl hover:bg-blue-50 hover:border-blue-200 transition-all group cursor-pointer">
+                                <a id="btn-sellers-report" href="#" target="_top" class="block w-full text-left p-5 sm:p-6 border-2 border-slate-50 rounded-2xl hover:bg-blue-50 hover:border-blue-200 transition-all group cursor-pointer">
                                     <div class="flex items-center justify-between">
                                         <div><p class="font-black uppercase text-xs tracking-widest text-slate-800">Sellers Report</p><p class="text-[9px] sm:text-[10px] font-bold text-slate-500 mt-1">High-impact visual financial analysis for homeowners.</p></div>
                                         <i class="fas fa-chevron-right text-slate-300 group-hover:text-blue-400"></i>
                                     </div>
                                 </a>
 
-                                <a id="btn-fmv-report" href="#" target="_blank" rel="noopener noreferrer" onclick="closeModal()" class="block w-full text-left p-5 sm:p-6 border-2 border-indigo-50 bg-indigo-50/30 rounded-2xl hover:bg-indigo-100 hover:border-indigo-300 transition-all group cursor-pointer">
+                                <a id="btn-fmv-report" href="#" target="_top" class="block w-full text-left p-5 sm:p-6 border-2 border-indigo-50 bg-indigo-50/30 rounded-2xl hover:bg-indigo-100 hover:border-indigo-300 transition-all group cursor-pointer">
                                     <div class="flex items-center justify-between">
                                         <div><p class="font-black uppercase text-xs tracking-widest text-indigo-800">Professional FMV Report</p><p class="text-[9px] sm:text-[10px] font-bold text-indigo-600 mt-1">Generate complete USPAP-compliant document.</p></div>
                                         <i class="fas fa-external-link-alt text-indigo-300 group-hover:text-indigo-500"></i>
