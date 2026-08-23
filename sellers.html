@@ -2,7 +2,7 @@
 ================================================================================
 PROJECT CONTEXT: SolarCheck Professional
 Module: Sellers Report (Standalone)
-Current Version: v1.002 (DYNAMIC METRICS & LOAN SUPPORT)
+Current Version: v1.003 (STANDARDIZED CLIENT PDF & IFRAME BREAKOUT PRINTING)
 Date: August 2026
 ================================================================================
 -->
@@ -11,9 +11,11 @@ Date: August 2026
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sellers Report - SolarCheck Pro</title>
+    <title>Sellers Report - SolarCheck Pro v1.003</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- html2pdf.js Library for Direct Client-Side PDF Generation -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
     
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
@@ -22,11 +24,24 @@ Date: August 2026
         @media print {
             body { background: white !important; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
             .no-print { display: none !important; }
-            #report-container { box-shadow: none !important; border-top: none !important; padding: 1.5rem !important; }
+            #report-container { box-shadow: none !important; border-top: none !important; padding: 1.5rem !important; margin: 0 auto !important; width: 100% !important; max-width: 100% !important; }
         }
     </style>
 </head>
 <body class="antialiased py-10 print:py-0 min-h-screen">
+
+    <!-- FLOATING STANDARDIZED ACTION BAR -->
+    <div id="action-bar" class="no-print fixed top-5 right-5 z-50 flex items-center gap-3 bg-slate-900/90 backdrop-blur-md p-2 rounded-full shadow-2xl border border-slate-700">
+        <button id="pdf-btn" onclick="exportPDF()" class="bg-blue-600 hover:bg-blue-500 text-white px-5 py-2 rounded-full font-bold text-xs uppercase tracking-wider transition-all flex items-center gap-2 shadow-md">
+            <i class="fas fa-file-pdf"></i> Download PDF
+        </button>
+        <button onclick="triggerPrint()" class="bg-slate-700 hover:bg-slate-600 text-white px-5 py-2 rounded-full font-bold text-xs uppercase tracking-wider transition-all flex items-center gap-2 shadow-md">
+            <i class="fas fa-print"></i> Print Report
+        </button>
+        <button onclick="window.close()" class="bg-slate-800 hover:bg-slate-700 text-slate-300 px-4 py-2 rounded-full font-bold text-xs uppercase tracking-wider transition-all">
+            Close
+        </button>
+    </div>
 
     <div id="report-container" class="max-w-4xl mx-auto border-t-[16px] border-slate-900 shadow-2xl bg-white flex flex-col relative print:shadow-none print:border-t-0 p-12 min-h-[1056px]">
         <!-- Rendered content goes here -->
@@ -46,12 +61,57 @@ Date: August 2026
             ssoc: { name: "SOLAR SERVICE OF COLORADO", license: "", phone: "303-747-5065", email: "matt.essig@solarserviceofco.com", logo: "ssoc_logo.png", website: "solarserviceofcolorado.com" }
         };
 
+        // IFRAME BREAKOUT PRINT TRIGGER
+        window.triggerPrint = function() {
+            if (window.self !== window.top) {
+                const currentUrl = new URL(window.location.href);
+                currentUrl.searchParams.set('autoprint', 'true');
+                window.open(currentUrl.toString(), '_blank');
+            } else {
+                window.print();
+            }
+        };
+
+        // DIRECT CLIENT PDF EXPORT
+        window.exportPDF = function() {
+            const btn = document.getElementById('pdf-btn');
+            const originalContent = btn.innerHTML;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Generating...';
+            btn.disabled = true;
+
+            const element = document.getElementById('report-container');
+            const cleanTitle = document.title.replace(/[^a-zA-Z0-9]/g, '_');
+
+            const opt = {
+                margin: 0.25,
+                filename: `${cleanTitle}.pdf`,
+                image: { type: 'jpeg', quality: 0.98 },
+                html2canvas: { 
+                    scale: 2, 
+                    useCORS: true, 
+                    letterRendering: true,
+                    scrollY: 0
+                },
+                jsPDF: { unit: 'in', format: 'letter', orientation: 'portrait' }
+            };
+
+            html2pdf().set(opt).from(element).save().then(() => {
+                btn.innerHTML = originalContent;
+                btn.disabled = false;
+            }).catch(err => {
+                console.error("PDF generation failed:", err);
+                btn.innerHTML = originalContent;
+                btn.disabled = false;
+                alert("PDF generation encountered an issue. Standard print dialog opening instead.");
+                window.triggerPrint();
+            });
+        };
+
         const renderReport = () => {
             const params = new URLSearchParams(window.location.search);
             let encodedData = params.get('data');
             
             // DEMO FALLBACK FOR PREVIEW WINDOW: 
-            // Injects the "Crossover & Battery" scenario: Negative monthly (-$15), Positive Term (+$14,500), Backup Enabled.
             if (!encodedData) {
                 const mockPayload = {
                     state: { a: "789 Demo Drive, Rocklin CA", sz: 7.2, o: "lease", tpoName: "Sunrun", te: 25, company: "rsr", tEs: 2.9, e: 7.0, l: 25, batteryMode: "both" },
@@ -82,7 +142,7 @@ Date: August 2026
                 const mainOwnershipText = isTPO && state.o !== 'loan' ? "Third Party Owned" : (state.o === 'loan' ? "Homeowner Owned (Financed)" : "Homeowner Owned");
                 const subOwnershipText = isTPO ? (ownershipMap[state.o] || "") : "";
 
-                // FIXED SCENARIO LOGIC VARIABLES
+                // Scenario Logic Variables
                 const isMonthlyPositive = r.actSavNet >= 0;
                 const isTermPositive = r.futSavNet >= 0;
                 const isCrossover = !isMonthlyPositive && isTermPositive;
@@ -98,7 +158,7 @@ Date: August 2026
                 const utilPercent = (r.blendedUtility / maxRate) * 100;
                 const solPercent = (r.rYC_sol / maxRate) * 100;
 
-                // Cash Flow Block HTML
+                // Dynamic Cash Flow Block HTML
                 let cashFlowBlockHtml = '';
                 if (isMonthlyPositive) {
                     cashFlowBlockHtml = `
@@ -143,7 +203,6 @@ Date: August 2026
                 let leftColumnHtml = `<div class="flex flex-col h-full gap-6">`;
                 
                 if (isSunkAsset && isTPO && !isPrepaid) {
-                    // Worst Case: Sunk Asset TPO - Pivot to Maintenance Peace of Mind
                     leftColumnHtml += `
                     <div class="bg-slate-900 text-white p-8 rounded-[32px] shadow-xl relative overflow-hidden flex-grow flex flex-col justify-center">
                         <div class="relative z-10">
@@ -154,7 +213,6 @@ Date: August 2026
                         <div class="absolute right-[-5%] bottom-[-10%] text-9xl text-white/5 rotate-12"><i class="fas fa-file-contract"></i></div>
                     </div>`;
                 } else {
-                    // Crossover or Total Win - Show Term Savings
                     leftColumnHtml += `
                     <div class="bg-slate-900 text-white p-8 rounded-[32px] shadow-xl flex flex-col justify-center relative overflow-hidden flex-grow">
                         <div class="relative z-10">
@@ -331,17 +389,20 @@ Date: August 2026
                         </div>
                     </div>
                     <div class="text-right">
-                        <p class="text-[10px] text-slate-400 font-black uppercase tracking-[0.2em] italic mb-4">SolarCheck Pro v1.002</p>
-                        <div class="no-print flex gap-3 justify-end">
-                            <button onclick="window.print()" class="bg-blue-600 text-white px-8 py-3 rounded-2xl font-black uppercase text-[10px] tracking-widest shadow-xl transition-all hover:bg-blue-500 active:scale-95 border-b-4 border-blue-800"><i class="fas fa-print mr-2"></i> Print</button>
-                            <button onclick="window.close()" class="bg-slate-100 text-slate-700 px-8 py-3 rounded-2xl font-black uppercase text-[10px] tracking-widest transition-all hover:bg-slate-200 border-b-4 border-slate-300">Close Tab</button>
-                        </div>
+                        <p class="text-[10px] text-slate-400 font-black uppercase tracking-[0.2em] italic mb-4">SolarCheck Pro v1.003</p>
                     </div>
                  </div>
                 `;
 
                 document.getElementById('report-container').innerHTML = content;
                 document.title = `${state.a || 'Sellers Report'} - SolarCheck Pro`;
+
+                // Auto-print check for iframe breakout tab
+                if (params.get('autoprint') === 'true') {
+                    setTimeout(() => {
+                        window.print();
+                    }, 500);
+                }
 
             } catch (err) {
                 console.error("Failed to parse Sellers Report data payload:", err);
