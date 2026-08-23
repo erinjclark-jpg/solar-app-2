@@ -2,7 +2,7 @@
 ================================================================================
 PROJECT CONTEXT: SolarCheck Professional
 Module: Sellers Report (Standalone)
-Current Version: v1.12 (NATIVE PRINT ENGINE & FLEXBOX TRUNCATION FIX)
+Current Version: v1.13 (NATIVE PRINT ENGINE & 1-PAGE FORCED SCALING)
 Date: August 2026
 ================================================================================
 -->
@@ -11,7 +11,7 @@ Date: August 2026
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sellers Report - SolarCheck Pro v1.12</title>
+    <title>Sellers Report - SolarCheck Pro v1.13</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <!-- LZ-String Decompression -->
@@ -23,12 +23,12 @@ Date: August 2026
         
         /* 
            CRITICAL PRINT FIXES:
-           1. Exact color adjust forces background graphics and Tailwind boxes to render.
-           2. Disabling Flexbox (display: block) prevents Chromium from cutting the page in half.
-           3. Tightened margins ensure it fits perfectly on a single Letter size page.
+           1. Exact color adjust forces background graphics.
+           2. Disabling Flexbox prevents Chrome from cutting the page.
+           3. Squeezed padding, reduced margins, and 80% zoom forces 1-page fit.
         */
         @media print {
-            @page { size: letter portrait; margin: 0.3in; }
+            @page { size: letter portrait; margin: 0.2in; }
             
             body, html { 
                 background: white !important; 
@@ -36,6 +36,7 @@ Date: August 2026
                 print-color-adjust: exact !important; 
                 min-height: auto !important;
                 height: auto !important;
+                zoom: 0.80 !important; /* Force scale down to 80% to fit 1 page */
             }
             
             .no-print { display: none !important; }
@@ -47,9 +48,9 @@ Date: August 2026
             }
             
             #report-container { 
-                border-top: 12px solid #0f172a !important; 
+                border-top: 8px solid #0f172a !important; 
                 box-shadow: none !important; 
-                padding: 1.5rem !important; 
+                padding: 0.5rem 1rem !important; /* Squeeze outer padding */
                 min-height: auto !important;
                 height: auto !important;
                 display: block !important; 
@@ -61,9 +62,16 @@ Date: August 2026
                 page-break-inside: avoid; 
                 break-inside: avoid; 
             }
-            
-            /* Slight scale down to guarantee 1-page fit */
-            body { zoom: 0.96; }
+
+            /* Aggressively shrink vertical gaps specifically for printing */
+            .mb-10 { margin-bottom: 1.5rem !important; }
+            .mb-8 { margin-bottom: 1rem !important; }
+            .gap-10 { gap: 1.5rem !important; }
+            .p-12 { padding: 1.5rem !important; }
+            .py-10 { padding-top: 0 !important; padding-bottom: 0 !important; }
+            .p-6 { padding: 1rem !important; }
+            .p-8 { padding: 1.25rem !important; }
+            .mt-8 { margin-top: 1.5rem !important; }
         }
     </style>
 </head>
@@ -395,7 +403,7 @@ Date: August 2026
                         </div>
                     </div>
                     <div class="text-right">
-                        <p class="text-[10px] text-slate-400 font-black uppercase tracking-[0.2em] italic mb-4">SolarCheck Pro v1.12</p>
+                        <p class="text-[10px] text-slate-400 font-black uppercase tracking-[0.2em] italic mb-4">SolarCheck Pro v1.13</p>
                     </div>
                  </div>
                 `;
