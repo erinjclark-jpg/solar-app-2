@@ -1,7 +1,7 @@
 <!-- 
 ================================================================================
 PROJECT CONTEXT: SolarCheck Professional - FMV REPORT MODULE
-Current Version: v1.35 (HYBRID PRINT ENGINE - NEW TAB WITH DEDICATED TOOLBAR)
+Current Version: v1.35 (RAW HTML PRINT ENGINE - GODADDY SANDBOX BYPASS)
 Date: August 2026
 Architecture: Standalone HTML5 / URL-Parameter Data Handoff
 ================================================================================
@@ -38,8 +38,6 @@ Architecture: Standalone HTML5 / URL-Parameter Data Handoff
     <title>Professional Solar Valuation Report v1.35</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <!-- html2canvas Library for High-Res DOM Snapshots -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
         
@@ -329,101 +327,66 @@ Architecture: Standalone HTML5 / URL-Parameter Data Handoff
             'other': 'Other Documented Physical Defect'
         };
 
-        // THE HYBRID BYPASS: Snapshot DOM to Images & Dump into Blank Top-Level Tab with UI Toolbar
-        window.processSafePrint = async function() {
-            const btn1 = document.getElementById('pdf-btn');
-            const btn2 = document.getElementById('print-btn');
+        // THE RAW HTML BYPASS: Extracts DOM and prints in a clean tab just like the Quote Tool
+        window.processSafePrint = function() {
+            const reportHtml = document.getElementById('report-export-wrapper').innerHTML;
+            const newWin = window.open('', '_blank');
             
-            const originalBtn1 = btn1.innerHTML;
-            const originalBtn2 = btn2.innerHTML;
-            
-            btn1.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Processing...';
-            btn2.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Processing...';
-            btn1.disabled = true;
-            btn2.disabled = true;
-
-            try {
-                // 1. Take high-res snapshot of each page
-                const pages = document.querySelectorAll('.report-page');
-                let imagesHtml = '';
-
-                for (let i = 0; i < pages.length; i++) {
-                    const canvas = await window.html2canvas(pages[i], { 
-                        scale: 2, 
-                        useCORS: true,
-                        backgroundColor: '#ffffff',
-                        scrollY: 0
-                    });
-                    const imgData = canvas.toDataURL('image/jpeg', 0.98);
-                    imagesHtml += `<img src="${imgData}" class="page-img" />`;
-                }
-
-                // 2. Open a blank, top-level tab (bypasses iframe restrictions)
-                const newWin = window.open('', '_blank');
-                
-                if (!newWin) {
-                    throw new Error("Popup blocked by browser");
-                }
-
-                // 3. Inject the images and build a dedicated Toolbar for the new tab
-                newWin.document.write(`
-                    <!DOCTYPE html>
-                    <html lang="en">
-                    <head>
-                        <meta charset="UTF-8">
-                        <title>Solar Asset Valuation Report</title>
-                        <style>
-                            body { font-family: sans-serif; background-color: #525659; margin: 0; padding: 80px 0 20px 0; text-align: center; }
-                            .toolbar { position: fixed; top: 0; left: 0; width: 100%; background: #202124; padding: 15px 20px; color: white; display: flex; justify-content: center; align-items: center; gap: 20px; box-shadow: 0 2px 10px rgba(0,0,0,0.5); z-index: 1000; box-sizing: border-box; }
-                            .toolbar-text { font-size: 14px; font-weight: bold; color: #e8eaed; }
-                            .toolbar-subtext { font-size: 12px; font-weight: normal; color: #9aa0a6; margin-left: 10px; }
-                            button { background: #8ab4f8; color: #202124; border: none; padding: 10px 24px; border-radius: 4px; font-weight: bold; cursor: pointer; font-size: 14px; transition: background 0.2s; }
-                            button:hover { background: #aecbfa; }
-                            .btn-close { background: #3c4043; color: white; }
-                            .btn-close:hover { background: #5f6368; }
-                            .page-img { display: block; margin: 0 auto 20px auto; width: 8.5in; max-width: 100%; box-shadow: 0 5px 15px rgba(0,0,0,0.3); }
-                            
-                            @media print {
-                                body { background: white; padding: 0; margin: 0; }
-                                .toolbar { display: none !important; }
-                                .page-img { box-shadow: none; margin: 0 auto; width: 8.5in; height: 11in; page-break-after: always; page-break-inside: avoid; }
-                                .page-img:last-child { page-break-after: auto; }
-                            }
-                        </style>
-                    </head>
-                    <body>
-                        <div class="toolbar">
-                            <div class="toolbar-text">
-                                ✅ Document Ready 
-                                <span class="toolbar-subtext">Click the button below and select "Save as PDF" as your printer destination.</span>
-                            </div>
-                            <button onclick="window.print()">🖨️ Print / Save as PDF</button>
-                            <button class="btn-close" onclick="window.close()">Close Tab</button>
-                        </div>
-                        ${imagesHtml}
-                        <script>
-                            window.onload = function() {
-                                setTimeout(function() { window.print(); }, 500);
-                            };
-                        <\/script>
-                    </body>
-                    </html>
-                `);
-                newWin.document.close();
-
-                btn1.innerHTML = originalBtn1;
-                btn2.innerHTML = originalBtn2;
-                btn1.disabled = false;
-                btn2.disabled = false;
-
-            } catch (error) {
-                console.error("Print generation failed:", error);
-                alert("GoDaddy or your browser blocked the print window. Please ensure popups are allowed for this site.");
-                btn1.innerHTML = originalBtn1;
-                btn2.innerHTML = originalBtn2;
-                btn1.disabled = false;
-                btn2.disabled = false;
+            if(!newWin) {
+                alert("Pop-up blocked. Please allow pop-ups for this site to print.");
+                return;
             }
+
+            newWin.document.write(`
+                <!DOCTYPE html>
+                <html lang="en">
+                <head>
+                    <meta charset="UTF-8">
+                    <title>Solar Asset Valuation Report</title>
+                    <script src="https://cdn.tailwindcss.com"><\/script>
+                    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+                    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+                    <style>
+                        body { font-family: 'Inter', sans-serif; background-color: #525659; margin: 0; padding: 40px 0; display: flex; flex-direction: column; align-items: center; }
+                        .report-page { background: white; width: 8.5in; min-height: 11in; padding: 0.4in 0.6in; margin: 0 auto 2rem auto; box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3); position: relative; display: flex; flex-direction: column; box-sizing: border-box; }
+                        .text-justify { text-align: justify; }
+                        .border-heavy { border-width: 3px; }
+                        .no-print { display: none !important; }
+                        
+                        /* Dedicated Toolbar */
+                        .toolbar { position: fixed; top: 0; left: 0; width: 100%; background: #202124; padding: 12px 20px; color: white; display: flex; justify-content: center; align-items: center; gap: 15px; box-shadow: 0 2px 10px rgba(0,0,0,0.5); z-index: 1000; }
+                        .toolbar button { background: #8ab4f8; color: #202124; border: none; padding: 8px 20px; border-radius: 4px; font-weight: bold; cursor: pointer; transition: 0.2s; }
+                        .toolbar button:hover { background: #aecbfa; }
+                        .toolbar .btn-close { background: #3c4043; color: white; }
+                        .toolbar .btn-close:hover { background: #5f6368; }
+
+                        @media print {
+                            body { background: white; padding: 0; margin: 0; display: block; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+                            .toolbar { display: none !important; }
+                            .report-page { margin: 0; box-shadow: none; height: 11in; max-height: 11in; page-break-after: always; page-break-inside: avoid; }
+                            .report-page:last-of-type { page-break-after: auto; }
+                            @page { size: letter portrait; margin: 0; }
+                        }
+                    </style>
+                </head>
+                <body>
+                    <div class="toolbar no-print">
+                        <span style="font-size: 14px; font-weight: bold;">✅ Document Ready</span>
+                        <button onclick="window.print()">🖨️ Print / Save as PDF</button>
+                        <button class="btn-close" onclick="window.close()">Close Tab</button>
+                    </div>
+                    <div style="margin-top: 60px; width: 100%; display: flex; flex-direction: column; align-items: center;">
+                        ${reportHtml}
+                    </div>
+                    <script>
+                        // Allows Tailwind to configure properly before triggering the print
+                        tailwind.config = { corePlugins: { preflight: true } };
+                        setTimeout(() => { window.print(); }, 1200);
+                    <\/script>
+                </body>
+                </html>
+            `);
+            newWin.document.close();
         };
 
         function init() {
