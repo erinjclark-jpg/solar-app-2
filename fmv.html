@@ -1,7 +1,7 @@
 <!-- 
 ================================================================================
 PROJECT CONTEXT: SolarCheck Professional - FMV REPORT MODULE
-Current Version: v1.38 (LZ-STRING PAYLOAD DECOMPRESSION FIX)
+Current Version: v1.40 (UNIVERSAL PAYLOAD PARSER)
 Date: August 2026
 Architecture: Standalone HTML5 / URL-Parameter Data Handoff
 ================================================================================
@@ -35,7 +35,7 @@ Architecture: Standalone HTML5 / URL-Parameter Data Handoff
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Professional Solar Valuation Report v1.38</title>
+    <title>Professional Solar Valuation Report v1.40</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <!-- LZ-String Decompression -->
@@ -230,7 +230,7 @@ Architecture: Standalone HTML5 / URL-Parameter Data Handoff
                     <p class="text-[9px] font-black text-slate-400 uppercase tracking-widest">Document Integrity</p>
                     <p class="text-[10px] font-bold text-slate-700">Audit Ref: <span id="display-ref"></span></p>
                 </div>
-                <p class="text-[9px] text-slate-400 font-bold uppercase tracking-widest">SolarCheck Pro | Report v1.38</p>
+                <p class="text-[9px] text-slate-400 font-bold uppercase tracking-widest">SolarCheck Pro | Report v1.40</p>
             </div>
         </div>
 
@@ -374,11 +374,18 @@ Architecture: Standalone HTML5 / URL-Parameter Data Handoff
             'other': 'Other Documented Physical Defect'
         };
 
+        const COMPANIES = {
+            rsr: { name: "ROCKLIN SOLAR REPAIR" },
+            shine: { name: "SHINE ON SOLAR & MAINTENANCE" },
+            ssoc: { name: "SOLAR SERVICE OF COLORADO" }
+        };
+
         function init() {
             const params = new URLSearchParams(window.location.search);
             let encodedData = params.get('data');
             let data = {};
 
+            // 1. Try decoding LZString or standard URI encoded JSON
             if (encodedData) {
                 try {
                     let decompressed = window.LZString ? window.LZString.decompressFromEncodedURIComponent(encodedData) : null;
@@ -390,6 +397,59 @@ Architecture: Standalone HTML5 / URL-Parameter Data Handoff
                         console.error("Error parsing payload:", err);
                     }
                 }
+            } 
+            // 2. Fallback: Catch older standard URL parameters
+            else if (Array.from(params.keys()).length > 0) {
+                for (const [key, value] of params.entries()) {
+                    data[key] = value;
+                }
+            }
+
+            // 3. FLATTEN NESTED PAYLOAD (Crucial fix if index.html sends {state, r, aR})
+            if (data.state || data.r || data.aR) {
+                const st = data.state || {};
+                const r = data.r || {};
+                const aR = data.aR || {};
+                
+                data = {
+                    a: st.a, o: st.o, sz: st.sz, age: r.age, prod: r.estN12,
+                    dr: st.dr, e: st.e, rC: st.rC, batCost: st.batCost, l: st.l, w: st.w, 
+                    srec: st.srec ? '1' : '0', srecP: st.srecP,
+                    fmv: aR.val, costBasis: aR.cost, incBasis: aR.inc,
+                    incContract: aR.incContract, incResidual: aR.incResidual,
+                    pC: st.pC, pW: st.pW, pBrand: st.panelBrand, iBrand: st.invBrand,
+                    iType: st.it, batBrand: st.batteryBrand, batCap: st.b, batMode: st.batteryMode,
+                    act: r.act, bench: r.guarTD > 0 ? r.guarTD : (['lease', 'ppa', 'prepaid_lease', 'loan'].includes(st.o) ? r.estTD : r.physTD),
+                    shortfall: r.shortfallkWh, trueUp: r.trueUpRefund,
+                    tpoQuote: st.tpoQuote, co: st.company,
+                    repair: st.rp, defTypes: Array.isArray(st.defTypes) ? st.defTypes.join(',') : st.defTypes,
+                    defNotes: st.defNotes, omRes: st.omRes, obsPct: st.obsPct,
+                    startingGross: aR.startingGross, isQuoteAnchor: aR.isQuoteAnchor ? '1' : '0',
+                    weightedObs: aR.weightedObs, weightedOM: aR.weightedOM,
+                    floorDiff: aR.floorDiff, baseFMV: aR.baseFMV,
+                    itc: st.itc, escCap: st.escCap, batDeg: st.batDeg,
+                    invRepCost: st.invRepCost, invRepYear: st.invRepYear, batRepYear: st.batRepYear
+                };
+            }
+
+            // 4. Demo Fallback (If data is entirely empty/corrupted)
+            if (Object.keys(data).length === 0 || (!data.a && data.fmv === undefined)) {
+                data = {
+                    a: "123 Demo St, Rocklin CA", o: "lease", sz: 7.20, age: 3.50, prod: 11500,
+                    dr: 7.88, e: 7.0, rC: 3.5, batCost: 800, l: 25, w: 100, srec: '0', srecP: 25,
+                    fmv: 15400, costBasis: 18000, incBasis: 15400,
+                    incContract: 10000, incResidual: 5400,
+                    pBrand: 'Q-Cells', pC: 18, pW: 400, iBrand: 'SolarEdge', iType: 'string',
+                    batBrand: 'Tesla', batCap: 13.5, batMode: 'both',
+                    act: 38.4, bench: 40.2, shortfall: 1800, trueUp: 450,
+                    tpoQuote: 22000, co: 'rsr',
+                    repair: 0, defTypes: 'none', defNotes: '', omRes: 21, obsPct: 0,
+                    startingGross: 18000, isQuoteAnchor: '0',
+                    weightedObs: 0, weightedOM: 1500,
+                    floorDiff: 0, baseFMV: 16500,
+                    itc: 30, escCap: 10, batDeg: 2,
+                    invRepCost: 2000, invRepYear: 12, batRepYear: 10
+                };
             }
 
             const today = new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
@@ -399,8 +459,10 @@ Architecture: Standalone HTML5 / URL-Parameter Data Handoff
             document.getElementById('display-cert-date').innerText = today;
             document.getElementById('display-ref').innerText = Math.random().toString(36).substr(2, 9).toUpperCase();
 
-            // Branding
-            document.getElementById('display-cert-company').innerText = data.co || 'Certified Solar Inspector';
+            // Branding Resolution
+            let companyName = data.co || 'Certified Solar Inspector';
+            if (COMPANIES[data.co]) companyName = COMPANIES[data.co].name;
+            document.getElementById('display-cert-company').innerText = companyName;
 
             // Main IDs
             document.getElementById('display-address').innerText = data.a || 'Subject Property';
