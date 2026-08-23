@@ -1,7 +1,7 @@
 <!-- 
 ================================================================================
 PROJECT CONTEXT: SolarCheck Professional - FMV REPORT MODULE
-Current Version: v1.41 (UNIVERSAL PAYLOAD PARSER - LZ STRING SPACE PATCH)
+Current Version: v1.42 (UNIVERSAL PAYLOAD PARSER - NESTED RECEIVER ARCHITECTURE)
 Date: August 2026
 Architecture: Standalone HTML5 / URL-Parameter Data Handoff
 ================================================================================
@@ -35,7 +35,7 @@ Architecture: Standalone HTML5 / URL-Parameter Data Handoff
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Professional Solar Valuation Report v1.41</title>
+    <title>Professional Solar Valuation Report v1.42</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <!-- LZ-String Decompression -->
@@ -43,6 +43,12 @@ Architecture: Standalone HTML5 / URL-Parameter Data Handoff
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
         
+        /* STRICT PRINT PAGINATION RULES */
+        @page {
+            size: letter portrait;
+            margin: 0; /* Strips browser default margins, headers, and footers */
+        }
+
         body { 
             font-family: 'Inter', sans-serif; 
             background-color: #f1f5f9; 
@@ -66,56 +72,25 @@ Architecture: Standalone HTML5 / URL-Parameter Data Handoff
         .text-justify { text-align: justify; }
         .border-heavy { border-width: 3px; }
         
-        /* 
-           CRITICAL PRINT FIXES:
-           1. Exact color adjust forces background graphics.
-           2. Disabling Flexbox height locks to prevent truncation.
-           3. 86% Zoom fits Tailwind layout flawlessly to 8.5x11.
-           4. Force page breaks after each report-page div.
-        */
         @media print {
-            @page { size: letter portrait; margin: 0.25in; }
-            
-            body, html { 
-                background: white !important; 
+            body { 
+                background: white; 
                 -webkit-print-color-adjust: exact !important; 
                 print-color-adjust: exact !important; 
-                min-height: 0 !important;
-                height: auto !important;
-                zoom: 0.86 !important; 
             }
-            
-            .no-print { display: none !important; }
-            
-            #report-export-wrapper { 
-                padding: 0 !important; 
-                margin: 0 !important;
-                display: block !important; 
-            }
-
             .report-page { 
-                border-top: 12px solid #0f172a !important; 
-                box-shadow: none !important; 
-                padding: 1.5rem !important; 
-                margin: 0 0 1rem 0 !important;
-                min-height: 0 !important; 
-                height: auto !important;
-                display: block !important; 
-                max-width: 100% !important;
-                width: 100% !important;
-                page-break-after: always;
-                break-after: page;
+                margin: 0 auto; 
+                box-shadow: none; 
+                height: 11in !important; /* Strictly locks to physical paper size */
+                max-height: 11in !important;
+                overflow: hidden !important; /* Prevents tiny pixel spillover to blank 3rd page */
+                page-break-after: always; 
+                page-break-inside: avoid;
             }
-
-            .report-page:last-child {
+            .report-page:last-of-type {
                 page-break-after: auto;
-                break-after: auto;
             }
-            
-            .report-card, .grid { 
-                page-break-inside: avoid; 
-                break-inside: avoid; 
-            }
+            .no-print { display: none !important; }
         }
     </style>
 </head>
@@ -230,7 +205,7 @@ Architecture: Standalone HTML5 / URL-Parameter Data Handoff
                     <p class="text-[9px] font-black text-slate-400 uppercase tracking-widest">Document Integrity</p>
                     <p class="text-[10px] font-bold text-slate-700">Audit Ref: <span id="display-ref"></span></p>
                 </div>
-                <p class="text-[9px] text-slate-400 font-bold uppercase tracking-widest">SolarCheck Pro | Report v1.41</p>
+                <p class="text-[9px] text-slate-400 font-bold uppercase tracking-widest">SolarCheck Pro | Report v1.42</p>
             </div>
         </div>
 
@@ -385,13 +360,11 @@ Architecture: Standalone HTML5 / URL-Parameter Data Handoff
             let encodedData = params.get('data');
             let data = {};
 
-            // 1. Try decoding LZString or standard URI encoded JSON
+            // 1. Unified decoding mirror matching sellers.html architecture
             if (encodedData) {
                 try {
-                    // FIX: Re-encode spaces back to + in case URLSearchParams stripped base64/LZString integrity
-                    const cleanData = encodedData.replace(/ /g, '+');
-                    let decompressed = window.LZString ? window.LZString.decompressFromEncodedURIComponent(cleanData) : null;
-                    data = decompressed ? JSON.parse(decompressed) : JSON.parse(decodeURIComponent(cleanData));
+                    let decompressed = window.LZString ? window.LZString.decompressFromEncodedURIComponent(encodedData) : null;
+                    data = decompressed ? JSON.parse(decompressed) : JSON.parse(decodeURIComponent(encodedData));
                 } catch(e) {
                     try {
                         data = JSON.parse(decodeURIComponent(encodedData));
@@ -407,7 +380,7 @@ Architecture: Standalone HTML5 / URL-Parameter Data Handoff
                 }
             }
 
-            // 3. FLATTEN NESTED PAYLOAD (Crucial fix if index.html sends {state, r, aR})
+            // 3. FLATTEN NESTED PAYLOAD
             if (data.state || data.r || data.aR) {
                 const st = data.state || {};
                 const r = data.r || {};
@@ -602,15 +575,6 @@ Architecture: Standalone HTML5 / URL-Parameter Data Handoff
             }
             
             document.getElementById('recon-net').innerText = cur(data.fmv);
-
-            // Auto-print safety trigger
-            if (document.fonts) {
-                document.fonts.ready.then(() => {
-                    setTimeout(() => { window.print(); }, 800);
-                });
-            } else {
-                setTimeout(() => { window.print(); }, 1200);
-            }
         }
 
         window.onload = init;
