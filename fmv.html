@@ -1,7 +1,7 @@
 <!-- 
 ================================================================================
 PROJECT CONTEXT: SolarCheck Professional - FMV REPORT MODULE
-Current Version: v1.37 (NATIVE PRINT ENGINE & MULTI-PAGE FORMATTING FIX)
+Current Version: v1.38 (LZ-STRING PAYLOAD DECOMPRESSION FIX)
 Date: August 2026
 Architecture: Standalone HTML5 / URL-Parameter Data Handoff
 ================================================================================
@@ -35,7 +35,7 @@ Architecture: Standalone HTML5 / URL-Parameter Data Handoff
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Professional Solar Valuation Report v1.37</title>
+    <title>Professional Solar Valuation Report v1.38</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <!-- LZ-String Decompression -->
@@ -230,7 +230,7 @@ Architecture: Standalone HTML5 / URL-Parameter Data Handoff
                     <p class="text-[9px] font-black text-slate-400 uppercase tracking-widest">Document Integrity</p>
                     <p class="text-[10px] font-bold text-slate-700">Audit Ref: <span id="display-ref"></span></p>
                 </div>
-                <p class="text-[9px] text-slate-400 font-bold uppercase tracking-widest">SolarCheck Pro | Report v1.37</p>
+                <p class="text-[9px] text-slate-400 font-bold uppercase tracking-widest">SolarCheck Pro | Report v1.38</p>
             </div>
         </div>
 
@@ -376,9 +376,20 @@ Architecture: Standalone HTML5 / URL-Parameter Data Handoff
 
         function init() {
             const params = new URLSearchParams(window.location.search);
-            const data = {};
-            for (const [key, value] of params.entries()) {
-                data[key] = value;
+            let encodedData = params.get('data');
+            let data = {};
+
+            if (encodedData) {
+                try {
+                    let decompressed = window.LZString ? window.LZString.decompressFromEncodedURIComponent(encodedData) : null;
+                    data = decompressed ? JSON.parse(decompressed) : JSON.parse(decodeURIComponent(encodedData));
+                } catch(e) {
+                    try {
+                        data = JSON.parse(decodeURIComponent(encodedData));
+                    } catch(err) {
+                        console.error("Error parsing payload:", err);
+                    }
+                }
             }
 
             const today = new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
