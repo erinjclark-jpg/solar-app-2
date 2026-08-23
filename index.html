@@ -1,7 +1,7 @@
 <!-- 
 ================================================================================
 PROJECT CONTEXT: SolarCheck Professional
-Current Version: v7.339 (PRECISION VALUATION MODULE - BULLETPROOF APPRAISAL UPGRADE)
+Current Version: v7.340 (PRECISION VALUATION MODULE - BULLETPROOF APPRAISAL UPGRADE)
 Date: August 2026
 Architecture: Modular Single-File HTML5 (Sub-Renderer Pattern)
 ================================================================================
@@ -37,7 +37,7 @@ Architecture: Modular Single-File HTML5 (Sub-Renderer Pattern)
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SolarCheck Professional v7.339</title>
+    <title>SolarCheck Professional v7.340</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     
@@ -149,6 +149,7 @@ Architecture: Modular Single-File HTML5 (Sub-Renderer Pattern)
             invRepCost: { l: "Inverter Rep. Cost ($)", d: "Expected future cost to replace string inverter.", p: "2000" },
             invRepYear: { l: "Inverter Rep. Year", d: "Expected year of string inverter failure.", p: "12" },
             batDeg: { l: "Battery Degradation (%)", d: "Annual capacity loss for energy storage.", p: "2" },
+            batRepYear: { l: "Bat. Rep. Year", d: "Expected year of battery failure.", p: "10" },
             escCap: { l: "Escalation Cap (Years)", d: "Year to cap compounding utility inflation.", p: "10" },
             tpoQuote: { l: "TPO Buyout Quote ($)", d: "Exact contractual buyout demand.", p: "" },
             minBuyout: { l: "Min. Contract Buyout ($)", d: "Contractual buyout floor for the current year.", p: "0" },
@@ -350,8 +351,9 @@ Architecture: Modular Single-File HTML5 (Sub-Renderer Pattern)
                         ${window.Idark("Bat. Degradation (%)", st.batDeg, "batDeg")}
                         ${window.Idark("Inv. Rep. Cost ($)", st.invRepCost, "invRepCost")}
                         ${window.Idark("Inv. Rep. Year", st.invRepYear, "invRepYear")}
-                        ${isTPO ? window.Idark("TPO Buyout Quote ($)", st.tpoQuote, "tpoQuote", "number") : ''}
+                        ${window.Idark("Bat. Rep. Year", st.batRepYear, "batRepYear")}
                         ${window.Idark("O&M Reserve ($/kW/Yr)", st.omRes, "omRes", "number")}
+                        ${isTPO ? window.Idark("TPO Buyout Quote ($)", st.tpoQuote, "tpoQuote", "number") : ''}
                         ${window.Idark("Func. Obsolescence (Cost %)", st.obsPct, "obsPct", "number")}
                     <div class="sm:col-span-2 border-t border-slate-600 pt-4 mt-4">
                         <h5 class="text-[10px] font-black text-amber-400 uppercase tracking-widest mb-3"><i class="fas fa-tools"></i> Deferred Maintenance / Defect Reporting</h5>
@@ -430,7 +432,7 @@ Architecture: Modular Single-File HTML5 (Sub-Renderer Pattern)
         // =====================================================================
         window.calculate = function() {
             try {
-                const { pC, pW, iDt, pDt, or, sh, pi, ac, b, br, scr, ut, rU, eU, tE, tG, tEs, pa, paB, tR, rC, batCost, l, dr, rp, e, w, te, o, srec, srecP, it, itc, invRepCost, invRepYear, batDeg, escCap, tpoQuote, minBuyout, omRes, obsPct } = window.state;
+                const { pC, pW, iDt, pDt, or, sh, pi, ac, b, br, scr, ut, rU, eU, tE, tG, tEs, pa, paB, tR, rC, batCost, l, dr, rp, e, w, te, o, srec, srecP, it, itc, invRepCost, invRepYear, batRepYear, batDeg, escCap, tpoQuote, minBuyout, omRes, obsPct } = window.state;
                 const nPC = parseFloat(pC) || 0; const nPW = parseFloat(pW) || 0; const nAC = parseFloat(ac) || 0;
                 const s = (nPC * nPW) / 1000; window.state.sz = s;
                 const DEG_RATE = 0.005; const iT = +new Date(iDt), pT = +new Date(pDt);
@@ -498,10 +500,8 @@ Architecture: Modular Single-File HTML5 (Sub-Renderer Pattern)
                 const totalBatHardwareCost = totalB * bC;
                 const usableB = totalB * (1 - (parseFloat(br) || 0) / 100);
                 const dailyGenAvg = (s * 4.5); 
-                const batteryBoost = (usableB / (dailyGenAvg || 1)) * 40; 
-                const finalSCR = Math.min(98, (parseFloat(scr) || 0) + (usableB > 0 ? batteryBoost : 0));
                 
-                const blendedUtility = (finalSCR/100 * (rU || 0.35)) + ((1 - finalSCR/100) * (eU || 0.05));
+                const blendedUtility = ((Math.min(98, (parseFloat(scr) || 0) + ((usableB / (dailyGenAvg || 1)) * 40)))/100 * (rU || 0.35)) + ((1 - (Math.min(98, (parseFloat(scr) || 0) + ((usableB / (dailyGenAvg || 1)) * 40)))/100) * (eU || 0.05));
                 
                 // 4. Savings Loops
                 let fSa = 0; 
@@ -512,12 +512,16 @@ Architecture: Modular Single-File HTML5 (Sub-Renderer Pattern)
                 const utilityEscFactor = 1 + (parseFloat(e || 0) / 100);
                 const bDegRate = 1 - (parseFloat(batDeg) || 0) / 100;
                 const eCap = parseFloat(escCap) || 10;
+                const bRepYear = parseFloat(batRepYear) || 10;
 
                 for (let i = 0; i < Math.ceil(rM); i++) { 
                     const yr = age + i;
                     const currentExportBase = (yr <= 20) ? exportBase : 0.05;
                     
-                    const currentUsableB = usableB * Math.pow(bDegRate, yr);
+                    // Battery Replacement Logic: Reset Effective Age back to 0 at the replacement year
+                    let effectiveBatAge = (totalB > 0 && yr >= bRepYear) ? (yr - bRepYear) : yr;
+                    const currentUsableB = usableB * Math.pow(bDegRate, effectiveBatAge);
+                    
                     const currentBatteryBoost = (currentUsableB / (dailyGenAvg || 1)) * 40;
                     const currentSCR = Math.min(98, (parseFloat(scr) || 0) + (currentUsableB > 0 ? currentBatteryBoost : 0));
                     
@@ -564,6 +568,7 @@ Architecture: Modular Single-File HTML5 (Sub-Renderer Pattern)
                 const rYC_sol = realProdYC > 0 ? (solYC * 12) / realProdYC : 0;
                 const shortfallkWh = Math.max(0, (gtd * 1) - (nAC * 1000));
                 const trueUpRefund = isTPO ? (shortfallkWh * ntR) : 0;
+                const finalSCR = Math.min(98, (parseFloat(scr) || 0) + (usableB > 0 ? (usableB / (dailyGenAvg || 1)) * 40 : 0));
                 const arbDelta = blendedUtility - rYC_sol, arbDiscount = Math.max(0, (arbDelta / (blendedUtility || 1)) * 100);
                 
                 const actSav = cP_real * blendedUtility;
@@ -581,7 +586,7 @@ Architecture: Modular Single-File HTML5 (Sub-Renderer Pattern)
                     shortfallkWh, trueUpRefund
                 };
 
-                // 7. PRECISION VALUATION DCF MODEL (BULLETPROOF UPGRADE v7.339)
+                // 7. PRECISION VALUATION DCF MODEL (BULLETPROOF UPGRADE v7.340)
                 const sC = (s * 1000 * parseFloat(rC||0)) + totalBatHardwareCost; 
                 const rL = Math.max(0, (parseFloat(l)||25) - age); 
                 const depCost = l > 0 ? (rL / l) : 0; 
@@ -610,7 +615,11 @@ Architecture: Modular Single-File HTML5 (Sub-Renderer Pattern)
                     
                     // Income Approach - Energy Value
                     const currentExportBase = (yr <= 20) ? exportBase : 0.05;
-                    const currentUsableB = usableB * Math.pow(bDegRate, yr);
+                    
+                    // Battery Replacement Logic (Reset capacity back to 100% after replacement year)
+                    let effectiveBatAge = (totalB > 0 && yr >= bRepYear) ? (yr - bRepYear) : yr;
+                    const currentUsableB = usableB * Math.pow(bDegRate, effectiveBatAge);
+                    
                     const currentBatteryBoost = (currentUsableB / (dailyGenAvg || 1)) * 40;
                     const currentSCR = Math.min(98, (parseFloat(scr) || 0) + (currentUsableB > 0 ? currentBatteryBoost : 0));
                     const currentBlendedBase = (currentSCR/100 * retailBase) + ((1 - currentSCR/100) * currentExportBase);
@@ -628,11 +637,12 @@ Architecture: Modular Single-File HTML5 (Sub-Renderer Pattern)
                         grossIncResidual += discountedGross;
                     }
                     
-                    // O&M and CapEx Liabilities
+                    // O&M and CapEx Liabilities (Adding Battery CapEx logic)
                     let omYearly = (s * omRate) * Math.pow(1.025, y);
                     let capEx = (it === 'string' && Math.floor(yr) === repYear && y <= rL) ? repCost : 0;
+                    let batCapEx = (totalB > 0 && Math.floor(yr) === bRepYear && y <= rL) ? totalBatHardwareCost : 0;
                     
-                    omCapExDiscounted += (omYearly + capEx) / Math.pow(1 + (dr / 100), y);
+                    omCapExDiscounted += (omYearly + capEx + batCapEx) / Math.pow(1 + (dr / 100), y);
                 }
                 
                 let grossIncome = grossIncContract + grossIncResidual;
@@ -693,7 +703,7 @@ Architecture: Modular Single-File HTML5 (Sub-Renderer Pattern)
         
         window.state = {
             activeTab: "inputs", activeModal: null, a: "", iDt: "", pDt: new Date().toISOString().split('T')[0],
-            o: "lease", tpoName: "", pC: "", pW: "", sz: 0, or: "mix", pi: "standard", sh: "some", ac: "", b: "", br: "", scr: 50, it: "string", invBrand: "SolarEdge", invCount: "", invAge: "", panelBrand: "", batteryBrand: "", batteryMode: "both", cellMon: "none", ut: "nem2", rU: 0.48, eU: 0.45, te: "", tE: "", tG: "", tEs: "", pa: "", paB: "", tR: "", rR: 0.20, rC: 3.50, batCost: 800, ne: 0.8, c: 0.9, rp: 0, defTypes: [], defNotes: '', aC: true, l: 25, om: 20, dr: 7.88, tx: false, e: 7.0, w: 100, srec: false, srecP: 25, itc: 30, invRepCost: 2000, invRepYear: 12, batDeg: 2, escCap: 10, tpoQuote: "", minBuyout: "", omRes: 21, obsPct: 0, r: null, aR: null, company: savedCompany
+            o: "lease", tpoName: "", pC: "", pW: "", sz: 0, or: "mix", pi: "standard", sh: "some", ac: "", b: "", br: "", scr: 50, it: "string", invBrand: "SolarEdge", invCount: "", invAge: "", panelBrand: "", batteryBrand: "", batteryMode: "both", cellMon: "none", ut: "nem2", rU: 0.48, eU: 0.45, te: "", tE: "", tG: "", tEs: "", pa: "", paB: "", tR: "", rR: 0.20, rC: 3.50, batCost: 800, ne: 0.8, c: 0.9, rp: 0, defTypes: [], defNotes: '', aC: true, l: 25, om: 20, dr: 7.88, tx: false, e: 7.0, w: 100, srec: false, srecP: 25, itc: 30, invRepCost: 2000, invRepYear: 12, batRepYear: 10, batDeg: 2, escCap: 10, tpoQuote: "", minBuyout: "", omRes: 21, obsPct: 0, r: null, aR: null, company: savedCompany
         };
 
         const COMPANIES = {
@@ -751,7 +761,7 @@ Architecture: Modular Single-File HTML5 (Sub-Renderer Pattern)
         window.handleFMVExport = function() {
             try {
                 if (!window.state.r || !window.state.aR) return;
-                const { a, o, sz, dr, e, rC, l, rp, defTypes, defNotes, w, srec, srecP, pC, pW, panelBrand, invBrand, batteryBrand, b, batteryMode, it, company, itc, escCap, batDeg, invRepCost, invRepYear, tpoQuote, minBuyout, batCost, omRes, obsPct } = window.state;
+                const { a, o, sz, dr, e, rC, l, rp, defTypes, defNotes, w, srec, srecP, pC, pW, panelBrand, invBrand, batteryBrand, b, batteryMode, it, company, itc, escCap, batDeg, invRepCost, invRepYear, batRepYear, tpoQuote, minBuyout, batCost, omRes, obsPct } = window.state;
                 const { age, estN12, act, guarTD, estTD, physTD, shortfallkWh, trueUpRefund } = window.state.r;
                 const { val, cost, inc, incContract, incResidual, startingGross, isQuoteAnchor, weightedObs, weightedOM, baseFMV, floorDiff } = window.state.aR;
 
@@ -786,7 +796,8 @@ Architecture: Modular Single-File HTML5 (Sub-Renderer Pattern)
                     weightedObs: weightedObs.toFixed(0), weightedOM: weightedOM.toFixed(0),
                     floorDiff: floorDiff.toFixed(0), baseFMV: baseFMV.toFixed(0),
                     itc: itc || 30, escCap: escCap || 10, batDeg: batDeg || 2,
-                    invRepCost: invRepCost || 2000, invRepYear: invRepYear || 12
+                    invRepCost: invRepCost || 2000, invRepYear: invRepYear || 12,
+                    batRepYear: batRepYear || 10
                 };
                 
                 const params = new URLSearchParams();
@@ -962,7 +973,7 @@ Architecture: Modular Single-File HTML5 (Sub-Renderer Pattern)
                         </div>
                     </div>
                     <div class="text-right">
-                        <p class="text-[10px] text-slate-400 font-black uppercase tracking-[0.2em] italic mb-4">SolarCheck Pro v7.339</p>
+                        <p class="text-[10px] text-slate-400 font-black uppercase tracking-[0.2em] italic mb-4">SolarCheck Pro v7.340</p>
                         <div class="no-print flex gap-3 justify-end">
                             <button onclick="window.printReport()" class="bg-blue-600 text-white px-8 py-3 rounded-2xl font-black uppercase text-[10px] tracking-widest shadow-xl transition-all hover:bg-blue-500 active:scale-95 border-b-4 border-blue-800"><i class="fas fa-print mr-2"></i> Print</button>
                             <button onclick="window.closeReport()" class="bg-slate-100 text-slate-700 px-8 py-3 rounded-2xl font-black uppercase text-[10px] tracking-widest transition-all hover:bg-slate-200 border-b-4 border-slate-300">Back</button>
@@ -993,7 +1004,7 @@ Architecture: Modular Single-File HTML5 (Sub-Renderer Pattern)
                     <div class="bg-slate-900 text-white px-4 sm:px-6 py-3 sm:py-4 sticky top-0 z-50 flex justify-between items-center shadow-lg border-b border-white/5 gap-2">
                         <div class="flex items-center gap-2 sm:gap-4 min-w-0">
                             <span class="text-2xl sm:text-3xl flex-shrink-0"><i class="fas fa-sun text-yellow-400"></i></span>
-                            <div class="min-w-0 truncate"><h1 class="font-bold text-lg sm:text-2xl tracking-tighter italic truncate">SolarCheck Pro</h1><p class="text-[7px] sm:text-[9px] opacity-60 font-black uppercase tracking-[0.4em]">v7.339</p></div>
+                            <div class="min-w-0 truncate"><h1 class="font-bold text-lg sm:text-2xl tracking-tighter italic truncate">SolarCheck Pro</h1><p class="text-[7px] sm:text-[9px] opacity-60 font-black uppercase tracking-[0.4em]">v7.340</p></div>
                         </div>
                         <div class="flex items-center gap-2 flex-shrink-0">
                             <button onclick="window.open(window.location.href, '_blank')" class="header-btn bg-slate-800 text-white/80 p-2 sm:px-4 sm:py-2.5 rounded-xl text-sm shadow-xl transition-all hover:bg-slate-700 active:scale-95"><i class="fas fa-expand"></i></button>

@@ -1,7 +1,7 @@
 <!-- 
 ================================================================================
 PROJECT CONTEXT: SolarCheck Professional - FMV REPORT MODULE
-Current Version: v1.20 (STRATEGIC HANDOFF RECEIVER - RESPONSIVE & PRINT OPTIMIZED)
+Current Version: v1.21 (STRATEGIC HANDOFF RECEIVER - RESPONSIVE & PRINT OPTIMIZED)
 Date: August 2026
 Architecture: Standalone HTML5 / URL-Parameter Data Handoff
 ================================================================================
@@ -35,7 +35,7 @@ Architecture: Standalone HTML5 / URL-Parameter Data Handoff
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Professional Solar Valuation Report v1.20</title>
+    <title>Professional Solar Valuation Report v1.21</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
@@ -201,7 +201,7 @@ Architecture: Standalone HTML5 / URL-Parameter Data Handoff
                 <p class="text-[9px] font-black text-slate-400 uppercase tracking-widest">Document Integrity</p>
                 <p class="text-[10px] font-bold text-slate-700">Audit Ref: <span id="display-ref"></span></p>
             </div>
-            <p class="text-[9px] text-slate-400 font-bold uppercase tracking-widest">SolarCheck Pro | Report v1.20</p>
+            <p class="text-[9px] text-slate-400 font-bold uppercase tracking-widest">SolarCheck Pro | Report v1.21</p>
         </div>
     </div>
 
@@ -273,6 +273,7 @@ Architecture: Standalone HTML5 / URL-Parameter Data Handoff
                 </ul>
                 <ul class="space-y-1.5 text-[10px] font-bold text-slate-700">
                     <li class="flex justify-between border-b border-slate-50 pb-0.5"><span>Future CapEx (Inverter):</span> <span id="assump-capex" class="text-slate-900"></span></li>
+                    <li id="assump-bat-capex-row" class="flex justify-between border-b border-slate-50 pb-0.5 hidden"><span>Future CapEx (Battery):</span> <span id="assump-batcapex" class="text-slate-900"></span></li>
                     <li id="assump-bat-row" class="flex justify-between border-b border-slate-50 pb-0.5"><span>Expected Battery Deg.:</span> <span id="assump-batdeg" class="text-slate-900"></span></li>
                     <li class="flex justify-between border-b border-slate-50 pb-0.5"><span>Functional Obsolescence:</span> <span id="assump-obs" class="text-slate-900"></span></li>
                 </ul>
@@ -465,8 +466,12 @@ Architecture: Standalone HTML5 / URL-Parameter Data Handoff
             // STRICT BATTERY CONDITIONAL LOGIC FOR ASSUMPTIONS
             if (hasBattery) {
                 document.getElementById('assump-batdeg').innerText = (data.batDeg || '2') + '% Annually';
+                const bRepCost = parseFloat(data.batCost || 800) * parseFloat(data.batCap || 0);
+                document.getElementById('assump-bat-capex-row').style.display = 'flex';
+                document.getElementById('assump-batcapex').innerText = cur(bRepCost) + ' @ Yr ' + (data.batRepYear || 10);
             } else {
                 document.getElementById('assump-bat-row').style.display = 'none';
+                document.getElementById('assump-bat-capex-row').style.display = 'none';
             }
             
             const iTypeStr = (data.iType || 'String').toLowerCase();
