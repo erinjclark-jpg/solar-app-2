@@ -1,7 +1,7 @@
 <!-- 
 ================================================================================
 PROJECT CONTEXT: SolarCheck Professional
-Current Version: v7.355 (SYNCED ROUTING HANDOFF - NESTED PAYLOAD ARCHITECTURE FIX)
+Current Version: v7.356 (FLAT URL PARAMETER ARCHITECTURE RESTORED)
 Date: August 2026
 Architecture: Modular Single-File HTML5 (Sub-Renderer Pattern)
 ================================================================================
@@ -37,11 +37,9 @@ Architecture: Modular Single-File HTML5 (Sub-Renderer Pattern)
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SolarCheck Professional v7.355</title>
+    <title>SolarCheck Professional v7.356</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <!-- LZ-String for Payload Compression -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/lz-string/1.5.0/lz-string.min.js"></script>
     
     <script>
         // CRITICAL SAFETY NET: Catches any fatal browser exception and forces it to the screen instead of failing silently.
@@ -763,29 +761,43 @@ Architecture: Modular Single-File HTML5 (Sub-Renderer Pattern)
         };
 
         // =====================================================================
-        // IFRAME ESCAPE PAYLOAD GENERATORS
+        // URL PARAMETER EXPORT PAYLOAD GENERATORS
         // =====================================================================
         
         window.handleFMVExport = function() {
             try {
                 if (!window.state.r || !window.state.aR) return;
                 
+                const { a, o, sz, dr, e, rC, l, rp, defTypes, defNotes, w, srec, srecP, pC, pW, panelBrand, invBrand, batteryBrand, b, batteryMode, it, company, itc, escCap, batDeg, invRepCost, invRepYear, batRepYear, tpoQuote, minBuyout, batCost, omRes, obsPct } = window.state;
+                const { age, estN12, act, guarTD, estTD, physTD, shortfallkWh, trueUpRefund } = window.state.r;
+                const { val, cost, inc, incContract, incResidual, startingGross, isQuoteAnchor, weightedObs, weightedOM, baseFMV, floorDiff } = window.state.aR;
+
+                const isTPO = ['lease', 'ppa', 'prepaid_lease', 'prepaid_ppa', 'loan'].includes(o);
+                const benchmark = guarTD > 0 ? guarTD : (isTPO ? estTD : physTD);
+
                 const payload = {
-                    state: window.state,
-                    r: window.state.r,
-                    aR: window.state.aR
+                    a: a || "Subject Property", o, sz: sz.toFixed(2), age: age.toFixed(2), prod: estN12.toFixed(0),
+                    dr, e, rC, batCost: batCost || 800, l, w, srec: srec ? '1' : '0', srecP,
+                    fmv: val.toFixed(0), costBasis: cost.toFixed(0), incBasis: inc.toFixed(0),
+                    incContract: incContract.toFixed(0), incResidual: incResidual.toFixed(0),
+                    pC: pC || 0, pW: pW || 0, pBrand: panelBrand || 'Tier 1', iBrand: invBrand || 'N/A',
+                    iType: it || 'string', batBrand: batteryBrand || 'N/A', batCap: b || 0, batMode: batteryMode || 'both',
+                    act: act.toFixed(1), bench: benchmark.toFixed(1), shortfall: shortfallkWh.toFixed(0), trueUp: trueUpRefund.toFixed(0),
+                    tpoQuote: tpoQuote || 0, co: company, repair: rp || 0,
+                    defTypes: (Array.isArray(defTypes) ? defTypes.join(',') : '') || 'none', defNotes: defNotes || '',
+                    omRes: omRes || 21, obsPct: obsPct || 0, startingGross: startingGross.toFixed(0),
+                    isQuoteAnchor: isQuoteAnchor ? '1' : '0', weightedObs: weightedObs.toFixed(0), weightedOM: weightedOM.toFixed(0),
+                    floorDiff: floorDiff.toFixed(0), baseFMV: baseFMV.toFixed(0),
+                    itc: itc || 30, escCap: escCap || 10, batDeg: batDeg || 2,
+                    invRepCost: invRepCost || 2000, invRepYear: invRepYear || 12, batRepYear: batRepYear || 10
                 };
                 
-                let encodedData = '';
-                if (window.LZString) {
-                    encodedData = window.LZString.compressToEncodedURIComponent(JSON.stringify(payload));
-                } else {
-                    encodedData = encodeURIComponent(JSON.stringify(payload));
+                const params = new URLSearchParams();
+                for (const key in payload) {
+                    params.append(key, payload[key]);
                 }
                 
-                const urlParams = new URLSearchParams();
-                urlParams.append('data', encodedData);
-                window.open("./fmv.html?" + urlParams.toString(), "_blank");
+                window.open("./fmv.html?" + params.toString(), "_blank");
 
             } catch (err) {
                 console.error("Export Error:", err);
@@ -795,26 +807,22 @@ Architecture: Modular Single-File HTML5 (Sub-Renderer Pattern)
         window.handleSellersExport = function() {
             try {
                 if (!window.state.r) return;
+                
+                const { a, sz, o, tpoName, te, company, tEs, e, l } = window.state;
+                
                 const payload = {
-                    state: {
-                        a: window.state.a, sz: window.state.sz, o: window.state.o,
-                        tpoName: window.state.tpoName, te: window.state.te,
-                        company: window.state.company, tEs: window.state.tEs,
-                        e: window.state.e, l: window.state.l
-                    },
-                    r: window.state.r
+                    a: a || "Subject Property", sz: sz.toFixed(2), o,
+                    tpoName: tpoName || "", te: te || 0,
+                    company, tEs: tEs || 0,
+                    e: e || 0, l: l || 25
                 };
                 
-                let encodedData = '';
-                if (window.LZString) {
-                    encodedData = window.LZString.compressToEncodedURIComponent(JSON.stringify(payload));
-                } else {
-                    encodedData = encodeURIComponent(JSON.stringify(payload));
+                const params = new URLSearchParams();
+                for (const key in payload) {
+                    params.append(key, payload[key]);
                 }
                 
-                const urlParams = new URLSearchParams();
-                urlParams.append('data', encodedData);
-                window.open("./sellers.html?" + urlParams.toString(), "_blank");
+                window.open("./sellers.html?" + params.toString(), "_blank");
 
             } catch (err) {
                 console.error("Export Error:", err);
@@ -836,7 +844,7 @@ Architecture: Modular Single-File HTML5 (Sub-Renderer Pattern)
                     <div class="bg-slate-900 text-white px-4 sm:px-6 py-3 sm:py-4 sticky top-0 z-50 flex justify-between items-center shadow-lg border-b border-white/5 gap-2">
                         <div class="flex items-center gap-2 sm:gap-4 min-w-0">
                             <span class="text-2xl sm:text-3xl flex-shrink-0"><i class="fas fa-sun text-yellow-400"></i></span>
-                            <div class="min-w-0 truncate"><h1 class="font-bold text-lg sm:text-2xl tracking-tighter italic truncate">SolarCheck Pro</h1><p class="text-[7px] sm:text-[9px] opacity-60 font-black uppercase tracking-[0.4em]">v7.355</p></div>
+                            <div class="min-w-0 truncate"><h1 class="font-bold text-lg sm:text-2xl tracking-tighter italic truncate">SolarCheck Pro</h1><p class="text-[7px] sm:text-[9px] opacity-60 font-black uppercase tracking-[0.4em]">v7.356</p></div>
                         </div>
                         <div class="flex items-center gap-2 flex-shrink-0">
                             <button onclick="window.open(window.location.href, '_blank')" class="header-btn bg-slate-800 text-white/80 p-2 sm:px-4 sm:py-2.5 rounded-xl text-sm shadow-xl transition-all hover:bg-slate-700 active:scale-95"><i class="fas fa-expand"></i></button>
