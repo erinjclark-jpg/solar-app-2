@@ -768,30 +768,30 @@ Architecture: Modular Single-File HTML5 (Sub-Renderer Pattern)
         
         window.handleFMVExport = function() {
             try {
-                if (!window.state.r || !window.state.aR) {
-                    alert("Please calculate the report first.");
-                    return;
-                }
+                if (!window.state.r || !window.state.aR) return;
                 
-                const st = window.state;
-                
-                // LEAN PAYLOAD: Explicitly cherry-picks variables to prevent URL bloat and truncation
                 const payload = {
                     state: {
-                        a: st.a, o: st.o, sz: st.sz, dr: st.dr, e: st.e, rC: st.rC, batCost: st.batCost, l: st.l, w: st.w,
-                        srec: st.srec, srecP: st.srecP, pC: st.pC, pW: st.pW, panelBrand: st.panelBrand, invBrand: st.invBrand,
-                        it: st.it, batteryBrand: st.batteryBrand, b: st.b, batteryMode: st.batteryMode, tpoQuote: st.tpoQuote,
-                        company: st.company, rp: st.rp, defTypes: st.defTypes, defNotes: st.defNotes, omRes: st.omRes,
-                        obsPct: st.obsPct, itc: st.itc, escCap: st.escCap, batDeg: st.batDeg, invRepCost: st.invRepCost,
-                        invRepYear: st.invRepYear, batRepYear: st.batRepYear
+                        a: window.state.a, o: window.state.o, sz: window.state.sz,
+                        dr: window.state.dr, e: window.state.e, rC: window.state.rC,
+                        batCost: window.state.batCost, l: window.state.l, w: window.state.w,
+                        srec: window.state.srec, srecP: window.state.srecP,
+                        pC: window.state.pC, pW: window.state.pW, panelBrand: window.state.panelBrand,
+                        invBrand: window.state.invBrand, it: window.state.it,
+                        batteryBrand: window.state.batteryBrand, b: window.state.b, batteryMode: window.state.batteryMode,
+                        tpoQuote: window.state.tpoQuote, company: window.state.company,
+                        rp: window.state.rp, defTypes: window.state.defTypes, defNotes: window.state.defNotes,
+                        omRes: window.state.omRes, obsPct: window.state.obsPct,
+                        itc: window.state.itc, escCap: window.state.escCap, batDeg: window.state.batDeg,
+                        invRepCost: window.state.invRepCost, invRepYear: window.state.invRepYear, batRepYear: window.state.batRepYear
                     },
-                    r: st.r,
-                    aR: st.aR
+                    r: window.state.r,
+                    aR: window.state.aR
                 };
                 
                 let encodedData = '';
                 if (window.LZString) {
-                    encodedData = window.LZString.compressToEncodedURIComponent(JSON.stringify(payload));
+                    encodedData = window.LZString.compressToEncodedURIComponent(JSON.stringify(payload)).replace(/\+/g, '%2B');
                 } else {
                     encodedData = encodeURIComponent(JSON.stringify(payload));
                 }
@@ -800,7 +800,6 @@ Architecture: Modular Single-File HTML5 (Sub-Renderer Pattern)
 
             } catch (err) {
                 console.error("Export Error:", err);
-                alert("Failed to export: " + err.message);
             }
         };
 
@@ -812,7 +811,7 @@ Architecture: Modular Single-File HTML5 (Sub-Renderer Pattern)
                         a: window.state.a, sz: window.state.sz, o: window.state.o,
                         tpoName: window.state.tpoName, te: window.state.te,
                         company: window.state.company, tEs: window.state.tEs,
-                        e: window.state.e, l: window.state.l, batteryMode: window.state.batteryMode
+                        e: window.state.e, l: window.state.l
                     },
                     r: window.state.r
                 };
