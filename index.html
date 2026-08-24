@@ -1,7 +1,7 @@
 <!-- 
 ================================================================================
 PROJECT CONTEXT: SolarCheck Professional
-Current Version: v7.355 (SYNCED ROUTING HANDOFF - LEAN PAYLOAD ARCHITECTURE)
+Current Version: v7.355 (SYNCED ROUTING HANDOFF - NESTED PAYLOAD ARCHITECTURE FIX)
 Date: August 2026
 Architecture: Modular Single-File HTML5 (Sub-Renderer Pattern)
 ================================================================================
@@ -771,32 +771,21 @@ Architecture: Modular Single-File HTML5 (Sub-Renderer Pattern)
                 if (!window.state.r || !window.state.aR) return;
                 
                 const payload = {
-                    state: {
-                        a: window.state.a, o: window.state.o, sz: window.state.sz,
-                        dr: window.state.dr, e: window.state.e, rC: window.state.rC,
-                        batCost: window.state.batCost, l: window.state.l, w: window.state.w,
-                        srec: window.state.srec, srecP: window.state.srecP,
-                        pC: window.state.pC, pW: window.state.pW, panelBrand: window.state.panelBrand,
-                        invBrand: window.state.invBrand, it: window.state.it,
-                        batteryBrand: window.state.batteryBrand, b: window.state.b, batteryMode: window.state.batteryMode,
-                        tpoQuote: window.state.tpoQuote, company: window.state.company,
-                        rp: window.state.rp, defTypes: window.state.defTypes, defNotes: window.state.defNotes,
-                        omRes: window.state.omRes, obsPct: window.state.obsPct,
-                        itc: window.state.itc, escCap: window.state.escCap, batDeg: window.state.batDeg,
-                        invRepCost: window.state.invRepCost, invRepYear: window.state.invRepYear, batRepYear: window.state.batRepYear
-                    },
+                    state: window.state,
                     r: window.state.r,
                     aR: window.state.aR
                 };
                 
                 let encodedData = '';
                 if (window.LZString) {
-                    encodedData = window.LZString.compressToEncodedURIComponent(JSON.stringify(payload)).replace(/\+/g, '%2B');
+                    encodedData = window.LZString.compressToEncodedURIComponent(JSON.stringify(payload));
                 } else {
                     encodedData = encodeURIComponent(JSON.stringify(payload));
                 }
                 
-                window.location.href = "./fmv.html?data=" + encodedData;
+                const urlParams = new URLSearchParams();
+                urlParams.append('data', encodedData);
+                window.open("./fmv.html?" + urlParams.toString(), "_blank");
 
             } catch (err) {
                 console.error("Export Error:", err);
@@ -823,7 +812,9 @@ Architecture: Modular Single-File HTML5 (Sub-Renderer Pattern)
                     encodedData = encodeURIComponent(JSON.stringify(payload));
                 }
                 
-                window.location.href = "./sellers.html?data=" + encodedData;
+                const urlParams = new URLSearchParams();
+                urlParams.append('data', encodedData);
+                window.open("./sellers.html?" + urlParams.toString(), "_blank");
 
             } catch (err) {
                 console.error("Export Error:", err);
