@@ -1,7 +1,7 @@
 <!-- 
 ================================================================================
 PROJECT CONTEXT: SolarCheck Professional - FMV REPORT MODULE
-Current Version: v1.21 (STRATEGIC HANDOFF RECEIVER - RESPONSIVE & PRINT OPTIMIZED)
+Current Version: v1.22 (STRATEGIC HANDOFF RECEIVER - RESPONSIVE & PRINT OPTIMIZED)
 Date: August 2026
 Architecture: Standalone HTML5 / URL-Parameter Data Handoff
 ================================================================================
@@ -35,7 +35,7 @@ Architecture: Standalone HTML5 / URL-Parameter Data Handoff
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Professional Solar Valuation Report v1.21</title>
+    <title>Professional Solar Valuation Report v1.22</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
@@ -44,7 +44,7 @@ Architecture: Standalone HTML5 / URL-Parameter Data Handoff
         /* STRICT PRINT PAGINATION RULES */
         @page {
             size: letter portrait;
-            margin: 0; /* Strips browser default margins, headers, and footers */
+            margin: 0.25in;
         }
 
         body { 
@@ -69,16 +69,20 @@ Architecture: Standalone HTML5 / URL-Parameter Data Handoff
 
         @media print {
             body { 
-                background: white; 
+                background: white !important; 
                 -webkit-print-color-adjust: exact !important; 
                 print-color-adjust: exact !important; 
+                min-height: 0 !important;
+                height: auto !important;
+                zoom: 0.84 !important;
             }
             .report-page { 
                 margin: 0 auto; 
                 box-shadow: none; 
-                height: 11in !important; /* Strictly locks to physical paper size */
-                max-height: 11in !important;
-                overflow: hidden !important; /* Prevents tiny pixel spillover to blank 3rd page */
+                min-height: 0 !important;
+                height: auto !important;
+                max-height: none !important;
+                overflow: visible !important;
                 page-break-after: always; 
                 page-break-inside: avoid;
             }
@@ -201,7 +205,7 @@ Architecture: Standalone HTML5 / URL-Parameter Data Handoff
                 <p class="text-[9px] font-black text-slate-400 uppercase tracking-widest">Document Integrity</p>
                 <p class="text-[10px] font-bold text-slate-700">Audit Ref: <span id="display-ref"></span></p>
             </div>
-            <p class="text-[9px] text-slate-400 font-bold uppercase tracking-widest">SolarCheck Pro | Report v1.21</p>
+            <p class="text-[9px] text-slate-400 font-bold uppercase tracking-widest">SolarCheck Pro | Report v1.22</p>
         </div>
     </div>
 
