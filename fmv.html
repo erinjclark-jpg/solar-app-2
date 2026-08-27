@@ -1,7 +1,7 @@
 <!-- 
 ================================================================================
 PROJECT CONTEXT: SolarCheck Professional - FMV REPORT MODULE
-Current Version: v1.22 (STRATEGIC HANDOFF RECEIVER - RESPONSIVE & PRINT OPTIMIZED)
+Current Version: v1.23 (STRATEGIC HANDOFF RECEIVER - RESPONSIVE & PRINT OPTIMIZED)
 Date: August 2026
 Architecture: Standalone HTML5 / URL-Parameter Data Handoff
 ================================================================================
@@ -35,7 +35,7 @@ Architecture: Standalone HTML5 / URL-Parameter Data Handoff
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Professional Solar Valuation Report v1.22</title>
+    <title>Professional Solar Valuation Report v1.23</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
@@ -111,8 +111,8 @@ Architecture: Standalone HTML5 / URL-Parameter Data Handoff
     <div class="report-page border-t-[12px] border-slate-900">
         <div class="flex justify-between items-start mb-5 border-b-2 border-slate-100 pb-3">
             <div>
-                <h1 class="text-3xl font-black tracking-tighter text-slate-900 italic uppercase">Solar Asset Valuation</h1>
-                <p class="text-[10px] font-bold text-slate-500 uppercase tracking-[0.3em] mt-1">Independent Technical Asset Audit</p>
+                <h1 id="report-title" class="text-3xl font-black tracking-tighter text-slate-900 italic uppercase">Solar Asset Valuation</h1>
+                <p id="report-subtitle" class="text-[10px] font-bold text-slate-500 uppercase tracking-[0.3em] mt-1">Independent Technical Asset Audit</p>
             </div>
             <div class="text-right">
                 <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Inspection Date</p>
@@ -136,16 +136,16 @@ Architecture: Standalone HTML5 / URL-Parameter Data Handoff
         <!-- THE RANGE (Strategic Comparison) -->
         <div class="grid grid-cols-2 gap-5 mb-5">
             <div class="p-6 rounded-3xl border-2 border-slate-200 bg-slate-50 shadow-sm text-center flex flex-col justify-center">
-                <h4 class="text-[11px] font-black text-slate-500 uppercase tracking-widest mb-2">Initial Provider Buyout Demand</h4>
+                <h4 id="ceiling-label" class="text-[11px] font-black text-slate-500 uppercase tracking-widest mb-2">Initial Provider Demand</h4>
                 <p id="display-ceiling" class="text-4xl font-black text-slate-400 line-through decoration-red-500/60"></p>
-                <p class="text-[9px] text-slate-500 font-medium leading-relaxed mt-2 italic text-center px-4">
+                <p id="ceiling-desc" class="text-[9px] text-slate-500 font-medium leading-relaxed mt-2 italic text-center px-4">
                     Exact buyout demand quoted by the provider. Excludes real-world asset depreciation, physical defects, and unmitigated maintenance liabilities.
                 </p>
             </div>
             
             <div class="bg-blue-900 text-white p-6 rounded-3xl shadow-xl relative overflow-hidden text-center border-2 border-blue-700">
                 <div class="relative z-10">
-                    <h3 class="text-[11px] font-black text-blue-300 uppercase tracking-[0.2em] mb-2">Net "As-Is" Market Value</h3>
+                    <h3 id="display-fmv-label" class="text-[11px] font-black text-blue-300 uppercase tracking-[0.2em] mb-2">Net "As-Is" Market Value</h3>
                     <div class="flex items-baseline justify-center gap-2">
                         <span id="display-fmv" class="text-5xl font-black tracking-tighter italic"></span>
                     </div>
@@ -205,7 +205,7 @@ Architecture: Standalone HTML5 / URL-Parameter Data Handoff
                 <p class="text-[9px] font-black text-slate-400 uppercase tracking-widest">Document Integrity</p>
                 <p class="text-[10px] font-bold text-slate-700">Audit Ref: <span id="display-ref"></span></p>
             </div>
-            <p class="text-[9px] text-slate-400 font-bold uppercase tracking-widest">SolarCheck Pro | Report v1.22</p>
+            <p class="text-[9px] text-slate-400 font-bold uppercase tracking-widest">SolarCheck Pro | Report v1.23</p>
         </div>
     </div>
 
@@ -282,13 +282,23 @@ Architecture: Standalone HTML5 / URL-Parameter Data Handoff
                     <li class="flex justify-between border-b border-slate-50 pb-0.5"><span>Functional Obsolescence:</span> <span id="assump-obs" class="text-slate-900"></span></li>
                 </ul>
             </div>
-            <p class="text-[8px] text-slate-500 font-medium leading-relaxed italic mt-2 text-justify">
-                *Assumptions represent strict, defensible limits applied to the Discounted Cash Flow (DCF) and Replacement Cost New (RCN) models to account for real-world equipment degradation, finite tax incentives, and standard capital expenditure requirements verified on-site. Functional Obsolescence is a strict penalty applied to the RCN to account for orphaned, discontinued, or unsupported legacy hardware lacking active OEM warranty support in the secondary market. <span id="assump-srec-note"></span>
-            </p>
+        </div>
+        
+        <!-- COST BASIS BREAKDOWN -->
+        <div id="cost-basis-block" class="mb-4 bg-white p-4 rounded-2xl border-2 border-slate-100 shadow-sm">
+            <h4 class="text-[10px] font-black text-slate-900 uppercase tracking-widest mb-2 border-b-2 border-slate-100 pb-1">Gross Cost Basis Calculation (RCNLD)</h4>
+            <ul class="space-y-1.5 text-[10px] font-bold text-slate-700">
+                <li class="flex justify-between border-b border-slate-50 pb-0.5"><span>Hardware Replacement Cost New (RCN):</span> <span id="cb-rcn" class="text-slate-900"></span></li>
+                <li class="flex justify-between border-b border-slate-50 pb-0.5 text-red-600"><span>Less: ITC Haircut (Non-Transferable):</span> <span id="cb-itc"></span></li>
+                <li class="flex justify-between border-b border-slate-50 pb-0.5 text-red-600"><span>Less: Physical Age Depreciation:</span> <span id="cb-deprec"></span></li>
+                <li id="cb-row-itcrecap" class="flex justify-between border-b border-slate-50 pb-0.5 text-orange-600 hidden"><span>Plus: Unvested IRS § 50 Recapture Exposure <span id="cb-unvested-pct" class="text-[8px] ml-1"></span>:</span> <span id="cb-itcrecap"></span></li>
+                <li id="cb-row-macrs" class="flex justify-between border-b border-slate-50 pb-0.5 text-purple-600 hidden"><span>Plus: MACRS Tax Indemnity:</span> <span id="cb-macrs"></span></li>
+                <li class="flex justify-between pt-1 mt-1 border-t border-slate-200"><span>Gross Cost Basis:</span> <span id="cb-gross" class="text-slate-900 font-black"></span></li>
+            </ul>
         </div>
 
-        <!-- RECONCILIATION LEDGER -->
-        <div class="mb-4 p-5 bg-slate-50 rounded-3xl shadow-sm border border-slate-200">
+        <!-- FMV RECONCILIATION LEDGER -->
+        <div id="ledger-fmv" class="mb-4 p-5 bg-slate-50 rounded-3xl shadow-sm border border-slate-200">
             <h5 class="text-[11px] font-black text-slate-900 uppercase tracking-widest mb-3 flex items-center gap-2 border-b-2 border-slate-200 pb-2">
                 <i class="fas fa-file-invoice-dollar text-indigo-600"></i> Valuation Reconciliation Ledger
             </h5>
@@ -296,6 +306,7 @@ Architecture: Standalone HTML5 / URL-Parameter Data Handoff
                 <div class="flex justify-between items-center"><span class="font-bold" id="recon-start-label"></span><span id="recon-gross" class="font-black text-slate-900"></span></div>
                 <div class="flex justify-between items-center text-red-600"><span>Less: Functional Obsolescence</span><span id="recon-obs"></span></div>
                 <div class="flex justify-between items-center text-red-600"><span>Less: O&M & CapEx Reserves</span><span id="recon-om"></span></div>
+                <div id="row-removal" class="flex justify-between items-center text-red-600 hidden"><span>Less: End-of-Term TPO Removal Liability</span><span id="recon-removal"></span></div>
                 
                 <div class="border-t border-slate-300 my-1 pt-1 flex justify-between items-center font-bold text-slate-800">
                     <span>Base "As-Is" FMV</span><span id="recon-base"></span>
@@ -307,6 +318,21 @@ Architecture: Standalone HTML5 / URL-Parameter Data Handoff
                 
                 <div class="border-t-2 border-slate-900 my-1 pt-2 flex justify-between items-center text-sm font-black text-slate-900">
                     <span class="uppercase tracking-widest">Net "As-Is" FMV</span><span id="recon-net"></span>
+                </div>
+            </div>
+        </div>
+        
+        <!-- PREPAYMENT AUDIT LEDGER -->
+        <div id="ledger-prepay" class="mb-4 p-5 bg-slate-50 rounded-3xl shadow-sm border border-slate-200 hidden">
+            <h5 class="text-[11px] font-black text-slate-900 uppercase tracking-widest mb-3 flex items-center gap-2 border-b-2 border-slate-200 pb-2">
+                <i class="fas fa-search-dollar text-indigo-600"></i> Prepayment Audit Ledger
+            </h5>
+            <div class="space-y-2 text-[10px] sm:text-[11px] text-slate-700 font-semibold">
+                <div class="flex justify-between items-center"><span class="font-bold">TPO Prepayment Demand</span><span id="prepay-demand" class="font-black text-slate-900"></span></div>
+                <div class="flex justify-between items-center text-emerald-600"><span id="prepay-npv-label">Less: Audited NPV of Remaining Payments</span><span id="prepay-npv"></span></div>
+                
+                <div class="border-t-2 border-slate-900 my-1 pt-2 flex justify-between items-center text-sm font-black" id="prepay-variance-row">
+                    <span id="prepay-variance-label" class="uppercase tracking-widest">Variance</span><span id="prepay-variance-val"></span>
                 </div>
             </div>
         </div>
@@ -367,6 +393,8 @@ Architecture: Standalone HTML5 / URL-Parameter Data Handoff
             }
 
             const today = new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
+            
+            const valPremise = data.valPremise || 'fmv';
 
             // Document Date (Header & Certification)
             document.getElementById('current-date').innerText = today;
@@ -380,47 +408,132 @@ Architecture: Standalone HTML5 / URL-Parameter Data Handoff
             document.getElementById('display-address').innerText = data.a || 'Subject Property';
             document.getElementById('display-fmv').innerText = cur(data.fmv);
             
-            // Dynamic TPO Quote Display
-            const tpoQ = parseFloat(data.tpoQuote) || 0;
-            if (tpoQ > 0) {
-                document.getElementById('display-ceiling').innerText = cur(tpoQ);
-            } else {
-                document.getElementById('display-ceiling').innerText = "Not Provided";
+            // Route Logic Based on Premise
+            if (valPremise === 'prepay') {
+                document.getElementById('report-title').innerText = "Prepayment Payoff Audit";
+                document.getElementById('report-subtitle').innerText = "Independent Contractual Liability Audit";
+                document.getElementById('ceiling-label').innerText = "TPO Prepayment Demand";
+                document.getElementById('ceiling-desc').innerText = "Exact prepayment/payoff demand quoted by the provider. Excludes audit of underlying discount rate or unvested tax penalties.";
+                document.getElementById('display-fmv-label').innerText = "Audited Prepayment NPV";
+                document.getElementById('display-methodology').innerText = "Net Present Value Basis";
+                
+                document.getElementById('display-ceiling').innerText = cur(data.tpoQuote);
                 document.getElementById('display-ceiling').classList.remove('line-through', 'decoration-red-500/60');
-            }
-            
-            // Defect & Repair Data Parsing
-            const repairVal = parseFloat(data.repair) || 0;
-            if (repairVal > 0) {
-                document.getElementById('maintenance-block').classList.remove('hidden');
-                document.getElementById('display-repair').innerText = "- " + cur(repairVal);
                 
-                const defectKeys = (data.defTypes || '').split(',').filter(k => k && k !== 'none');
-                const ul = document.getElementById('display-def-types');
+                // Hide FMV Blocks
+                document.getElementById('ledger-fmv').style.display = 'none';
+                document.getElementById('cost-basis-block').style.display = 'none';
+                document.getElementById('maintenance-block').style.display = 'none';
                 
-                if (defectKeys.length > 0) {
-                    defectKeys.forEach(k => {
-                        if(DEFECT_MAP[k]) {
-                            const li = document.createElement('li');
-                            li.innerText = DEFECT_MAP[k];
-                            ul.appendChild(li);
-                        }
-                    });
+                // Show Prepay Block
+                document.getElementById('ledger-prepay').style.display = 'block';
+                
+                document.getElementById('prepay-demand').innerText = cur(data.tpoQuote);
+                document.getElementById('prepay-npv-label').innerText = `Less: Audited NPV of Remaining Payments (@ ${data.prepayDr || 5.0}%)`;
+                document.getElementById('prepay-npv').innerText = "- " + cur(data.discountedRemCost);
+                
+                const variance = parseFloat(data.prepayVariance) || 0;
+                document.getElementById('prepay-variance-val').innerText = cur(variance);
+                if (variance > 0) {
+                    document.getElementById('prepay-variance-row').classList.add('text-red-600');
+                    document.getElementById('prepay-variance-label').innerText = "Unjustified TPO Markup";
                 } else {
-                    ul.innerHTML = "<li>No specific categories selected.</li>";
+                    document.getElementById('prepay-variance-row').classList.add('text-slate-900');
+                    document.getElementById('prepay-variance-label').innerText = "Variance";
+                }
+            } else {
+                // Dynamic TPO Quote Display
+                const tpoQ = parseFloat(data.minBuyout) || 0;
+                if (tpoQ > 0) {
+                    document.getElementById('display-ceiling').innerText = cur(tpoQ);
+                } else {
+                    document.getElementById('display-ceiling').innerText = "Not Provided";
+                    document.getElementById('display-ceiling').classList.remove('line-through', 'decoration-red-500/60');
                 }
                 
-                // Hide inspector notes completely if blank
-                if (data.defNotes && data.defNotes.trim() !== '') {
-                    document.getElementById('display-def-notes').innerText = data.defNotes;
-                } else {
-                    document.getElementById('notes-container').style.display = 'none';
+                // Defect & Repair Data Parsing
+                const repairVal = parseFloat(data.repair) || 0;
+                if (repairVal > 0) {
+                    document.getElementById('maintenance-block').classList.remove('hidden');
+                    document.getElementById('display-repair').innerText = "- " + cur(repairVal);
+                    
+                    const defectKeys = (data.defTypes || '').split(',').filter(k => k && k !== 'none');
+                    const ul = document.getElementById('display-def-types');
+                    
+                    if (defectKeys.length > 0) {
+                        defectKeys.forEach(k => {
+                            if(DEFECT_MAP[k]) {
+                                const li = document.createElement('li');
+                                li.innerText = DEFECT_MAP[k];
+                                ul.appendChild(li);
+                            }
+                        });
+                    } else {
+                        ul.innerHTML = "<li>No specific categories selected.</li>";
+                    }
+                    
+                    if (data.defNotes && data.defNotes.trim() !== '') {
+                        document.getElementById('display-def-notes').innerText = data.defNotes;
+                    } else {
+                        document.getElementById('notes-container').style.display = 'none';
+                    }
                 }
-            }
 
-            // Methodology Text
-            const w = parseFloat(data.w) || 0;
-            document.getElementById('display-methodology').innerText = w === 100 ? 'Income Approach' : w === 0 ? 'Cost Approach' : `Blended Valuation (${w}% Income)`;
+                // Methodology Text
+                const w = parseFloat(data.w) || 0;
+                document.getElementById('display-methodology').innerText = w === 100 ? 'Income Approach' : w === 0 ? 'Cost Approach' : `Blended Valuation (${w}% Income)`;
+
+                // Valuation Reconciliation Ledger
+                const isQuoteAnchor = data.isQuoteAnchor === '1';
+                document.getElementById('recon-start-label').innerText = isQuoteAnchor ? 'Initial Provider Buyout Demand' : 'Gross Blended Asset Value';
+                document.getElementById('recon-gross').innerText = cur(data.startingGross);
+                
+                document.getElementById('recon-obs').innerText = "- " + cur(data.weightedObs);
+                document.getElementById('recon-om').innerText = "- " + cur(data.weightedOM);
+                
+                const residualDed = parseFloat(data.residualDeduction) || 0;
+                if (residualDed > 0) {
+                    document.getElementById('row-removal').classList.remove('hidden');
+                    document.getElementById('recon-removal').innerText = "- " + cur(residualDed);
+                }
+                
+                document.getElementById('recon-base').innerText = cur(data.baseFMV);
+                document.getElementById('recon-repairs').innerText = "- " + cur(data.repair);
+                document.getElementById('recon-trueup').innerText = "- " + cur(data.trueUp);
+                
+                const floorDiff = parseFloat(data.floorDiff) || 0;
+                if (floorDiff > 0) {
+                    document.getElementById('row-floor').classList.remove('hidden');
+                    document.getElementById('recon-floor').innerText = "+ " + cur(floorDiff);
+                }
+                
+                document.getElementById('recon-net').innerText = cur(data.fmv);
+                
+                // Cost Basis Block
+                const sC = parseFloat(data.sC) || 0;
+                const itc = parseFloat(data.itc) || 30;
+                const itcHaircut = sC * (itc / 100);
+                const l = parseFloat(data.l) || 25;
+                const rL = parseFloat(data.rL) || 0;
+                const ageDeprec = (sC - itcHaircut) * (1 - (rL / l));
+                const itcRecap = parseFloat(data.itcRecapture) || 0;
+                const macrs = parseFloat(data.macrsLiab) || 0;
+                
+                document.getElementById('cb-rcn').innerText = cur(sC);
+                document.getElementById('cb-itc').innerText = "- " + cur(itcHaircut);
+                document.getElementById('cb-deprec').innerText = "- " + cur(ageDeprec);
+                
+                if (itcRecap > 0) {
+                    document.getElementById('cb-row-itcrecap').classList.remove('hidden');
+                    document.getElementById('cb-itcrecap').innerText = "+ " + cur(itcRecap);
+                    document.getElementById('cb-unvested-pct').innerText = `(${data.unvestedPct || '0'}%)`;
+                }
+                if (macrs > 0) {
+                    document.getElementById('cb-row-macrs').classList.remove('hidden');
+                    document.getElementById('cb-macrs').innerText = "+ " + cur(macrs);
+                }
+                document.getElementById('cb-gross').innerText = cur(data.costBasis);
+            }
 
             // Ownership Logic
             const om = { owned: "Homeowner Owned", lease: "Fixed Payment (Lease / Predictable PPA)", ppa: "Variable Payment (True Pay-per-kWh PPA)", prepaid_lease: "Prepaid Agreement", prepaid_ppa: "Prepaid Agreement" };
@@ -484,35 +597,6 @@ Architecture: Standalone HTML5 / URL-Parameter Data Handoff
             } else {
                 document.getElementById('assump-capex').innerText = 'N/A (Microinverters)';
             }
-
-            // SREC EXCLUSION LOGIC
-            if (data.srec !== '1') {
-                document.getElementById('assump-srec').innerText = 'Excluded (No CA Res. Market)';
-                document.getElementById('assump-srec-note').innerText = "SREC and phantom market revenues are explicitly excluded as California lacks a liquid residential SREC carve-out, preventing reliable monetization by the system owner.";
-            } else {
-                document.getElementById('assump-srec').innerText = 'Included (' + cur(data.srecP) + '/MWh)';
-                document.getElementById('assump-srec-note').innerText = "";
-            }
-
-            // Valuation Reconciliation Ledger
-            const isQuoteAnchor = data.isQuoteAnchor === '1';
-            document.getElementById('recon-start-label').innerText = isQuoteAnchor ? 'Initial Provider Buyout Demand' : 'Gross Blended Asset Value';
-            document.getElementById('recon-gross').innerText = cur(data.startingGross);
-            
-            document.getElementById('recon-obs').innerText = "- " + cur(data.weightedObs);
-            document.getElementById('recon-om').innerText = "- " + cur(data.weightedOM);
-            
-            document.getElementById('recon-base').innerText = cur(data.baseFMV);
-            document.getElementById('recon-repairs').innerText = "- " + cur(data.repair);
-            document.getElementById('recon-trueup').innerText = "- " + cur(data.trueUp);
-            
-            const floorDiff = parseFloat(data.floorDiff) || 0;
-            if (floorDiff > 0) {
-                document.getElementById('row-floor').classList.remove('hidden');
-                document.getElementById('recon-floor').innerText = "+ " + cur(floorDiff);
-            }
-            
-            document.getElementById('recon-net').innerText = cur(data.fmv);
         }
 
         window.onload = init;
