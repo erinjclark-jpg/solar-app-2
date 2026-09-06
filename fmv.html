@@ -1,7 +1,7 @@
 <!-- 
 ================================================================================
 PROJECT CONTEXT: SolarCheck Professional - FMV REPORT MODULE
-Current Version: v1.23 (STRATEGIC HANDOFF RECEIVER - RESPONSIVE & PRINT OPTIMIZED)
+Current Version: v1.25 (DYNAMIC DISCLAIMER & LEGAL NARRATIVE)
 Date: August 2026
 Architecture: Standalone HTML5 / URL-Parameter Data Handoff
 ================================================================================
@@ -35,7 +35,7 @@ Architecture: Standalone HTML5 / URL-Parameter Data Handoff
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Professional Solar Valuation Report v1.23</title>
+    <title>Professional Solar Valuation Report v1.25</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
@@ -57,12 +57,12 @@ Architecture: Standalone HTML5 / URL-Parameter Data Handoff
         .report-page { 
             background: white; 
             width: 8.5in; 
-            min-height: 11in; /* Allows screen view to expand if needed so nothing cuts off */
-            padding: 0.4in 0.6in; /* Tightened padding to maximize printable area */
+            min-height: 11in; 
+            padding: 0.4in 0.6in; 
             margin: 2rem auto; 
             box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1); 
             position: relative; 
-            display: flex; /* Flexbox structure allows mt-auto to anchor footers perfectly */
+            display: flex; 
             flex-direction: column;
             box-sizing: border-box; 
         }
@@ -194,7 +194,7 @@ Architecture: Standalone HTML5 / URL-Parameter Data Handoff
             <h4 class="text-xs font-black text-slate-900 uppercase tracking-widest border-b-2 border-slate-900 pb-1 flex items-center gap-2">
                 <i class="fas fa-info-circle text-blue-600"></i> Auditor's Note on Technical Valuation
             </h4>
-            <p class="text-[13px] text-slate-600 leading-relaxed text-justify">
+            <p id="auditor-note-text" class="text-[13px] text-slate-600 leading-relaxed text-justify">
                 The conclusion of value above represents an estimated **Fair Market Value** (FMV) derived from empirical technical asset evaluation standards. While the service provider may present a "payoff" figure based on the full value of a theoretical revenue stream, the market reality of used solar equipment attached to real property is governed by actual avoided utility costs and current replacement costs, adjusted for physical and functional depreciation observed onsite. <strong>Furthermore, the Cost Approach explicitly excludes unavailable tax incentives (such as the Federal ITC), and the Income Approach accounts for expected future capital expenditures and unmitigated O&M reserves verified during the technical audit.</strong>
             </p>
         </div>
@@ -205,7 +205,7 @@ Architecture: Standalone HTML5 / URL-Parameter Data Handoff
                 <p class="text-[9px] font-black text-slate-400 uppercase tracking-widest">Document Integrity</p>
                 <p class="text-[10px] font-bold text-slate-700">Audit Ref: <span id="display-ref"></span></p>
             </div>
-            <p class="text-[9px] text-slate-400 font-bold uppercase tracking-widest">SolarCheck Pro | Report v1.23</p>
+            <p class="text-[9px] text-slate-400 font-bold uppercase tracking-widest">SolarCheck Pro | Report v1.25</p>
         </div>
     </div>
 
@@ -248,6 +248,14 @@ Architecture: Standalone HTML5 / URL-Parameter Data Handoff
                         <span class="text-[9px] font-bold text-slate-500 uppercase tracking-tight">Technical Benchmark</span>
                         <span id="audit-bench" class="text-sm font-black text-slate-900"></span>
                     </div>
+                    <div class="flex justify-between items-center hidden" id="audit-refund-rates">
+                        <span class="text-[9px] font-bold text-slate-500 uppercase tracking-tight">True-Up Rates (Yr 1 / Final)</span>
+                        <span id="audit-rates-val" class="text-[10px] font-black text-slate-900"></span>
+                    </div>
+                    <div class="flex justify-between items-center hidden" id="audit-interval-row">
+                        <span class="text-[9px] font-bold text-slate-500 uppercase tracking-tight">True-Up Audit Interval</span>
+                        <span id="audit-interval-val" class="text-[10px] font-black text-slate-900"></span>
+                    </div>
                     <div class="pt-2 border-t-2 border-slate-200 flex justify-between items-start">
                         <div>
                             <p class="text-[8px] font-black text-amber-700 uppercase tracking-widest">Energy Shortfall</p>
@@ -274,12 +282,14 @@ Architecture: Standalone HTML5 / URL-Parameter Data Handoff
                     <li class="flex justify-between border-b border-slate-50 pb-0.5"><span>Utility Escalation Cap:</span> <span id="assump-esccap" class="text-slate-900"></span></li>
                     <li class="flex justify-between border-b border-slate-50 pb-0.5"><span>SREC / Market Rev:</span> <span id="assump-srec" class="text-slate-900"></span></li>
                     <li class="flex justify-between border-b border-slate-50 pb-0.5"><span>Annual O&M Reserve:</span> <span id="assump-om" class="text-slate-900"></span></li>
+                    <li class="flex justify-between border-b border-slate-50 pb-0.5"><span>MACRS Indemnity:</span> <span id="assump-macrs" class="text-slate-900"></span></li>
                 </ul>
                 <ul class="space-y-1.5 text-[10px] font-bold text-slate-700">
                     <li class="flex justify-between border-b border-slate-50 pb-0.5"><span>Future CapEx (Inverter):</span> <span id="assump-capex" class="text-slate-900"></span></li>
                     <li id="assump-bat-capex-row" class="flex justify-between border-b border-slate-50 pb-0.5 hidden"><span>Future CapEx (Battery):</span> <span id="assump-batcapex" class="text-slate-900"></span></li>
                     <li id="assump-bat-row" class="flex justify-between border-b border-slate-50 pb-0.5"><span>Expected Battery Deg.:</span> <span id="assump-batdeg" class="text-slate-900"></span></li>
                     <li class="flex justify-between border-b border-slate-50 pb-0.5"><span>Functional Obsolescence:</span> <span id="assump-obs" class="text-slate-900"></span></li>
+                    <li class="flex justify-between border-b border-slate-50 pb-0.5"><span>End-of-Term Fate:</span> <span id="assump-fate" class="text-slate-900"></span></li>
                 </ul>
             </div>
         </div>
@@ -354,9 +364,8 @@ Architecture: Standalone HTML5 / URL-Parameter Data Handoff
                 </div>
             </div>
             <!-- GENERAL DISCLAIMER -->
-            <div class="disclaimer-section" style="font-size: 0.55rem; color: #666; margin-top: 10px; border-top: 1px solid #ccc; padding-top: 8px; text-align: justify; line-height: 1.2;">
-                <strong>Statement of Limiting Conditions</strong><br>
-                This Fair Market Value (FMV) audit represents an independent technical asset valuation based on the Principle of Substitution, current replacement costs, and discounted cash flow models. This document relies on empirical hardware inspection and metered system performance to ground financial assumptions in physical reality. It is not an appraisal governed by USPAP guidelines, but rather a technical engineering audit intended to facilitate fair market negotiations by establishing the verified operating condition of the system. While the data herein is verified by a licensed solar inspection professional, this document does not constitute a legal review of contractual obligations, nor does it guarantee buyout acceptance or specific settlement figures by third-party owners (TPOs). Assumed underwriting variables—including utility escalation caps, hardware lifecycle estimates, and tax incentive exclusions—are applied to simulate fair market conditions but may vary from actual future events. This report is not intended to serve as formal tax, legal, or actuarial counsel.
+            <div id="disclaimer-section" style="font-size: 0.55rem; color: #666; margin-top: 10px; border-top: 1px solid #ccc; padding-top: 8px; text-align: justify; line-height: 1.2;">
+                <!-- Content injected dynamically via JS based on valPremise -->
             </div>
         </div>
     </div>
@@ -417,6 +426,10 @@ Architecture: Standalone HTML5 / URL-Parameter Data Handoff
                 document.getElementById('display-fmv-label').innerText = "Audited Prepayment NPV";
                 document.getElementById('display-methodology').innerText = "Net Present Value Basis";
                 
+                document.getElementById('auditor-note-text').innerHTML = `The conclusion of value above represents a <strong>Discounted Liability Settlement</strong> analysis of the remaining contractual obligations. This audit mathematically verifies the net present value (NPV) of future lease or PPA payments, discounted at the agreed contractual rate. <strong>Crucially, this is not a Fair Market Value (FMV) asset appraisal and does not constitute a transfer of title or ownership.</strong> It is strictly an empirical review of the financial obligation required to prepay and satisfy the service agreement, isolating the homeowner from unjustified TPO margin inflation on early termination penalties.`;
+                
+                document.getElementById('disclaimer-section').innerHTML = `<strong>Statement of Limiting Conditions</strong><br>This Prepayment Payoff audit represents an independent financial analysis of remaining contractual liabilities based on metered historical performance and stated agreement terms. This document relies on empirical hardware inspection to verify the operating condition of the system serving the underlying agreement. <strong>It is not an appraisal governed by USPAP guidelines, nor does it establish a Fair Market Value (FMV) for the physical hardware.</strong> This audit does not constitute a legal review of contractual obligations, nor does it guarantee prepayment acceptance by third-party owners (TPOs). Assumed underwriting variables—including utility escalation caps and discount rates—are applied to simulate accurate financial conditions but may vary. This report is not intended to serve as formal tax, legal, or actuarial counsel.`;
+
                 document.getElementById('display-ceiling').innerText = cur(data.tpoQuote);
                 document.getElementById('display-ceiling').classList.remove('line-through', 'decoration-red-500/60');
                 
@@ -442,6 +455,9 @@ Architecture: Standalone HTML5 / URL-Parameter Data Handoff
                     document.getElementById('prepay-variance-label').innerText = "Variance";
                 }
             } else {
+                
+                document.getElementById('disclaimer-section').innerHTML = `<strong>Statement of Limiting Conditions</strong><br>This Fair Market Value (FMV) audit represents an independent technical asset valuation based on the Principle of Substitution, current replacement costs, and discounted cash flow models. This document relies on empirical hardware inspection and metered system performance to ground financial assumptions in physical reality. It is not an appraisal governed by USPAP guidelines, but rather a technical engineering audit intended to facilitate fair market negotiations by establishing the verified operating condition of the system. While the data herein is verified by a licensed solar inspection professional, this document does not constitute a legal review of contractual obligations, nor does it guarantee buyout acceptance or specific settlement figures by third-party owners (TPOs). Assumed underwriting variables—including utility escalation caps, hardware lifecycle estimates, and tax incentive exclusions—are applied to simulate fair market conditions but may vary from actual future events. This report is not intended to serve as formal tax, legal, or actuarial counsel.`;
+
                 // Dynamic TPO Quote Display
                 const tpoQ = parseFloat(data.minBuyout) || 0;
                 if (tpoQ > 0) {
@@ -536,7 +552,7 @@ Architecture: Standalone HTML5 / URL-Parameter Data Handoff
             }
 
             // Ownership Logic
-            const om = { owned: "Homeowner Owned", lease: "Fixed Payment (Lease / Predictable PPA)", ppa: "Variable Payment (True Pay-per-kWh PPA)", prepaid_lease: "Prepaid Agreement", prepaid_ppa: "Prepaid Agreement" };
+            const om = { owned: "Homeowner Owned", lease: "Fixed Payment (Lease / Predictable PPA)", ppa: "Variable Payment (True Pay-per-kWh PPA)", prepaid_lease: "Prepaid Agreement", prepaid_ppa: "Prepaid Agreement", loan: "Transferable Loan (Assumable Debt)" };
             document.getElementById('display-ownership').innerText = om[data.o] || 'Third-Party Agreement';
 
             // Audit Data
@@ -568,17 +584,37 @@ Architecture: Standalone HTML5 / URL-Parameter Data Handoff
             document.getElementById('audit-dr').innerText = (data.dr || '0') + '%';
             document.getElementById('audit-cond').innerText = 'Verified Onsite';
 
-            // Production
+            // Production & True-Up Additions
             document.getElementById('audit-act').innerText = num(data.act) + ' MWh';
             document.getElementById('audit-bench').innerText = num(data.bench) + ' MWh';
             document.getElementById('audit-shortfall').innerText = num(data.shortfall) + ' kWh';
             document.getElementById('audit-trueUp').innerText = cur(data.trueUp);
+
+            const tur1 = parseFloat(data.tUR1) || 0;
+            const turend = parseFloat(data.tUREnd) || 0;
+            if (tur1 > 0 || turend > 0) {
+                document.getElementById('audit-refund-rates').classList.remove('hidden');
+                document.getElementById('audit-rates-val').innerText = '$' + tur1.toFixed(3) + ' / $' + turend.toFixed(3);
+            }
+
+            if (data.trueUpFreq && data.trueUpFreq !== '0') {
+                document.getElementById('audit-interval-row').classList.remove('hidden');
+                document.getElementById('audit-interval-val').innerText = data.trueUpFreq + " Months";
+            } else if (data.trueUpFreq === '0') {
+                document.getElementById('audit-interval-row').classList.remove('hidden');
+                document.getElementById('audit-interval-val').innerText = "Full Term";
+            }
 
             // Underwriting Assumptions Schedule
             document.getElementById('assump-itc').innerText = (data.itc || '30') + '% (Stripped from RCN)';
             document.getElementById('assump-esccap').innerText = 'Capped at Year ' + (data.escCap || '10');
             document.getElementById('assump-om').innerText = cur(data.omRes || 21) + ' / kW / Year';
             document.getElementById('assump-obs').innerText = (data.obsPct || '0') + '% Hardware Penalty';
+            
+            document.getElementById('assump-macrs').innerText = (data.macrsPenalty === 'true') ? "Included in Basis" : "Excluded";
+            
+            const fateMap = { 'tpo_remove': 'TPO Removal', 'abandon': 'Abandoned / Assumed', 'renew': 'Contract Renewal' };
+            document.getElementById('assump-fate').innerText = fateMap[data.removalFate] || 'N/A';
             
             // STRICT BATTERY CONDITIONAL LOGIC FOR ASSUMPTIONS
             if (hasBattery) {
