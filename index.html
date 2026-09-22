@@ -1,8 +1,8 @@
 <!-- 
 ================================================================================
 PROJECT CONTEXT: SolarCheck Professional
-Current Version: v7.354 (PREMISE ISOLATION & UI POLISH)
-Date: August 2026
+Current Version: v7.355 (SETTLEMENT BRIDGE & METHODOLOGY TRANSPARENCY UPDATE)
+Date: September 22, 2026
 Architecture: Modular Single-File HTML5 (Sub-Renderer Pattern)
 ================================================================================
 
@@ -37,7 +37,7 @@ Architecture: Modular Single-File HTML5 (Sub-Renderer Pattern)
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SolarCheck Professional v7.354</title>
+    <title>SolarCheck Professional v7.355</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     
@@ -153,10 +153,12 @@ Architecture: Modular Single-File HTML5 (Sub-Renderer Pattern)
             obsPct: { l: "Func. Obsolescence (Cost %)", d: "Secondary market depreciation penalty.", p: "0" },
             
             valPremise: { l: "Valuation Premise", d: "Contractual basis for calculating buyout or early payoff liability.", p: "" },
+            settlementMode: { l: "Appraisal Mode", d: "Toggle between Pure USPAP Appraisal and TPO Settlement Bridge (with tax concessions).", p: "" },
             prepayDr: { l: "Prepay Discount Rate (%)", d: "Contractual NPV rate for early payoff schedules.", p: "5.0" },
             trueUpFreq: { l: "True-Up Audit Interval", d: "Contractual frequency for performance guarantee reconciliation.", p: "" },
             macrsPenalty: { l: "MACRS Tax Indemnity", d: "Does the contract explicitly demand reimbursement for accelerated depreciation?", p: "" },
             removalFate: { l: "End-of-Term Fate", d: "Who bears the financial liability of removing the system at the end of the term?", p: "" },
+            techNotes: { l: "Technical Footnote", d: "Custom technical notes appended directly to the final PDF deliverable.", p: "" },
 
             sz_label: { l: "Rated Size", d: "System DC capacity." },
             age_label: { l: "Solar System Current Age", d: "Years since PTO." },
@@ -264,7 +266,7 @@ Architecture: Modular Single-File HTML5 (Sub-Renderer Pattern)
                         ${window.S("Use Case", st.batteryMode, "batteryMode", [{v:'both', l:'Backup & Arbitrage'}, {v:'backup', l:'Backup Only'}, {v:'arbitrage', l:'Arbitrage Only'}])}
                         ${window.I("Capacity (kWh)", st.b, "b", "number")}
                         ${window.I("Reserve (%)", st.br, "br", "number")}
-                        <div class="col-span-2 sm:col-span-4">${window.S("Site Monitoring", st.cellMon, "cellMon", [{v:'wifi', l:'Wi-Fi'}, {v:'cellular', l:'Cellular'}, {v:'none', l:'None'}])}</div>
+                        <div class="col-span-2 sm:col-span-4">${window.S("Site Monitoring", st.cellMon, "cellMon", [{v:'wifi', l:'Cellular'}, {v:'cellular', l:'Cellular'}, {v:'none', l:'None'}])}</div>
                     </div></div>
                 </div>
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
@@ -377,6 +379,7 @@ Architecture: Modular Single-File HTML5 (Sub-Renderer Pattern)
                 <div class="bg-slate-700 p-6 sm:p-8 rounded-3xl border border-slate-600 shadow-xl">
                     <h4 class="text-[9px] font-black text-white uppercase mb-6 border-b border-slate-600 pb-3 tracking-widest">Adjustments & Assumptions</h4>
                     <div class="grid grid-cols-1 sm:grid-cols-2 gap-5 sm:gap-6">
+                        ${window.Sdark("Appraisal Mode", st.settlementMode, "settlementMode", [{v:'pure', l:'Pure Appraisal (USPAP/No Tax Inflation)'}, {v:'bridge', l:'TPO Settlement Bridge (With § 50 Concession)'}])}
                         ${window.Idark("Discount Rate (%)", st.dr, "dr")}
                         ${window.Idark("Utility Esc. (%)", st.e, "e")}
                         ${window.Idark("Rep. Cost ($/W)", st.rC, "rC")}
@@ -421,6 +424,11 @@ Architecture: Modular Single-File HTML5 (Sub-Renderer Pattern)
                             </div>
                         </div>
                     </div>
+                    <div class="sm:col-span-2 mt-2 pt-4 border-t border-slate-600">
+                        <label for="techNotes" class="block text-blue-200 text-xs sm:text-sm mb-1 font-bold uppercase tracking-wide">Technical Footnote (PDF Export)</label>
+                        <textarea id="techNotes" class="w-full p-2 sm:p-2.5 border border-slate-500 rounded-lg bg-slate-700/50 text-white text-base sm:text-sm font-semibold focus:ring-2 focus:ring-blue-400 focus:border-blue-400 placeholder-slate-400 backdrop-blur-sm" rows="3" onchange="handleInputChange(event,'techNotes')">${st.techNotes}</textarea>
+                        <p class="text-[12px] text-blue-100 mt-1 leading-snug italic">Custom technical notes appended directly to the final PDF deliverable.</p>
+                    </div>
                     </div>
                     <div class="pt-6 border-t border-slate-600 mt-6 flex justify-between items-center"><label class="text-blue-200 text-[9px] font-bold uppercase tracking-widest">${window.UI_TEXT.srec.l}</label><button onclick="updateState('srec', ${!st.srec})" class="w-10 h-5 sm:w-11 sm:h-6 rounded-full transition-colors ${st.srec ? 'bg-green-500' : 'bg-slate-600'} relative shadow-inner"><div class="w-3 h-3 sm:w-4 h-4 bg-white rounded-full absolute top-1 transition-all ${st.srec ? 'left-6' : 'left-1'}"></div></button></div>
                     ${st.srec ? window.Idark("SREC Value ($/MWh)", st.srecP, "srecP") : ''}
@@ -442,9 +450,14 @@ Architecture: Modular Single-File HTML5 (Sub-Renderer Pattern)
                 </div>
                 ` : `
                 <div class="mb-4 p-5 bg-slate-50 rounded-3xl shadow-sm border border-slate-200">
-                    <h5 class="text-[11px] font-black text-slate-900 uppercase tracking-widest mb-3 flex items-center gap-2 border-b-2 border-slate-200 pb-2">
-                        <i class="fas fa-file-invoice-dollar text-indigo-600"></i> Valuation Reconciliation Ledger
-                    </h5>
+                    <div class="flex justify-between items-center mb-3 border-b-2 border-slate-200 pb-2">
+                        <h5 class="text-[11px] font-black text-slate-900 uppercase tracking-widest flex items-center gap-2">
+                            <i class="fas fa-file-invoice-dollar text-indigo-600"></i> Valuation Reconciliation Ledger
+                        </h5>
+                        <span class="text-[9px] font-bold text-white bg-indigo-500 px-2 py-1 rounded uppercase tracking-widest shadow-inner">
+                            Weighting: ${st.w}% Income / ${100 - st.w}% Cost
+                        </span>
+                    </div>
                     <div class="space-y-2 text-[10px] sm:text-[11px] text-slate-700 font-semibold">
                         <div class="flex justify-between items-center"><span class="font-bold" id="ledger-start-label">${aR.isQuoteAnchor ? 'Initial Provider Buyout Demand' : 'Gross Blended Asset Value'}</span><span class="font-black text-slate-900">${window.cur(aR.startingGross)}</span></div>
                         <div class="flex justify-between items-center text-red-600"><span>Less: Functional Obsolescence</span><span id="recon-obs">- ${window.cur(aR.weightedObs)}</span></div>
@@ -457,10 +470,16 @@ Architecture: Modular Single-File HTML5 (Sub-Renderer Pattern)
                         
                         <div class="flex justify-between items-center text-red-600"><span>Less: Itemized Repair Costs</span><span id="recon-repairs">- ${window.cur(aR.rp)}</span></div>
                         <div class="flex justify-between items-center text-red-600"><span>Less: True-Up Liability</span><span id="recon-trueup">- ${window.cur(aR.trueUpRefund)}</span></div>
-                        ` + (aR.floorDiff > 0 ? '<div class="flex justify-between items-center text-emerald-600"><span>Plus: Minimum Buyout Floor Adjustment</span><span id="recon-floor">+ ' + window.cur(aR.floorDiff) + '</span></div>' : '') + `
+                        
+                        <div class="border-t border-slate-300 my-1 pt-1 flex justify-between items-center font-bold text-slate-800">
+                            <span>Pure Net "As-Is" FMV</span><span id="recon-pure-net">${window.cur(aR.rawNetFMV)}</span>
+                        </div>
+                        
+                        ` + (st.settlementMode === 'bridge' ? '<div class="flex justify-between items-center text-emerald-600 mt-1"><span>Plus: Equitable IRS § 50 Tax Recapture Add-Back</span><span id="recon-tax-add">+ ' + window.cur(aR.itcRecaptureLiability) + '</span></div>' : '') + `
+                        ` + (aR.floorDiff > 0 ? '<div class="flex justify-between items-center text-emerald-600 mt-1"><span>Plus: Minimum Buyout Floor Adjustment</span><span id="recon-floor">+ ' + window.cur(aR.floorDiff) + '</span></div>' : '') + `
                         
                         <div class="border-t-2 border-slate-900 my-1 pt-2 flex justify-between items-center text-sm font-black text-slate-900">
-                            <span class="uppercase tracking-widest">Net "As-Is" FMV</span><span id="recon-net">${window.cur(aR.val)}</span>
+                            <span class="uppercase tracking-widest">${st.settlementMode === 'bridge' ? 'Recommended Settlement Offer' : 'Net "As-Is" FMV'}</span><span id="recon-net">${window.cur(aR.val)}</span>
                         </div>
                     </div>
                 </div>
@@ -482,7 +501,7 @@ Architecture: Modular Single-File HTML5 (Sub-Renderer Pattern)
         // =====================================================================
         window.calculate = function() {
             try {
-                const { pC, pW, iDt, pDt, or, sh, pi, ac, b, br, scr, ut, rU, eU, tE, tG, tUR1, tUREnd, tEs, pa, paB, tR, rC, batCost, l, dr, rp, e, w, te, o, srec, srecP, it, itc, invRepCost, invRepYear, batRepYear, batDeg, escCap, tpoQuote, minBuyout, omRes, obsPct, valPremise, prepayDr, trueUpFreq, macrsPenalty, removalFate } = window.state;
+                const { pC, pW, iDt, pDt, or, sh, pi, ac, b, br, scr, ut, rU, eU, tE, tG, tUR1, tUREnd, tEs, pa, paB, tR, rC, batCost, l, dr, rp, e, w, te, o, srec, srecP, it, itc, invRepCost, invRepYear, batRepYear, batDeg, escCap, tpoQuote, minBuyout, omRes, obsPct, valPremise, prepayDr, trueUpFreq, macrsPenalty, removalFate, settlementMode, techNotes } = window.state;
                 const nPC = parseFloat(pC) || 0; const nPW = parseFloat(pW) || 0; const nAC = parseFloat(ac) || 0;
                 const s = (nPC * nPW) / 1000; window.state.sz = s;
                 const DEG_RATE = 0.005; const iT = +new Date(iDt), pT = +new Date(pDt);
@@ -756,7 +775,8 @@ Architecture: Modular Single-File HTML5 (Sub-Renderer Pattern)
                 const minContractBuyout = parseFloat(minBuyout) || 0;
                 
                 let rawNetFMV = baseFMV - nRP - trueUpRefund;
-                let finalFMV = rawNetFMV;
+                let taxAddBack = settlementMode === 'bridge' ? itcRecaptureLiability : 0;
+                let finalFMV = rawNetFMV + taxAddBack;
                 let floorDiff = 0;
                 let prepayVariance = 0;
                 
@@ -764,14 +784,13 @@ Architecture: Modular Single-File HTML5 (Sub-Renderer Pattern)
                 if (valPremise === 'prepay') {
                     finalFMV = discountedRemCost; // Lock finalFMV to the math
                     baseFMV = finalFMV; 
+                    rawNetFMV = finalFMV;
                     prepayVariance = nTpoQuote > 0 ? (nTpoQuote - discountedRemCost) : 0;
                 } else if (valPremise === 'floor') {
                     if (finalFMV < minContractBuyout) { 
+                        floorDiff = minContractBuyout - finalFMV; 
                         finalFMV = minContractBuyout; 
-                        floorDiff = minContractBuyout - rawNetFMV; 
                     }
-                } else {
-                    // Standard FMV handles base rawNetFMV as-is
                 }
 
                 window.state.aR = { 
@@ -797,7 +816,9 @@ Architecture: Modular Single-File HTML5 (Sub-Renderer Pattern)
                     sC,
                     rL,
                     discountedRemCost,
-                    prepayVariance
+                    prepayVariance,
+                    rawNetFMV,
+                    taxAddBack
                 };
             } catch (err) {
                 console.error("Calculation Engine Error:", err);
@@ -812,7 +833,7 @@ Architecture: Modular Single-File HTML5 (Sub-Renderer Pattern)
         window.state = {
             activeTab: "inputs", activeModal: null, a: "", iDt: "", pDt: new Date().toISOString().split('T')[0],
             o: "lease", tpoName: "", pC: "", pW: "", sz: 0, or: "mix", pi: "standard", sh: "some", ac: "", b: "", br: "", scr: 50, it: "string", invBrand: "SolarEdge", invCount: "", invAge: "", panelBrand: "", batteryBrand: "", batteryMode: "both", cellMon: "none", ut: "nem2", rU: 0.48, eU: 0.45, te: "", tE: "", tG: "", tUR1: "", tUREnd: "", tEs: "", pa: "", paB: "", tR: "", rR: 0.20, rC: 3.50, batCost: 800, ne: 0.8, c: 0.9, rp: 0, defTypes: [], defNotes: '', aC: true, l: 25, om: 20, dr: 7.88, tx: false, e: 7.0, w: 100, srec: false, srecP: 25, itc: 30, invRepCost: 2000, invRepYear: 12, batRepYear: 10, batDeg: 2, escCap: 10, tpoQuote: "", minBuyout: "", omRes: 21, obsPct: 0, 
-            valPremise: 'fmv', prepayDr: 5.0, trueUpFreq: '24', macrsPenalty: 'false', removalFate: 'tpo_remove',
+            valPremise: 'fmv', settlementMode: 'pure', prepayDr: 5.0, trueUpFreq: '24', macrsPenalty: 'false', removalFate: 'tpo_remove', techNotes: '',
             r: null, aR: null, company: savedCompany
         };
 
@@ -869,9 +890,9 @@ Architecture: Modular Single-File HTML5 (Sub-Renderer Pattern)
         window.handleFMVExport = function() {
             try {
                 if (!window.state.r || !window.state.aR) return;
-                const { a, o, sz, dr, e, rC, l, rp, defTypes, defNotes, w, srec, srecP, pC, pW, panelBrand, invBrand, batteryBrand, b, batteryMode, it, company, itc, escCap, batDeg, invRepCost, invRepYear, batRepYear, tpoQuote, minBuyout, batCost, omRes, obsPct, valPremise, prepayDr, trueUpFreq, macrsPenalty, removalFate, tUR1, tUREnd } = window.state;
+                const { a, o, sz, dr, e, rC, l, rp, defTypes, defNotes, w, srec, srecP, pC, pW, panelBrand, invBrand, batteryBrand, b, batteryMode, it, company, itc, escCap, batDeg, invRepCost, invRepYear, batRepYear, tpoQuote, minBuyout, batCost, omRes, obsPct, valPremise, prepayDr, trueUpFreq, macrsPenalty, removalFate, tUR1, tUREnd, settlementMode, techNotes } = window.state;
                 const { age, estN12, act, guarTD, estTD, physTD, shortfallkWh, trueUpRefund } = window.state.r;
-                const { val, cost, inc, incContract, incResidual, startingGross, isQuoteAnchor, weightedObs, weightedOM, residualDeduction, baseFMV, floorDiff, itcRecaptureLiability, macrsLiab, unvestedPct, sC, discountedRemCost, prepayVariance } = window.state.aR;
+                const { val, cost, inc, incContract, incResidual, startingGross, isQuoteAnchor, weightedObs, weightedOM, residualDeduction, baseFMV, floorDiff, itcRecaptureLiability, macrsLiab, unvestedPct, sC, discountedRemCost, prepayVariance, rawNetFMV, taxAddBack } = window.state.aR;
 
                 const isContract = ['lease', 'ppa', 'prepaid_lease', 'prepaid_ppa', 'loan'].includes(o);
                 const benchmark = guarTD > 0 ? guarTD : (isContract ? estTD : physTD);
@@ -901,7 +922,8 @@ Architecture: Modular Single-File HTML5 (Sub-Renderer Pattern)
                     defTypes: (Array.isArray(defTypes) ? defTypes.join(',') : '') || 'none',
                     defNotes: defNotes || '',
                     omRes: omRes || 21, obsPct: obsPct || 0,
-                    valPremise, prepayDr, trueUpFreq, macrsPenalty, removalFate,
+                    valPremise, prepayDr, trueUpFreq, macrsPenalty, removalFate, settlementMode,
+                    techNotes: encodeURIComponent(techNotes || ''),
                     startingGross: startingGross.toFixed(0),
                     isQuoteAnchor: isQuoteAnchor ? '1' : '0',
                     weightedObs: weightedObs.toFixed(0), weightedOM: weightedOM.toFixed(0),
@@ -915,7 +937,9 @@ Architecture: Modular Single-File HTML5 (Sub-Renderer Pattern)
                     unvestedPct: unvestedPct.toFixed(1),
                     sC: sC.toFixed(0),
                     discountedRemCost: discountedRemCost.toFixed(0),
-                    prepayVariance: prepayVariance.toFixed(0)
+                    prepayVariance: prepayVariance.toFixed(0),
+                    rawNetFMV: rawNetFMV.toFixed(0),
+                    taxAddBack: taxAddBack.toFixed(0)
                 };
                 
                 const params = new URLSearchParams();
@@ -988,7 +1012,7 @@ Architecture: Modular Single-File HTML5 (Sub-Renderer Pattern)
                     <div class="bg-slate-900 text-white px-4 sm:px-6 py-3 sm:py-4 sticky top-0 z-50 flex justify-between items-center shadow-lg border-b border-white/5 gap-2">
                         <div class="flex items-center gap-2 sm:gap-4 min-w-0">
                             <span class="text-2xl sm:text-3xl flex-shrink-0"><i class="fas fa-sun text-yellow-400"></i></span>
-                            <div class="min-w-0 truncate"><h1 class="font-bold text-lg sm:text-2xl tracking-tighter italic truncate">SolarCheck Pro</h1><p class="text-[7px] sm:text-[9px] opacity-60 font-black uppercase tracking-[0.4em]">v7.354</p></div>
+                            <div class="min-w-0 truncate"><h1 class="font-bold text-lg sm:text-2xl tracking-tighter italic truncate">SolarCheck Pro</h1><p class="text-[7px] sm:text-[9px] opacity-60 font-black uppercase tracking-[0.4em]">v7.355</p></div>
                         </div>
                         <div class="flex items-center gap-2 flex-shrink-0">
                             <button onclick="window.open(window.location.href, '_blank')" class="header-btn bg-slate-800 text-white/80 p-2 sm:px-4 sm:py-2.5 rounded-xl text-sm shadow-xl transition-all hover:bg-slate-700 active:scale-95"><i class="fas fa-expand"></i></button>

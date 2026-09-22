@@ -1,8 +1,8 @@
 <!-- 
 ================================================================================
 PROJECT CONTEXT: SolarCheck Professional - FMV REPORT MODULE
-Current Version: v1.25 (DYNAMIC DISCLAIMER & LEGAL NARRATIVE)
-Date: August 2026
+Current Version: v1.26 (SETTLEMENT BRIDGE & FOOTNOTE UPDATE)
+Date: September 22, 2026
 Architecture: Standalone HTML5 / URL-Parameter Data Handoff
 ================================================================================
 
@@ -35,7 +35,7 @@ Architecture: Standalone HTML5 / URL-Parameter Data Handoff
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Professional Solar Valuation Report v1.25</title>
+    <title>Professional Solar Valuation Report v1.26</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
@@ -205,7 +205,7 @@ Architecture: Standalone HTML5 / URL-Parameter Data Handoff
                 <p class="text-[9px] font-black text-slate-400 uppercase tracking-widest">Document Integrity</p>
                 <p class="text-[10px] font-bold text-slate-700">Audit Ref: <span id="display-ref"></span></p>
             </div>
-            <p class="text-[9px] text-slate-400 font-bold uppercase tracking-widest">SolarCheck Pro | Report v1.25</p>
+            <p class="text-[9px] text-slate-400 font-bold uppercase tracking-widest">SolarCheck Pro | Report v1.26</p>
         </div>
     </div>
 
@@ -309,9 +309,13 @@ Architecture: Standalone HTML5 / URL-Parameter Data Handoff
 
         <!-- FMV RECONCILIATION LEDGER -->
         <div id="ledger-fmv" class="mb-4 p-5 bg-slate-50 rounded-3xl shadow-sm border border-slate-200">
-            <h5 class="text-[11px] font-black text-slate-900 uppercase tracking-widest mb-3 flex items-center gap-2 border-b-2 border-slate-200 pb-2">
-                <i class="fas fa-file-invoice-dollar text-indigo-600"></i> Valuation Reconciliation Ledger
-            </h5>
+            <div class="flex justify-between items-center mb-3 border-b-2 border-slate-200 pb-2">
+                <h5 class="text-[11px] font-black text-slate-900 uppercase tracking-widest flex items-center gap-2">
+                    <i class="fas fa-file-invoice-dollar text-indigo-600"></i> Valuation Reconciliation Ledger
+                </h5>
+                <span id="ledger-weighting" class="text-[9px] font-bold text-white bg-indigo-500 px-2 py-1 rounded uppercase tracking-widest shadow-inner"></span>
+            </div>
+            
             <div class="space-y-2 text-[10px] sm:text-[11px] text-slate-700 font-semibold">
                 <div class="flex justify-between items-center"><span class="font-bold" id="recon-start-label"></span><span id="recon-gross" class="font-black text-slate-900"></span></div>
                 <div class="flex justify-between items-center text-red-600"><span>Less: Functional Obsolescence</span><span id="recon-obs"></span></div>
@@ -324,10 +328,20 @@ Architecture: Standalone HTML5 / URL-Parameter Data Handoff
                 
                 <div class="flex justify-between items-center text-red-600"><span>Less: Itemized Repair Costs</span><span id="recon-repairs"></span></div>
                 <div class="flex justify-between items-center text-red-600"><span>Less: True-Up Liability</span><span id="recon-trueup"></span></div>
-                <div id="row-floor" class="flex justify-between items-center text-emerald-600 hidden"><span>Plus: Minimum Buyout Floor Adjustment</span><span id="recon-floor"></span></div>
+                
+                <div class="border-t border-slate-300 my-1 pt-1 flex justify-between items-center font-bold text-slate-800">
+                    <span>Pure Net "As-Is" FMV</span><span id="recon-pure-net"></span>
+                </div>
+                
+                <div id="row-tax-add" class="flex justify-between items-center text-emerald-600 hidden">
+                    <span>Plus: Equitable IRS § 50 Tax Recapture Add-Back</span><span id="recon-tax-add"></span>
+                </div>
+                <div id="row-floor" class="flex justify-between items-center text-emerald-600 hidden">
+                    <span>Plus: Minimum Buyout Floor Adjustment</span><span id="recon-floor"></span>
+                </div>
                 
                 <div class="border-t-2 border-slate-900 my-1 pt-2 flex justify-between items-center text-sm font-black text-slate-900">
-                    <span class="uppercase tracking-widest">Net "As-Is" FMV</span><span id="recon-net"></span>
+                    <span id="recon-net-label" class="uppercase tracking-widest">Net "As-Is" FMV</span><span id="recon-net"></span>
                 </div>
             </div>
         </div>
@@ -345,6 +359,14 @@ Architecture: Standalone HTML5 / URL-Parameter Data Handoff
                     <span id="prepay-variance-label" class="uppercase tracking-widest">Variance</span><span id="prepay-variance-val"></span>
                 </div>
             </div>
+        </div>
+
+        <!-- TECHNICAL ADDENDUM (FOOTNOTES) -->
+        <div id="tech-notes-block" class="mb-4 bg-white p-4 rounded-2xl border-2 border-slate-100 shadow-sm hidden">
+            <h4 class="text-[10px] font-black text-slate-900 uppercase tracking-widest mb-2 border-b-2 border-slate-200 pb-1 flex items-center gap-2">
+                <i class="fas fa-microscope text-indigo-600"></i> Technical Addendum
+            </h4>
+            <p id="display-tech-notes" class="text-[10px] text-slate-700 leading-relaxed text-justify font-medium"></p>
         </div>
 
         <!-- CERTIFICATION SECTION -->
@@ -404,6 +426,7 @@ Architecture: Standalone HTML5 / URL-Parameter Data Handoff
             const today = new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
             
             const valPremise = data.valPremise || 'fmv';
+            const settlementMode = data.settlementMode || 'pure';
 
             // Document Date (Header & Certification)
             document.getElementById('current-date').innerText = today;
@@ -498,6 +521,7 @@ Architecture: Standalone HTML5 / URL-Parameter Data Handoff
                 // Methodology Text
                 const w = parseFloat(data.w) || 0;
                 document.getElementById('display-methodology').innerText = w === 100 ? 'Income Approach' : w === 0 ? 'Cost Approach' : `Blended Valuation (${w}% Income)`;
+                document.getElementById('ledger-weighting').innerText = `Weighting: ${w}% Income / ${100 - w}% Cost`;
 
                 // Valuation Reconciliation Ledger
                 const isQuoteAnchor = data.isQuoteAnchor === '1';
@@ -516,6 +540,20 @@ Architecture: Standalone HTML5 / URL-Parameter Data Handoff
                 document.getElementById('recon-base').innerText = cur(data.baseFMV);
                 document.getElementById('recon-repairs').innerText = "- " + cur(data.repair);
                 document.getElementById('recon-trueup').innerText = "- " + cur(data.trueUp);
+                
+                // Add Pure Net FMV Display
+                const rawNetFMV = parseFloat(data.rawNetFMV) || 0;
+                document.getElementById('recon-pure-net').innerText = cur(rawNetFMV);
+
+                // Settlement Bridge / Tax Add-Back Logic
+                const taxAddBack = parseFloat(data.taxAddBack) || 0;
+                if (settlementMode === 'bridge' && taxAddBack > 0) {
+                    document.getElementById('row-tax-add').classList.remove('hidden');
+                    document.getElementById('recon-tax-add').innerText = "+ " + cur(taxAddBack);
+                    document.getElementById('recon-net-label').innerText = "Recommended Settlement Offer";
+                } else {
+                    document.getElementById('recon-net-label').innerText = 'Net "As-Is" FMV';
+                }
                 
                 const floorDiff = parseFloat(data.floorDiff) || 0;
                 if (floorDiff > 0) {
@@ -594,7 +632,7 @@ Architecture: Standalone HTML5 / URL-Parameter Data Handoff
             const turend = parseFloat(data.tUREnd) || 0;
             if (tur1 > 0 || turend > 0) {
                 document.getElementById('audit-refund-rates').classList.remove('hidden');
-                document.getElementById('audit-rates-val').innerText = '$' + tur1.toFixed(3) + ' / $' + turend.toFixed(3);
+                document.getElementById('audit-rates-val').innerText = '$' + tur1.toFixed(3) + ' /$' + turend.toFixed(3);
             }
 
             if (data.trueUpFreq && data.trueUpFreq !== '0') {
@@ -632,6 +670,15 @@ Architecture: Standalone HTML5 / URL-Parameter Data Handoff
                 document.getElementById('assump-capex').innerText = cur(data.invRepCost || 2000) + ' @ Yr ' + (data.invRepYear || 12);
             } else {
                 document.getElementById('assump-capex').innerText = 'N/A (Microinverters)';
+            }
+
+            // Render Technical Addendum / Footnotes
+            if (data.techNotes && data.techNotes.trim() !== '') {
+                const decodedNotes = decodeURIComponent(data.techNotes);
+                if (decodedNotes.trim() !== '') {
+                    document.getElementById('tech-notes-block').classList.remove('hidden');
+                    document.getElementById('display-tech-notes').innerText = decodedNotes;
+                }
             }
         }
 
